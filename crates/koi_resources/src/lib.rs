@@ -18,6 +18,17 @@ impl Resources {
     }
 
     #[inline]
+    pub fn remove<T: 'static>(&mut self) -> Option<T> {
+        self.resources
+            .remove(&std::any::TypeId::of::<T>())
+            .unwrap()
+            .downcast::<std::sync::RwLock<T>>()
+            .unwrap()
+            .into_inner()
+            .ok()
+    }
+
+    #[inline]
     pub fn get<T: 'static>(&self) -> std::sync::RwLockWriteGuard<T> {
         self.try_get::<T>().unwrap()
     }

@@ -13,10 +13,7 @@ pub fn add_global_transform(
     transform_helper.command_buffer.clear();
 
     {
-        let mut without_global_transform =
-            world.query::<koi_ecs::Without<&crate::Transform, &crate::GlobalTransform>>();
-
-        for (entity, transform) in without_global_transform.iter() {
+        for (entity, transform) in world.query::<&crate::Transform>().iter() {
             transform_helper
                 .command_buffer
                 .insert_one(entity, crate::GlobalTransform(transform.clone()))

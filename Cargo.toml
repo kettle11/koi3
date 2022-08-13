@@ -13,6 +13,7 @@ window = []
 kapp = {path = "../koi2/crates/kapp", default-features=false, features=["kserde"], optional = true}
 kapp_platform_common = {path = "../koi2/crates/kapp/kapp_platform_common"}
 kinstant = {path = "../koi2/crates/kinstant"}
+kmath = {path = "../koi2/crates/kmath"}
 koi_hierarchy = {path = "crates/koi_hierarchy"}
 koi_ecs = {path = "crates/koi_ecs"}
 koi_resources = {path = "crates/koi_resources"}

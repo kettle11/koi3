@@ -1,5 +1,5 @@
 use crate::*;
-use kgraphics::{CommandBufferTrait, GraphicsContextTrait, RenderPassTrait};
+use kgraphics::{CommandBufferTrait, DataBuffer, GraphicsContextTrait, RenderPassTrait};
 use koi_assets::*;
 use koi_transform::Transform;
 
@@ -21,7 +21,7 @@ impl Renderer {
         &mut self,
         camera: &Camera,
         camera_transform: &Transform,
-        view_width: f32, 
+        view_width: f32,
         view_height: f32,
     ) -> RenderPass {
         if let Some(mut render_pass) = self.render_pass_pool.pop() {
@@ -36,8 +36,9 @@ impl Renderer {
                 camera_transform: camera_transform.clone(),
                 meshes_to_draw: Vec::new(),
                 local_to_world_matrices: Vec::new(),
+                data_buffers_to_cleanup: Vec::new(),
                 view_width,
-                view_height
+                view_height,
             }
         }
     }
@@ -47,8 +48,9 @@ pub struct RenderPass {
     camera_transform: Transform,
     meshes_to_draw: Vec<(Handle<Material>, Handle<Mesh>, kmath::Mat4)>,
     local_to_world_matrices: Vec<kmath::Mat4>,
-    view_width: f32, 
+    view_width: f32,
     view_height: f32,
+    data_buffers_to_cleanup: Vec<DataBuffer<kmath::Mat4>>,
 }
 
 impl RenderPass {
@@ -80,7 +82,7 @@ impl RenderPass {
             &kgraphics::Framebuffer::default(),
             self.camera.clear_color.map(|v| v.to_linear_srgb().into()),
         );
-        
+
         let mut render_pass_executor = RenderPassExecutor {
             graphics,
             meshes,
@@ -92,11 +94,18 @@ impl RenderPass {
             current_gpu_mesh: None,
             world_to_camera: self.camera_transform.local_to_world().inversed(),
             // TODO: This projection matrix doesn't account for window dimensions.
-            camera_to_screen: self.camera.projection_matrix(self.view_width, self.view_height),
+            camera_to_screen: self
+                .camera
+                .projection_matrix(self.view_width, self.view_height),
+            data_buffers_to_cleanup: &mut &mut self.data_buffers_to_cleanup,
         };
         render_pass_executor.execute(&mut self.meshes_to_draw);
         command_buffer.present();
         graphics.commit_command_buffer(command_buffer);
+
+        for data_buffer in self.data_buffers_to_cleanup.drain(..) {
+            graphics.delete_data_buffer(data_buffer);
+        }
     }
 }
 
@@ -111,6 +120,7 @@ struct RenderPassExecutor<'a> {
     current_gpu_mesh: Option<&'a GPUMesh>,
     world_to_camera: kmath::Mat4,
     camera_to_screen: kmath::Mat4,
+    data_buffers_to_cleanup: &'a mut Vec<DataBuffer<kmath::Mat4>>,
 }
 
 impl<'a> RenderPassExecutor<'a> {
@@ -178,9 +188,8 @@ impl<'a> RenderPassExecutor<'a> {
                 );
                 self.local_to_world_matrices.clear();
 
-                // Delete the buffer because it's no longer needed.
-                // Otherwise this would be a memory leak.
-                // self.graphics.delete_data_buffer(local_to_world_data);
+                // This data buffer is deleted later after the commands are submitted.
+                self.data_buffers_to_cleanup.push(local_to_world_data);
             }
         }
     }

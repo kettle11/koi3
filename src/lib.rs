@@ -23,3 +23,8 @@ pub use koi_events::Event;
 
 #[cfg(feature = "koi_renderer")]
 pub use koi_renderer::*;
+
+pub use kmath::*;
+
+pub use kapp_platform_common::Event as KappEvent;
+pub use kapp_platform_common::{Cursor, Key, PointerButton, PointerSource};
