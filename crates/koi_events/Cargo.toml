@@ -1,0 +1,11 @@
+[package]
+name = "koi_events"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+kapp_platform_common = {path = "../../../koi2/crates/kapp/kapp_platform_common"}
+koi_resources = {path = "../koi_resources"}
+koi_ecs = {path = "../koi_ecs"}

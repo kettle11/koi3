@@ -1,0 +1,21 @@
+[package]
+name = "koi_renderer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
+kmath = {path = "../../../koi2/crates/kmath"}
+kgraphics = {path = "../../../koi2/crates/kgraphics"}
+klog = {path = "../../../koi2/crates/klog"}
+
+koi_ecs = {path = "../koi_ecs"}
+koi_transform = {path = "../koi_transform"}
+koi_assets = {path = "../koi_assets"}
+koi_resources = {path = "../koi_resources"}
+koi_events = {path = "../koi_events"}
+kapp = {path = "../../../koi2/crates/kapp", default-features=false}
+
+
+
+

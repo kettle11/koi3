@@ -1,0 +1,8 @@
+[package]
+name = "koi_ecs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hecs = "0.9.0"
+koi_hierarchy = {path = "../koi_hierarchy"}
