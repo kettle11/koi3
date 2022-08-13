@@ -4,6 +4,7 @@ pub struct Running;
 
 fn main() {
     App::default().run(|_event, world, resources| {
+        
         if resources.try_get::<Running>().is_none() {
             resources.add(Running);
             world.spawn((

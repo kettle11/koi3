@@ -48,14 +48,16 @@ impl App {
                     let kapp_app = self.resources.get_mut::<kapp::Application>();
                     kapp_app.quit()
                 }
+                kapp_platform_common::Event::Draw {..} => {
+                    self.handle_event(Event::Draw);
+                    self.handle_event(Event::PostDraw);
+                }
                 kapp_platform_common::Event::Quit => {
                     // klog::log!("ABOUT TO QUIT");
                     // ktasks::shutdown_worker_threads();
                 }
                 _ => {}
             }
-            self.handle_event(Event::Draw);
-            self.handle_event(Event::PostDraw);
         });
     }
 

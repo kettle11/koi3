@@ -74,7 +74,7 @@ impl RenderPass {
             &kgraphics::Framebuffer::default(),
             self.camera.clear_color.map(|v| v.to_linear_srgb().into()),
         );
-
+        
         let mut render_pass_executor = RenderPassExecutor {
             graphics,
             meshes,

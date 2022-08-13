@@ -41,7 +41,7 @@ impl Resources {
                 .get(&std::any::TypeId::of::<T>())?
                 .downcast_ref::<std::sync::RwLock<T>>()
                 .unwrap()
-                .write()
+                .try_write()
                 .unwrap(),
         )
     }

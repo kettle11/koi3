@@ -26,6 +26,8 @@ pub fn initialize_plugin(resources: &mut Resources) {
             .build()
     };
 
+    graphics_context.resize(&window, dimensions, dimensions);
+
     // For now this needs to be called even if it's not used.
     let _render_target =
         graphics_context.get_render_target_for_window(&window, dimensions, dimensions);
@@ -55,9 +57,13 @@ pub fn initialize_plugin(resources: &mut Resources) {
 
 pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {
     let mut renderer = resources.get::<Renderer>();
+    let window = resources.get::<kapp::Window>();
     let gpu_meshes = resources.get::<AssetStore<Mesh>>();
     let materials = resources.get::<AssetStore<Material>>();
     let shaders = resources.get::<AssetStore<Shader>>();
+
+    let (window_width, window_height) = window.size();
+    renderer.raw_graphics_context.resize(&*window, window_width, window_height);
 
     let mut cameras = world.query::<(&GlobalTransform, &Camera)>();
     for (_, (camera_transform, camera)) in cameras.iter() {
@@ -79,6 +85,6 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     }
 
     if renderer.automatically_redraw {
-        resources.get::<kapp::Window>().request_redraw();
+        window.request_redraw();
     }
 }
