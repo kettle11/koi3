@@ -21,6 +21,8 @@ impl Renderer {
         &mut self,
         camera: &Camera,
         camera_transform: &Transform,
+        view_width: f32, 
+        view_height: f32,
     ) -> RenderPass {
         if let Some(mut render_pass) = self.render_pass_pool.pop() {
             render_pass.camera = camera.clone();
@@ -34,6 +36,8 @@ impl Renderer {
                 camera_transform: camera_transform.clone(),
                 meshes_to_draw: Vec::new(),
                 local_to_world_matrices: Vec::new(),
+                view_width,
+                view_height
             }
         }
     }
@@ -43,6 +47,8 @@ pub struct RenderPass {
     camera_transform: Transform,
     meshes_to_draw: Vec<(Handle<Material>, Handle<Mesh>, kmath::Mat4)>,
     local_to_world_matrices: Vec<kmath::Mat4>,
+    view_width: f32, 
+    view_height: f32,
 }
 
 impl RenderPass {
@@ -86,7 +92,7 @@ impl RenderPass {
             current_gpu_mesh: None,
             world_to_camera: self.camera_transform.local_to_world().inversed(),
             // TODO: This projection matrix doesn't account for window dimensions.
-            camera_to_screen: self.camera.projection_matrix(),
+            camera_to_screen: self.camera.projection_matrix(self.view_width, self.view_height),
         };
         render_pass_executor.execute(&mut self.meshes_to_draw);
         command_buffer.present();
@@ -129,7 +135,6 @@ impl<'a> RenderPassExecutor<'a> {
 
                 // Bind the mesh for this group.
                 {
-                    println!("BINDING MESH");
                     self.render_pass.set_vertex_attribute(
                         &shader_properties.position_attribute,
                         Some(&gpu_mesh.positions),
@@ -175,7 +180,7 @@ impl<'a> RenderPassExecutor<'a> {
 
                 // Delete the buffer because it's no longer needed.
                 // Otherwise this would be a memory leak.
-                self.graphics.delete_data_buffer(local_to_world_data);
+                // self.graphics.delete_data_buffer(local_to_world_data);
             }
         }
     }

@@ -19,10 +19,10 @@ impl Default for Camera {
 }
 
 impl Camera {
-    pub fn projection_matrix(&self) -> kmath::Mat4 {
+    pub fn projection_matrix(&self, view_width: f32, view_height: f32) -> kmath::Mat4 {
         // This may need to be updated later.
         let (width, height) = self.output_rect.size().into();
-        self.projection_mode.to_mat4(width / height)
+        self.projection_mode.to_mat4((width * view_width) / (height * view_height))
     }
 }
 
@@ -66,7 +66,7 @@ impl ProjectionMode {
                     -half_width,
                     half_width,
                     -half_height,
-                    height,
+                    half_height,
                     z_near,
                     z_far,
                 )

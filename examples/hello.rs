@@ -10,9 +10,9 @@ fn main() {
             world.spawn((
                 Transform::new(),
                 Camera {
-                    clear_color: Some(Color::ORANGE),
+                    clear_color: Some(Color::BLUE),
                     projection_mode: ProjectionMode::Orthographic {
-                        height: 1.0,
+                        height: 2.0,
                         z_near: -5.0,
                         z_far: 5.0,
                     },

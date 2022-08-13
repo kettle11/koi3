@@ -48,7 +48,7 @@ impl App {
                     let kapp_app = self.resources.get_mut::<kapp::Application>();
                     kapp_app.quit()
                 }
-                kapp_platform_common::Event::Draw {..} => {
+                kapp_platform_common::Event::Draw { .. } => {
                     self.handle_event(Event::Draw);
                     self.handle_event(Event::PostDraw);
                 }

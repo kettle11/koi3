@@ -67,7 +67,7 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
 
     let mut cameras = world.query::<(&GlobalTransform, &Camera)>();
     for (_, (camera_transform, camera)) in cameras.iter() {
-        let mut render_pass = renderer.begin_render_pass(camera, camera_transform);
+        let mut render_pass = renderer.begin_render_pass(camera, camera_transform, window_width as f32, window_height as f32);
 
         let mut renderables = world
             .query::<koi_ecs::Without<(&Handle<Mesh>, &Handle<Material>, &GlobalTransform), &Camera>>();
