@@ -14,7 +14,7 @@ fn main() {
                 },
             ));
 
-            world.spawn((Transform::new(), Mesh::SPHERE, Material::UNLIT));
+            world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, Material::UNLIT));
         }
 
         // When a key is pressed change the camera's clear color.

@@ -12,7 +12,7 @@ core = ["kapp", "koi_renderer", "koi_transform", "koi_audio", "koi_input", "koi_
 window = []
 
 [dependencies]
-kapp = {path = "../koi2/crates/kapp", default-features=false, features=["kserde"], optional = true}
+kapp = {path = "../koi2/crates/kapp", default-features=false, optional = true}
 kapp_platform_common = {path = "../koi2/crates/kapp/kapp_platform_common"}
 kinstant = {path = "../koi2/crates/kinstant"}
 kmath = {path = "../koi2/crates/kmath"}
@@ -33,5 +33,11 @@ koi_camera_controls = {path = "crates/koi_camera_controls", optional = true}
 [profile.release]
 strip = true
 panic = "abort"
+opt-level = "z"  # Optimize for size.
+lto = true
+codegen-units = 1
+
+
+
 
 

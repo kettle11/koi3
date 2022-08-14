@@ -102,10 +102,11 @@ impl RenderPass {
 
         let mut command_buffer = graphics.new_command_buffer();
 
-        let render_pass = command_buffer.begin_render_pass_with_framebuffer(
+        let mut render_pass = command_buffer.begin_render_pass_with_framebuffer(
             &kgraphics::Framebuffer::default(),
             self.camera.clear_color.map(|v| v.to_linear_srgb().into()),
         );
+        render_pass.set_viewport(0, 0, self.view_width as u32, self.view_height as u32);
 
         let mut render_pass_executor = RenderPassExecutor {
             graphics,
