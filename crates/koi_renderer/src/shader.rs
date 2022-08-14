@@ -55,13 +55,16 @@ pub enum ShaderError {
 }
 
 impl crate::Renderer {
+    pub fn register_shader_snippet(&mut self, name: &'static str, snippet: &'static str) {
+        self.shader_snippets.insert(name, snippet);
+    }
     pub fn new_shader(
         &mut self,
         source: &str,
         shader_settings: ShaderSettings,
     ) -> Result<Shader, ShaderError> {
         let (vertex_source, fragment_source) =
-            crate::shader_parser::parse_shader(&std::collections::HashMap::new(), source, "");
+            crate::shader_parser::parse_shader(&self.shader_snippets, source, "");
 
         let vertex_function = self
             .raw_graphics_context

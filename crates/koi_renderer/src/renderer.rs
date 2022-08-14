@@ -7,6 +7,7 @@ pub struct Renderer {
     pub raw_graphics_context: kgraphics::GraphicsContext,
     render_pass_pool: Vec<RenderPass>,
     pub automatically_redraw: bool,
+    pub(crate) shader_snippets: std::collections::HashMap<&'static str, &'static str>,
 }
 
 impl Renderer {
@@ -15,6 +16,7 @@ impl Renderer {
             raw_graphics_context,
             render_pass_pool: Vec::new(),
             automatically_redraw: true,
+            shader_snippets: std::collections::HashMap::new(),
         }
     }
     pub fn begin_render_pass(
@@ -29,18 +31,32 @@ impl Renderer {
             render_pass.camera_transform = camera_transform.clone();
             render_pass.meshes_to_draw.clear();
             render_pass.local_to_world_matrices.clear();
+            render_pass.view_width = view_width;
+            render_pass.view_height = view_height;
+            render_pass.camera = camera.clone();
+            render_pass.camera_transform = camera_transform.clone();
             render_pass
         } else {
             RenderPass {
-                camera: camera.clone(),
-                camera_transform: camera_transform.clone(),
                 meshes_to_draw: Vec::new(),
                 local_to_world_matrices: Vec::new(),
                 data_buffers_to_cleanup: Vec::new(),
+                camera: camera.clone(),
+                camera_transform: camera_transform.clone(),
                 view_width,
                 view_height,
             }
         }
+    }
+    pub fn submit_render_pass(
+        &mut self,
+        mut render_pass: RenderPass,
+        meshes: &AssetStore<Mesh>,
+        materials: &AssetStore<Material>,
+        shaders: &AssetStore<Shader>,
+    ) {
+        render_pass.execute(&mut self.raw_graphics_context, meshes, materials, shaders);
+        self.render_pass_pool.push(render_pass);
     }
 }
 pub struct RenderPass {
@@ -65,7 +81,7 @@ impl RenderPass {
             .push((material.clone(), mesh.clone(), transform.local_to_world()))
     }
 
-    pub fn execute(
+    fn execute(
         &mut self,
         graphics: &mut kgraphics::GraphicsContext,
         meshes: &AssetStore<Mesh>,
