@@ -7,9 +7,6 @@
 //! 'Code simplicity' means that `Koi` avoids large and
 //! complex dependencies that may introduce significant build times.
 
-mod time;
-use time::*;
-
 mod app;
 pub use app::*;
 
@@ -26,6 +23,8 @@ pub use koi_renderer::*;
 
 #[cfg(feature = "koi_input")]
 pub use koi_input::*;
+
+pub use koi_time::*;
 
 pub use kmath::*;
 

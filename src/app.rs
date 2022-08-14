@@ -5,17 +5,15 @@ use crate::*;
 pub struct App {
     pub world: crate::World,
     pub resources: Resources,
-    pub time: Time,
 }
 
 impl Default for App {
     fn default() -> Self {
         let mut resources = Resources::new();
         resources.add(EventHandlers::new());
-
+        resources.add(Time::new());
         Self {
             world: crate::World::new(),
-            time: Time::new(),
             resources,
         }
     }
@@ -76,9 +74,9 @@ impl App {
     pub fn run_fixed_update(&mut self) {
         // Measure elapsed time since last event and add it to
         // the total time counter.
-        self.time.update();
+        self.resources.get_mut::<Time>().update();
 
-        while self.time.fixed_update_ready() {
+        while self.resources.get_mut::<Time>().fixed_update_ready() {
             self.handle_event(Event::FixedUpdate);
             self.handle_event(Event::PostFixedUpdate);
         }
@@ -89,6 +87,8 @@ impl App {
         koi_renderer::initialize_plugin(&mut self.resources);
         #[cfg(feature = "koi_input")]
         koi_input::initialize_plugin(&mut self.resources);
+        #[cfg(feature = "koi_camera_controls")]
+        koi_camera_controls::initialize_plugin(&mut self.resources);
 
         koi_transform::transform_plugin::initialize_plugin(&mut self.resources);
     }

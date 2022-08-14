@@ -22,7 +22,8 @@ impl Camera {
     pub fn projection_matrix(&self, view_width: f32, view_height: f32) -> kmath::Mat4 {
         // This may need to be updated later.
         let (width, height) = self.output_rect.size().into();
-        self.projection_mode.to_mat4((width * view_width) / (height * view_height))
+        self.projection_mode
+            .to_mat4((width * view_width) / (height * view_height))
     }
 }
 

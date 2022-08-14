@@ -1,0 +1,17 @@
+[package]
+name = "koi_camera_controls"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+kapp_platform_common = {path = "../../../koi2/crates/kapp/kapp_platform_common"}
+kmath = {path = "../../../koi2/crates/kmath"}
+koi_ecs = {path = "../koi_ecs"}
+koi_resources = {path = "../koi_resources"}
+koi_events = {path = "../koi_events"}
+koi_renderer = {path = "../koi_renderer"}
+koi_input = {path = "../koi_input"}
+koi_transform = {path = "../koi_transform"}
+koi_time = {path = "../koi_time"}

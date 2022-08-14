@@ -5,6 +5,7 @@
 //! and then used later in the loop without explicitly
 //! storing it in a state struct.
 use koi3::*;
+use koi_camera_controls::CameraControls;
 
 fn setup_and_run(
     world: &mut World,
@@ -17,6 +18,7 @@ fn setup_and_run(
             clear_color: Some(Color::ORANGE),
             ..Default::default()
         },
+        CameraControls::new(),
     ));
 
     let entity = world.spawn((Transform::new(), Mesh::CUBE, Material::TEST));
