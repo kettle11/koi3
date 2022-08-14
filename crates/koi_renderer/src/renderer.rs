@@ -54,8 +54,15 @@ impl Renderer {
         meshes: &AssetStore<Mesh>,
         materials: &AssetStore<Material>,
         shaders: &AssetStore<Shader>,
+        textures: &AssetStore<Texture>,
     ) {
-        render_pass.execute(&mut self.raw_graphics_context, meshes, materials, shaders);
+        render_pass.execute(
+            &mut self.raw_graphics_context,
+            meshes,
+            materials,
+            shaders,
+            textures,
+        );
         self.render_pass_pool.push(render_pass);
     }
 }
@@ -87,6 +94,7 @@ impl RenderPass {
         meshes: &AssetStore<Mesh>,
         materials: &AssetStore<Material>,
         shaders: &AssetStore<Shader>,
+        textures: &AssetStore<Texture>,
     ) {
         // Sort meshes by material, then mesh.
         // TODO: This could be made more efficient by sorting by pipeline as well.
@@ -104,9 +112,10 @@ impl RenderPass {
             meshes,
             materials,
             shaders,
+            textures,
             render_pass,
             local_to_world_matrices: &mut self.local_to_world_matrices,
-            current_shader: None,
+            current_material_and_shader: None,
             current_gpu_mesh: None,
             world_to_camera: self.camera_transform.local_to_world().inversed(),
             // TODO: This projection matrix doesn't account for window dimensions.
@@ -130,9 +139,10 @@ struct RenderPassExecutor<'a> {
     meshes: &'a AssetStore<Mesh>,
     materials: &'a AssetStore<Material>,
     shaders: &'a AssetStore<Shader>,
+    textures: &'a AssetStore<Texture>,
     render_pass: kgraphics::RenderPass<'a>,
     local_to_world_matrices: &'a mut Vec<kmath::Mat4>,
-    current_shader: Option<&'a Shader>,
+    current_material_and_shader: Option<(&'a Material, &'a Shader)>,
     current_gpu_mesh: Option<&'a GPUMesh>,
     world_to_camera: kmath::Mat4,
     camera_to_screen: kmath::Mat4,
@@ -142,7 +152,7 @@ struct RenderPassExecutor<'a> {
 impl<'a> RenderPassExecutor<'a> {
     fn render_group(&mut self) {
         if let Some(gpu_mesh) = self.current_gpu_mesh {
-            if let Some(shader) = self.current_shader {
+            if let Some((material, shader)) = self.current_material_and_shader {
                 self.render_pass.set_pipeline(&shader.pipeline);
                 let shader_properties = &shader.shader_render_properties;
 
@@ -157,6 +167,25 @@ impl<'a> RenderPassExecutor<'a> {
                         &shader_properties.camera_to_screen,
                         self.camera_to_screen.as_array(),
                     );
+                }
+
+                // Bind the material properties
+                {
+                    self.render_pass.set_vec4_property(
+                        &shader.shader_render_properties.p_base_color,
+                        material.base_color.to_linear_srgb().into(),
+                    );
+                    let mut texture_unit = 0;
+
+                    self.render_pass.set_texture_property(
+                        &shader.shader_render_properties.p_base_color_texture,
+                        Some(material.base_color_texture.as_ref().map_or_else(
+                            || &self.textures.get(&Texture::WHITE).0,
+                            |t| &self.textures.get(t).0,
+                        )),
+                        texture_unit,
+                    );
+                    texture_unit += 1;
                 }
 
                 // Bind the mesh for this group.
@@ -238,7 +267,7 @@ impl<'a> RenderPassExecutor<'a> {
             if change_material {
                 let material = self.materials.get(material_handle);
                 let shader = self.shaders.get(&material.shader);
-                self.current_shader = Some(shader);
+                self.current_material_and_shader = Some((material, shader));
 
                 current_material = Some(material_handle);
             }

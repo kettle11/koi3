@@ -45,10 +45,14 @@ pub fn initialize_plugin(resources: &mut Resources) {
     let mut meshes = AssetStore::<Mesh>::new();
     mesh_constants::initialize_constant_meshes(&mut renderer.raw_graphics_context, &mut meshes);
 
+    let mut textures = AssetStore::<Texture>::new();
+    texture_constants::initialize_constant_textures(&mut renderer, &mut textures);
+
     resources.add(renderer);
     resources.add(shaders);
     resources.add(materials);
     resources.add(meshes);
+    resources.add(textures);
 
     resources
         .get_mut::<koi_events::EventHandlers>()
@@ -58,9 +62,19 @@ pub fn initialize_plugin(resources: &mut Resources) {
 pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {
     let mut renderer = resources.get::<Renderer>();
     let window = resources.get::<kapp::Window>();
-    let gpu_meshes = resources.get::<AssetStore<Mesh>>();
-    let materials = resources.get::<AssetStore<Material>>();
-    let shaders = resources.get::<AssetStore<Shader>>();
+    let mut meshes = resources.get::<AssetStore<Mesh>>();
+    let mut materials = resources.get::<AssetStore<Material>>();
+    let mut shaders = resources.get::<AssetStore<Shader>>();
+    let textures = resources.get::<AssetStore<Texture>>();
+
+    for mesh in meshes.get_dropped_assets() {
+        if let Some(gpu_mesh) = mesh.gpu_mesh {
+            gpu_mesh.delete(&mut renderer.raw_graphics_context);
+        }
+    }
+    materials.cleanup_dropped_assets();
+    // TODO: Properly deallocate dropped programs.
+    shaders.cleanup_dropped_assets();
 
     let (window_width, window_height) = window.size();
     renderer
@@ -83,7 +97,7 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             //todo
             render_pass.draw_mesh(gpu_mesh, material, transform);
         }
-        renderer.submit_render_pass(render_pass, &gpu_meshes, &materials, &shaders);
+        renderer.submit_render_pass(render_pass, &meshes, &materials, &shaders, &textures);
     }
 
     if renderer.automatically_redraw {

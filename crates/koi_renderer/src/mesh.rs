@@ -27,7 +27,7 @@ impl Mesh {
 
     pub fn update_mesh_on_gpu(&mut self, graphics: &mut kgraphics::GraphicsContext) {
         if let Some(gpu_mesh) = self.gpu_mesh.take() {
-            delete_gpu_mesh(graphics, gpu_mesh)
+            gpu_mesh.delete(graphics);
         }
         if let Some(mesh_data) = self.mesh_data.as_ref() {
             self.gpu_mesh = Some(new_gpu_mesh(graphics, mesh_data).unwrap())
@@ -113,26 +113,28 @@ pub fn new_gpu_mesh(
     })
 }
 
-pub fn delete_gpu_mesh(graphics: &mut kgraphics::GraphicsContext, gpu_mesh: GPUMesh) {
-    let GPUMesh {
-        positions,
-        normals,
-        index_buffer,
-        texture_coordinates,
-        colors,
-        index_start: _,
-        index_end: _,
-    } = gpu_mesh;
-    graphics.delete_data_buffer(positions);
-    graphics.delete_index_buffer(index_buffer);
+impl GPUMesh {
+    pub fn delete(self, graphics: &mut kgraphics::GraphicsContext) {
+        let GPUMesh {
+            positions,
+            normals,
+            index_buffer,
+            texture_coordinates,
+            colors,
+            index_start: _,
+            index_end: _,
+        } = self;
+        graphics.delete_data_buffer(positions);
+        graphics.delete_index_buffer(index_buffer);
 
-    if let Some(d) = normals {
-        graphics.delete_data_buffer(d);
-    }
-    if let Some(d) = texture_coordinates {
-        graphics.delete_data_buffer(d);
-    }
-    if let Some(d) = colors {
-        graphics.delete_data_buffer(d);
+        if let Some(d) = normals {
+            graphics.delete_data_buffer(d);
+        }
+        if let Some(d) = texture_coordinates {
+            graphics.delete_data_buffer(d);
+        }
+        if let Some(d) = colors {
+            graphics.delete_data_buffer(d);
+        }
     }
 }

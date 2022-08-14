@@ -23,9 +23,12 @@ pub(crate) struct ShaderRenderProperties {
     pub(crate) normal_attribute: kgraphics::VertexAttribute<kmath::Vec3>,
     pub(crate) texture_coordinate_attribute: kgraphics::VertexAttribute<kmath::Vec2>,
     pub(crate) color_attribute: kgraphics::VertexAttribute<kmath::Vec4>,
-    // Uniforms
+    // Global Uniforms
     pub(crate) world_to_camera: kgraphics::Mat4Property,
     pub(crate) camera_to_screen: kgraphics::Mat4Property,
+    // Per-object Uniforms
+    pub(crate) p_base_color: kgraphics::Vec4Property,
+    pub(crate) p_base_color_texture: kgraphics::TextureProperty,
 }
 
 #[derive(Clone, Copy)]
@@ -103,9 +106,14 @@ impl crate::Renderer {
                 .get_vertex_attribute("a_texture_coordinate")
                 .unwrap(),
             color_attribute: pipeline.get_vertex_attribute("a_color").unwrap(),
-            // Uniforms
+            // Global Uniforms
             world_to_camera: pipeline.get_mat4_property("world_to_camera").unwrap(),
             camera_to_screen: pipeline.get_mat4_property("camera_to_screen").unwrap(),
+            // Per-object Uniforms
+            p_base_color: pipeline.get_vec4_property("p_base_color").unwrap(),
+            p_base_color_texture: pipeline
+                .get_texture_property("p_base_color_texture")
+                .unwrap(),
         };
         Ok(Shader {
             pipeline,
