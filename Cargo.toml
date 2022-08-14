@@ -8,7 +8,7 @@ members = ["crates/*"]
 
 [features]
 default = ["core", "koi_camera_controls"]
-core = ["kapp", "koi_renderer", "koi_transform", "koi_audio", "koi_input"]
+core = ["kapp", "koi_renderer", "koi_transform", "koi_audio", "koi_input", "koi_random"]
 window = []
 
 [dependencies]
@@ -26,6 +26,7 @@ koi_renderer =  {path = "crates/koi_renderer", optional = true}
 koi_transform = {path = "crates/koi_transform", optional = true}
 koi_audio = {path = "crates/koi_audio", optional = true}
 koi_input = {path = "crates/koi_input", optional = true}
+koi_random = {path = "crates/koi_random", optional = true}
 
 koi_camera_controls = {path = "crates/koi_camera_controls", optional = true}
 

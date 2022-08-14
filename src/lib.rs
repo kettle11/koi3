@@ -24,6 +24,9 @@ pub use koi_renderer::*;
 #[cfg(feature = "koi_input")]
 pub use koi_input::*;
 
+#[cfg(feature = "koi_random")]
+pub use koi_random::*;
+
 pub use koi_time::*;
 
 pub use kmath::*;

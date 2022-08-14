@@ -7,19 +7,14 @@ fn main() {
         if resources.try_get::<Running>().is_none() {
             resources.add(Running);
             world.spawn((
-                Transform::new(),
+                Transform::new().with_position(Vec3::Z * 2.0),
                 Camera {
                     clear_color: Some(Color::ORANGE),
-                    projection_mode: ProjectionMode::Orthographic {
-                        height: 4.0,
-                        z_near: -5.0,
-                        z_far: 5.0,
-                    },
                     ..Default::default()
                 },
             ));
 
-            world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, Material::TEST));
+            world.spawn((Transform::new(), Mesh::SPHERE, Material::TEST));
         }
 
         // When a key is pressed change the camera's clear color.

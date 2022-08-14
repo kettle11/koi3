@@ -4,6 +4,7 @@
 //! Within the setup and run function gamestate can be initialized
 //! and then used later in the loop without explicitly
 //! storing it in a state struct.
+
 use koi3::*;
 use koi_camera_controls::CameraControls;
 
