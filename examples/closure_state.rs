@@ -22,7 +22,7 @@ fn setup_and_run(
         CameraControls::new(),
     ));
 
-    let entity = world.spawn((Transform::new(), Mesh::CUBE, Material::TEST));
+    let entity = world.spawn((Transform::new(), Mesh::CUBE, Material::UNLIT));
 
     // Then this closure runs per-event but can access the variables declared
     // during the setup step.

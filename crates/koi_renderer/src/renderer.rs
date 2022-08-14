@@ -175,7 +175,7 @@ impl<'a> RenderPassExecutor<'a> {
                         &shader.shader_render_properties.p_base_color,
                         material.base_color.to_linear_srgb().into(),
                     );
-                    let mut texture_unit = 0;
+                    let texture_unit = 0;
 
                     self.render_pass.set_texture_property(
                         &shader.shader_render_properties.p_base_color_texture,
@@ -185,7 +185,7 @@ impl<'a> RenderPassExecutor<'a> {
                         )),
                         texture_unit,
                     );
-                    texture_unit += 1;
+                    //texture_unit += 1;
                 }
 
                 // Bind the mesh for this group.

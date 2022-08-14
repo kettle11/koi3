@@ -19,9 +19,9 @@ fn main() {
             let mut random = Random::new();
             for _ in 0..100 {
                 world.spawn((
-                    Transform::new().with_position(random.point_in_unit_sphere() * 5.0),
+                    Transform::new().with_position(random.point_in_unit_sphere() * 20.0),
                     Mesh::SPHERE,
-                    Material::TEST,
+                    Material::UNLIT,
                 ));
             }
         }
