@@ -87,6 +87,9 @@ impl App {
     fn add_standard_plugins(&mut self) {
         #[cfg(feature = "koi_renderer")]
         koi_renderer::initialize_plugin(&mut self.resources);
+        #[cfg(feature = "koi_input")]
+        koi_input::initialize_plugin(&mut self.resources);
+
         koi_transform::transform_plugin::initialize_plugin(&mut self.resources);
     }
 }

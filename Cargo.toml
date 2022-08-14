@@ -3,10 +3,11 @@ name = "koi3"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["crates/*"]
 
 [features]
-default = ["kapp", "koi_renderer", "koi_transform", "koi_audio"]
+default = ["kapp", "koi_renderer", "koi_transform", "koi_audio", "koi_input"]
 window = []
 
 [dependencies]
@@ -22,7 +23,7 @@ koi_events = {path = "crates/koi_events"}
 koi_renderer =  {path = "crates/koi_renderer", optional = true}
 koi_transform = {path = "crates/koi_transform", optional = true}
 koi_audio = {path = "crates/koi_audio", optional = true}
-
+koi_input =  {path = "crates/koi_input", optional = true}
 
 [profile.release]
 strip = true

@@ -24,6 +24,9 @@ pub use koi_events::Event;
 #[cfg(feature = "koi_renderer")]
 pub use koi_renderer::*;
 
+#[cfg(feature = "koi_input")]
+pub use koi_input::*;
+
 pub use kmath::*;
 
 pub use kapp_platform_common::Event as KappEvent;
