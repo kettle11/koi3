@@ -20,9 +20,6 @@ pub struct SlotMapHandle<T> {
 }
 
 impl<T> SlotMapHandle<T> {
-    pub const fn is_placeholder(&self) -> bool {
-        self.indirection_index == 0
-    }
     pub const fn from_index(index: usize) -> Self {
         Self {
             indirection_index: index,
@@ -108,7 +105,7 @@ impl<T> SlotMap<T> {
     }
 
     pub fn replace_placeholder(&mut self, handle: &SlotMapHandle<T>, item: T) {
-        assert!(handle.is_placeholder());
+        assert!(self.handle_is_placeholder(handle));
         let new_index = self.items.len();
         self.items.push(item);
         self.indirection_indices[handle.indirection_index].item_index = new_index;
@@ -120,8 +117,12 @@ impl<T> SlotMap<T> {
         self.new_handle_with_index(item_index, path)
     }
 
+    pub fn handle_is_placeholder(&mut self, handle: &SlotMapHandle<T>) -> bool {
+        self.indirection_indices[handle.indirection_index].item_index == 0
+    }
+
     pub fn remove(&mut self, handle: SlotMapHandle<T>) -> (T, Option<String>) {
-        assert!(handle.is_placeholder());
+        assert!(self.handle_is_placeholder(&handle));
 
         let item_entry = &mut self.indirection_indices[handle.indirection_index];
         let item_index = item_entry.item_index;

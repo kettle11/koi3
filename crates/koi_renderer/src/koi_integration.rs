@@ -60,6 +60,21 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     let mut shaders = resources.get::<AssetStore<Shader>>();
     let textures = resources.get::<AssetStore<Texture>>();
 
+    // Todo: his needs to be changed to work with async.
+    while let Some((path, handle)) = shaders.need_loading.pop() {
+        match std::fs::read_to_string(&path) {
+            Ok(shader_string) => {
+                match renderer.new_shader(&shader_string, ShaderSettings::default()) {
+                    Ok(shader) => {
+                        shaders.replace(&handle, shader);
+                    }
+                    Err(e) => println!("Error compiling shader: {:?}", e),
+                }
+            }
+            Err(_) => println!("Could not load shader from path: {:?}", path),
+        }
+    }
+
     #[allow(clippy::significant_drop_in_scrutinee)]
     for mesh in meshes.get_dropped_assets() {
         if let Some(gpu_mesh) = mesh.gpu_mesh {

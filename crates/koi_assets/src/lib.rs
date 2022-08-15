@@ -78,10 +78,10 @@ impl<Asset> AssetStore<Asset> {
         std::mem::forget(handle);
     }
 
-    pub fn replace_placeholder(&mut self, handle: &Handle<Asset>, asset: Asset) {
-        self.slot_map
-            .replace_placeholder(&handle.slot_map_handle, asset)
-    }
+    // pub fn replace_placeholder(&mut self, handle: &Handle<Asset>, asset: Asset) {
+    //     self.slot_map
+    //         .replace_placeholder(&handle.slot_map_handle, asset)
+    // }
 
     pub fn get(&self, handle: &Handle<Asset>) -> &Asset {
         &self.slot_map.get(&handle.slot_map_handle).unwrap()
@@ -89,6 +89,15 @@ impl<Asset> AssetStore<Asset> {
 
     pub fn get_mut(&mut self, handle: &Handle<Asset>) -> &mut Asset {
         self.slot_map.get_mut(&handle.slot_map_handle).unwrap()
+    }
+
+    pub fn replace(&mut self, handle: &Handle<Asset>, asset: Asset) {
+        if self.slot_map.handle_is_placeholder(&handle.slot_map_handle) {
+            self.slot_map
+                .replace_placeholder(&handle.slot_map_handle, asset);
+        } else {
+            *self.get_mut(handle) = asset;
+        }
     }
 
     pub fn reload(&mut self) {
@@ -113,6 +122,7 @@ impl<Asset: Loadable> AssetStore<Asset> {
                 .slot_map
                 .new_handle_pointing_at_placeholder(Some(path.into()));
             let handle = self.new_handle(slot_map_handle);
+            self.path_to_slotmap.insert(path.into(), handle.to_weak());
             self.need_loading.push((path.into(), handle.clone()));
             handle
         }
@@ -141,6 +151,17 @@ impl<T> Handle<T> {
             slot_map_handle: SlotMapHandle::from_index(index),
             drop_handle: None,
             phantom: std::marker::PhantomData,
+        }
+    }
+
+    fn to_weak(&self) -> WeakHandle<T> {
+        WeakHandle {
+            inner_handle: Handle {
+                slot_map_handle: self.slot_map_handle.clone(),
+                drop_handle: None,
+                phantom: std::marker::PhantomData,
+            },
+            drop_handle: std::sync::Arc::downgrade(&self.drop_handle.as_ref().unwrap()),
         }
     }
 }
