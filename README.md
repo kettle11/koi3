@@ -8,7 +8,7 @@ It serves as a light-weight core that can be modified and adapted to a project, 
 
 ## Quick to build
 
-### M1 Mac build of `examples/random.rs`:
+### M1 Mac build of `examples/random.rs`
 
 Mode | Clean | Incremental
 :-- | --- | ---
@@ -19,6 +19,6 @@ Mode | Clean | Incremental
 
 ## Easy to understand
 
-`koi`'s simulation is built upon the ECS (Entity-Component System) paradigm. 
+`koi`'s simulation is built upon the ECS (Entity-Component System) paradigm.
 
 `koi` aims to balance code simplicity with performance. If a small performance gain introduces significant complexity (for the user or within the library) it is excluded.

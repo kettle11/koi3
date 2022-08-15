@@ -4,18 +4,21 @@
 //! Changes are avoided that result in a small gain in
 //! one quality while significantly regressing the others.
 //!
-//! 'Code simplicity' means that `Koi` avoids large and
+//! 'Code simplicity' means that `koi` avoids large and
 //! complex dependencies that may introduce significant build times.
 
 mod app;
 pub use app::*;
 
+pub use kmath::*;
+pub use koi_ecs::*;
 pub use koi_hierarchy::*;
+pub use koi_resources::*;
+pub use koi_time::*;
 pub use koi_transform::*;
 
-pub use koi_ecs::*;
-pub use koi_resources::*;
-
+pub use kapp_platform_common::Event as KappEvent;
+pub use kapp_platform_common::{Cursor, Key, PointerButton, PointerSource};
 pub use koi_events::Event;
 
 #[cfg(feature = "koi_renderer")]
@@ -26,10 +29,3 @@ pub use koi_input::*;
 
 #[cfg(feature = "koi_random")]
 pub use koi_random::*;
-
-pub use koi_time::*;
-
-pub use kmath::*;
-
-pub use kapp_platform_common::Event as KappEvent;
-pub use kapp_platform_common::{Cursor, Key, PointerButton, PointerSource};
