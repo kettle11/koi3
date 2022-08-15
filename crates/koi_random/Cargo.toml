@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 oorandom = "11.1.3"
 kmath = {path = "../../../koi2/crates/kmath"}
-kcolor = {path = "../../../koi2/crates/kcolor"}
+kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
 
 [target.'cfg(target_arch="wasm32")'.dependencies]
 kwasm = {path = "../../../koi2/crates/kwasm"}
