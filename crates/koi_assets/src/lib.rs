@@ -1,27 +1,20 @@
+/// TODO: Paths aren't handled correctly yet.
 mod slotmap;
 use slotmap::*;
 
 pub struct AssetStore<Asset> {
-    slot_map: SlotMap<AssetEntry<Asset>>,
+    slot_map: SlotMap<Asset>,
     path_to_slotmap: std::collections::HashMap<String, WeakHandle<Asset>>,
     drop_channel_sender: std::sync::mpsc::Sender<usize>,
     drop_channel_receiver: std::sync::mpsc::Receiver<usize>,
     pub need_loading: Vec<(String, Handle<Asset>)>,
 }
 
-struct AssetEntry<Asset> {
-    asset: Asset,
-    path: Option<String>,
-}
-
 impl<Asset> AssetStore<Asset> {
     pub fn new(placeholder: Asset) -> Self {
         let (drop_channel_sender, drop_channel_receiver) = std::sync::mpsc::channel();
         Self {
-            slot_map: SlotMap::new(AssetEntry {
-                asset: placeholder,
-                path: None,
-            }),
+            slot_map: SlotMap::new(placeholder),
             path_to_slotmap: std::collections::HashMap::new(),
             need_loading: Vec::new(),
             drop_channel_receiver,
@@ -38,25 +31,29 @@ impl<Asset> AssetStore<Asset> {
     pub fn get_dropped_assets(&mut self) -> impl Iterator<Item = Asset> + '_ {
         self.drop_channel_receiver
             .try_iter()
-            .map(|indirection_index| {
+            .filter_map(|indirection_index| {
+                if indirection_index == 0 {
+                    // Placeholder, skip this one!
+                    return None;
+                }
                 // Todo: Also remove from path_to_slotmap if necessary.
                 println!("DROPPING ASSET: {:?}", std::any::type_name::<Asset>());
-                let AssetEntry { path, asset } = self
+                let (asset, path) = self
                     .slot_map
                     .remove(SlotMapHandle::from_index(indirection_index));
 
                 if let Some(path) = path {
                     self.path_to_slotmap.remove(&path);
                 }
-                asset
+                Some(asset)
             })
     }
 
     pub fn items_iter(&self) -> impl Iterator<Item = &Asset> + '_ {
-        self.slot_map.items_iter().map(|a| &a.asset)
+        self.slot_map.items_iter()
     }
 
-    fn new_handle(&mut self, slot_map_handle: SlotMapHandle<AssetEntry<Asset>>) -> Handle<Asset> {
+    fn new_handle(&mut self, slot_map_handle: SlotMapHandle<Asset>) -> Handle<Asset> {
         Handle {
             drop_handle: Some(std::sync::Arc::new(DropHandle {
                 indirection_index: slot_map_handle.index(),
@@ -68,7 +65,7 @@ impl<Asset> AssetStore<Asset> {
     }
 
     pub fn add(&mut self, asset: Asset) -> Handle<Asset> {
-        let slot_map_handle = self.slot_map.push(AssetEntry { asset, path: None });
+        let slot_map_handle = self.slot_map.push(asset, None);
         self.new_handle(slot_map_handle)
     }
 
@@ -81,16 +78,17 @@ impl<Asset> AssetStore<Asset> {
         std::mem::forget(handle);
     }
 
+    pub fn replace_placeholder(&mut self, handle: &Handle<Asset>, asset: Asset) {
+        self.slot_map
+            .replace_placeholder(&handle.slot_map_handle, asset)
+    }
+
     pub fn get(&self, handle: &Handle<Asset>) -> &Asset {
-        &self.slot_map.get(&handle.slot_map_handle).unwrap().asset
+        &self.slot_map.get(&handle.slot_map_handle).unwrap()
     }
 
     pub fn get_mut(&mut self, handle: &Handle<Asset>) -> &mut Asset {
-        &mut self
-            .slot_map
-            .get_mut(&handle.slot_map_handle)
-            .unwrap()
-            .asset
+        self.slot_map.get_mut(&handle.slot_map_handle).unwrap()
     }
 
     pub fn reload(&mut self) {
@@ -111,7 +109,9 @@ impl<Asset: Loadable> AssetStore<Asset> {
         {
             weak_handle
         } else {
-            let slot_map_handle = self.slot_map.new_handle_pointing_at_placeholder();
+            let slot_map_handle = self
+                .slot_map
+                .new_handle_pointing_at_placeholder(Some(path.into()));
             let handle = self.new_handle(slot_map_handle);
             self.need_loading.push((path.into(), handle.clone()));
             handle
@@ -120,7 +120,7 @@ impl<Asset: Loadable> AssetStore<Asset> {
 }
 
 pub struct Handle<Asset> {
-    slot_map_handle: SlotMapHandle<AssetEntry<Asset>>,
+    slot_map_handle: SlotMapHandle<Asset>,
     drop_handle: Option<std::sync::Arc<DropHandle>>,
     phantom: std::marker::PhantomData<fn() -> Asset>,
 }
