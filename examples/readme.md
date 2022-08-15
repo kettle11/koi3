@@ -4,7 +4,7 @@
 
 Run `cargo run --example hello` to run the `hello` example.
 
-For web run `./examples/wasm/web_run.sh hello` then open a web browser and navigate to [localhost:8080](localhost:8080).
+For web run `./examples/wasm/web_run.sh hello` then open a web browser and navigate to [http://localhost:8080](http://localhost:8080).
 
 Example | Description
 --- | ---
