@@ -36,17 +36,10 @@ pub fn initialize_plugin(resources: &mut Resources) {
 
     let mut renderer = Renderer::new(graphics_context);
 
-    let mut shaders = AssetStore::<Shader>::new();
-    initialize_constant_shader(&mut renderer, &mut shaders);
-
-    let mut materials = AssetStore::<Material>::new();
-    initialize_constant_materials(&mut materials);
-
-    let mut meshes = AssetStore::<Mesh>::new();
-    mesh_constants::initialize_constant_meshes(&mut renderer.raw_graphics_context, &mut meshes);
-
-    let mut textures = AssetStore::<Texture>::new();
-    texture_constants::initialize_constant_textures(&mut renderer, &mut textures);
+    let shaders = initialize_shaders(&mut renderer);
+    let materials = initialize_materials();
+    let meshes = initialize_meshes(&mut renderer.raw_graphics_context);
+    let textures = initialize_textures(&mut renderer);
 
     resources.add(renderer);
     resources.add(shaders);

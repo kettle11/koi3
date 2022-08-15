@@ -5,10 +5,7 @@ impl Shader {
     pub const UNLIT: Handle<Self> = Handle::from_index(0);
 }
 
-pub fn initialize_constant_shader(
-    renderer: &mut crate::Renderer,
-    shaders: &mut koi_assets::AssetStore<Shader>,
-) {
+pub fn initialize_shaders(renderer: &mut crate::Renderer) -> koi_assets::AssetStore<Shader> {
     // Shader snippets
     renderer.register_shader_snippet(
         "standard_vertex",
@@ -26,5 +23,7 @@ pub fn initialize_constant_shader(
             },
         )
         .unwrap();
-    shaders.add_and_leak(shader, &Shader::UNLIT);
+    let asset_store = koi_assets::AssetStore::new(shader);
+
+    asset_store
 }

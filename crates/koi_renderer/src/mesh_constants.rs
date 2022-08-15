@@ -15,12 +15,12 @@ impl Mesh {
     pub const CYLINDER: Handle<Self> = Handle::from_index(9);
 }
 
-pub fn initialize_constant_meshes(
+pub fn initialize_meshes(
     graphics: &mut kgraphics::GraphicsContext,
-    meshes: &mut koi_assets::AssetStore<Mesh>,
-) {
+) -> koi_assets::AssetStore<Mesh> {
     let mesh_data = MeshData::default();
-    meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::EMPTY);
+    let mesh = Mesh::new(graphics, mesh_data);
+    let mut meshes = koi_assets::AssetStore::new(mesh);
 
     let mesh_data = plane();
     meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::PLANE);
@@ -48,6 +48,7 @@ pub fn initialize_constant_meshes(
 
     let mesh_data = cylinder(Vec3::ZERO, -Vec3::Z, 10, 0.5);
     meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::CYLINDER);
+    meshes
 }
 
 pub fn vertical_quad() -> MeshData {

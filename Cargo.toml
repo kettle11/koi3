@@ -22,6 +22,8 @@ koi_ecs = {path = "crates/koi_ecs"}
 koi_resources = {path = "crates/koi_resources"}
 koi_events = {path = "crates/koi_events"}
 koi_time = {path = "crates/koi_time"}
+koi_assets = {path = "crates/koi_assets"}
+
 
 koi_renderer =  {path = "crates/koi_renderer", optional = true}
 koi_transform = {path = "crates/koi_transform", optional = true}

@@ -11,28 +11,23 @@ impl Texture {
     pub const DEFAULT_NORMAL: Handle<Texture> = Handle::<Texture>::from_index(2);
 }
 
-pub fn initialize_constant_textures(
-    renderer: &mut crate::Renderer,
-    textures: &mut koi_assets::AssetStore<Texture>,
-) {
-    textures.add_and_leak(
-        Texture(
-            renderer
-                .raw_graphics_context
-                .new_texture(
-                    1,
-                    1,
-                    Some(&[255, 255, 255, 255]),
-                    kgraphics::PixelFormat::RGBA8Unorm,
-                    kgraphics::TextureSettings {
-                        srgb: false,
-                        ..Default::default()
-                    },
-                )
-                .unwrap(),
-        ),
-        &Texture::WHITE,
+pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetStore<Texture> {
+    let texture = Texture(
+        renderer
+            .raw_graphics_context
+            .new_texture(
+                1,
+                1,
+                Some(&[255, 255, 255, 255]),
+                kgraphics::PixelFormat::RGBA8Unorm,
+                kgraphics::TextureSettings {
+                    srgb: false,
+                    ..Default::default()
+                },
+            )
+            .unwrap(),
     );
+    let mut textures = koi_assets::AssetStore::new(texture);
 
     textures.add_and_leak(
         Texture(
@@ -71,4 +66,5 @@ pub fn initialize_constant_textures(
         ),
         &Texture::DEFAULT_NORMAL,
     );
+    textures
 }

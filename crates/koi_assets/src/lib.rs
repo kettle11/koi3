@@ -1,24 +1,27 @@
-use koi_slotmap::SlotMapHandle;
+mod slotmap;
+use slotmap::*;
 
 pub struct AssetStore<Asset> {
-    slot_map: koi_slotmap::SlotMap<Asset>,
+    slot_map: SlotMap<AssetEntry<Asset>>,
     path_to_slotmap: std::collections::HashMap<String, WeakHandle<Asset>>,
-    pub need_loading: Vec<(String, Handle<Asset>)>,
     drop_channel_sender: std::sync::mpsc::Sender<usize>,
     drop_channel_receiver: std::sync::mpsc::Receiver<usize>,
+    pub need_loading: Vec<(String, Handle<Asset>)>,
 }
 
-impl<Asset> Default for AssetStore<Asset> {
-    fn default() -> Self {
-        Self::new()
-    }
+struct AssetEntry<Asset> {
+    asset: Asset,
+    path: Option<String>,
 }
 
 impl<Asset> AssetStore<Asset> {
-    pub fn new() -> Self {
+    pub fn new(placeholder: Asset) -> Self {
         let (drop_channel_sender, drop_channel_receiver) = std::sync::mpsc::channel();
         Self {
-            slot_map: koi_slotmap::SlotMap::new(),
+            slot_map: SlotMap::new(AssetEntry {
+                asset: placeholder,
+                path: None,
+            }),
             path_to_slotmap: std::collections::HashMap::new(),
             need_loading: Vec::new(),
             drop_channel_receiver,
@@ -38,17 +41,22 @@ impl<Asset> AssetStore<Asset> {
             .map(|indirection_index| {
                 // Todo: Also remove from path_to_slotmap if necessary.
                 println!("DROPPING ASSET: {:?}", std::any::type_name::<Asset>());
-                self.slot_map
-                    .remove(SlotMapHandle::from_index(indirection_index))
+                let AssetEntry { path, asset } = self
+                    .slot_map
+                    .remove(SlotMapHandle::from_index(indirection_index));
+
+                if let Some(path) = path {
+                    self.path_to_slotmap.remove(&path);
+                }
+                asset
             })
     }
 
-    pub fn items_iter(&self) -> std::slice::Iter<Asset> {
-        self.slot_map.items_iter()
+    pub fn items_iter(&self) -> impl Iterator<Item = &Asset> + '_ {
+        self.slot_map.items_iter().map(|a| &a.asset)
     }
 
-    pub fn add(&mut self, asset: Asset) -> Handle<Asset> {
-        let slot_map_handle = self.slot_map.push(asset);
+    fn new_handle(&mut self, slot_map_handle: SlotMapHandle<AssetEntry<Asset>>) -> Handle<Asset> {
         Handle {
             drop_handle: Some(std::sync::Arc::new(DropHandle {
                 indirection_index: slot_map_handle.index(),
@@ -57,6 +65,11 @@ impl<Asset> AssetStore<Asset> {
             slot_map_handle,
             phantom: std::marker::PhantomData,
         }
+    }
+
+    pub fn add(&mut self, asset: Asset) -> Handle<Asset> {
+        let slot_map_handle = self.slot_map.push(AssetEntry { asset, path: None });
+        self.new_handle(slot_map_handle)
     }
 
     /// Used to initialize static variables
@@ -69,11 +82,23 @@ impl<Asset> AssetStore<Asset> {
     }
 
     pub fn get(&self, handle: &Handle<Asset>) -> &Asset {
-        self.slot_map.get(&handle.slot_map_handle).unwrap()
+        &self.slot_map.get(&handle.slot_map_handle).unwrap().asset
     }
 
     pub fn get_mut(&mut self, handle: &Handle<Asset>) -> &mut Asset {
-        self.slot_map.get_mut(&handle.slot_map_handle).unwrap()
+        &mut self
+            .slot_map
+            .get_mut(&handle.slot_map_handle)
+            .unwrap()
+            .asset
+    }
+
+    pub fn reload(&mut self) {
+        for (name, weak_handle) in &mut self.path_to_slotmap {
+            if let Some(handle) = weak_handle.upgrade() {
+                self.need_loading.push((name.clone(), handle));
+            }
+        }
     }
 }
 
@@ -86,18 +111,18 @@ impl<Asset: Loadable> AssetStore<Asset> {
         {
             weak_handle
         } else {
-            // For some things it might be a bit much to construct a default value each time.
-            let handle = self.add(Asset::default());
+            let slot_map_handle = self.slot_map.new_handle_pointing_at_placeholder();
+            let handle = self.new_handle(slot_map_handle);
             self.need_loading.push((path.into(), handle.clone()));
             handle
         }
     }
 }
 
-pub struct Handle<T> {
-    slot_map_handle: SlotMapHandle<T>,
+pub struct Handle<Asset> {
+    slot_map_handle: SlotMapHandle<AssetEntry<Asset>>,
     drop_handle: Option<std::sync::Arc<DropHandle>>,
-    phantom: std::marker::PhantomData<fn() -> T>,
+    phantom: std::marker::PhantomData<fn() -> Asset>,
 }
 
 impl<T> core::fmt::Debug for Handle<T> {
@@ -161,7 +186,7 @@ impl Drop for DropHandle {
     }
 }
 
-pub trait Loadable: Default {}
+pub trait Loadable {}
 
 pub struct SyncGuard<T> {
     inner: T,

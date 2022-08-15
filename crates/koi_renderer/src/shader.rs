@@ -121,3 +121,5 @@ impl crate::Renderer {
         })
     }
 }
+
+impl koi_assets::Loadable for Shader {}
