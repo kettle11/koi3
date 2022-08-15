@@ -2,6 +2,7 @@
 name = "koi3"
 version = "0.1.0"
 edition = "2021"
+license = "Zlib OR Apache-2.0 OR MIT"
 
 [workspace]
 members = ["crates/*"]
@@ -31,11 +32,6 @@ koi_random = {path = "crates/koi_random", optional = true}
 koi_camera_controls = {path = "crates/koi_camera_controls", optional = true}
 
 [profile.release]
-strip = true
-panic = "abort"
-opt-level = "z"  # Optimize for size.
-lto = true
-codegen-units = 1
 
 
 
