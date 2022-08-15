@@ -32,7 +32,12 @@ koi_random = {path = "crates/koi_random", optional = true}
 koi_camera_controls = {path = "crates/koi_camera_controls", optional = true}
 
 [profile.release]
-
+# Consider these options for a smaller binary size
+# strip = true
+# panic = "abort"
+# opt-level = "z"  # Optimize for size.
+# lto = true
+# codegen-units = 1
 
 
 
