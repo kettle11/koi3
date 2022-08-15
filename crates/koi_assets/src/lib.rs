@@ -8,6 +8,12 @@ pub struct AssetStore<Asset> {
     drop_channel_receiver: std::sync::mpsc::Receiver<usize>,
 }
 
+impl<Asset> Default for AssetStore<Asset> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<Asset> AssetStore<Asset> {
     pub fn new() -> Self {
         let (drop_channel_sender, drop_channel_receiver) = std::sync::mpsc::channel();
@@ -76,8 +82,7 @@ impl<Asset: Loadable> AssetStore<Asset> {
         if let Some(weak_handle) = self
             .path_to_slotmap
             .get(path)
-            .map(|weak_handle| weak_handle.upgrade())
-            .flatten()
+            .and_then(|weak_handle| weak_handle.upgrade())
         {
             weak_handle
         } else {
@@ -120,7 +125,7 @@ impl<T> Clone for Handle<T> {
         Self {
             slot_map_handle: self.slot_map_handle.clone(),
             drop_handle: self.drop_handle.clone(),
-            phantom: self.phantom.clone(),
+            phantom: self.phantom,
         }
     }
 }

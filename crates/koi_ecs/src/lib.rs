@@ -4,6 +4,12 @@ pub use hecs::*;
 
 pub struct World(hecs::World);
 
+impl Default for World {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl World {
     pub fn new() -> Self {
         Self(hecs::World::new())

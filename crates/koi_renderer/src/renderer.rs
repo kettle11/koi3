@@ -28,13 +28,13 @@ impl Renderer {
     ) -> RenderPass {
         if let Some(mut render_pass) = self.render_pass_pool.pop() {
             render_pass.camera = camera.clone();
-            render_pass.camera_transform = camera_transform.clone();
+            render_pass.camera_transform = *camera_transform;
             render_pass.meshes_to_draw.clear();
             render_pass.local_to_world_matrices.clear();
             render_pass.view_width = view_width;
             render_pass.view_height = view_height;
             render_pass.camera = camera.clone();
-            render_pass.camera_transform = camera_transform.clone();
+            render_pass.camera_transform = *camera_transform;
             render_pass
         } else {
             RenderPass {
@@ -42,7 +42,7 @@ impl Renderer {
                 local_to_world_matrices: Vec::new(),
                 data_buffers_to_cleanup: Vec::new(),
                 camera: camera.clone(),
-                camera_transform: camera_transform.clone(),
+                camera_transform: *camera_transform,
                 view_width,
                 view_height,
             }
@@ -220,7 +220,7 @@ impl<'a> RenderPassExecutor<'a> {
                 // TODO: Investigate if this is inefficient for single objects.
                 let local_to_world_data = self
                     .graphics
-                    .new_data_buffer(&self.local_to_world_matrices)
+                    .new_data_buffer(self.local_to_world_matrices)
                     .unwrap();
 
                 self.render_pass.set_instance_attribute(

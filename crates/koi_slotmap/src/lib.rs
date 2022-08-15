@@ -47,9 +47,15 @@ impl<T> Ord for SlotMapHandle<T> {
 impl<T> Clone for SlotMapHandle<T> {
     fn clone(&self) -> Self {
         Self {
-            indirection_index: self.indirection_index.clone(),
-            phantom: self.phantom.clone(),
+            indirection_index: self.indirection_index,
+            phantom: self.phantom,
         }
+    }
+}
+
+impl<T> Default for SlotMap<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

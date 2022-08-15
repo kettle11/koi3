@@ -67,11 +67,13 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     let mut shaders = resources.get::<AssetStore<Shader>>();
     let textures = resources.get::<AssetStore<Texture>>();
 
+    #[allow(clippy::significant_drop_in_scrutinee)]
     for mesh in meshes.get_dropped_assets() {
         if let Some(gpu_mesh) = mesh.gpu_mesh {
             gpu_mesh.delete(&mut renderer.raw_graphics_context);
         }
     }
+
     materials.cleanup_dropped_assets();
     // TODO: Properly deallocate dropped programs.
     shaders.cleanup_dropped_assets();

@@ -16,7 +16,7 @@ pub fn add_global_transform(
         for (entity, transform) in world.query::<&crate::Transform>().iter() {
             transform_helper
                 .command_buffer
-                .insert_one(entity, crate::GlobalTransform(transform.clone()))
+                .insert_one(entity, crate::GlobalTransform(*transform))
         }
     }
     transform_helper.command_buffer.run_on(world);

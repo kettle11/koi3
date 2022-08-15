@@ -2,6 +2,12 @@ pub struct Resources {
     resources: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any>>,
 }
 
+impl Default for Resources {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Resources {
     pub fn new() -> Self {
         Self {

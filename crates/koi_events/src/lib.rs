@@ -14,6 +14,12 @@ pub struct EventHandlers {
     handlers: std::collections::HashMap<std::mem::Discriminant<Event>, Vec<Callback>>,
 }
 
+impl Default for EventHandlers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EventHandlers {
     pub fn new() -> Self {
         Self {
