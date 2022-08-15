@@ -19,22 +19,19 @@ fn run_loop(_event: &Event, world: &mut World, resources: &mut Resources) {
             },
         ));
 
+        // Load a custom shader from a path
         let custom_shader = resources
             .get::<AssetStore<Shader>>()
             .load("examples/assets/custom_shader.glsl");
 
+        // Create a material that uses the custom shader
         let custom_material = resources.get::<AssetStore<Material>>().add(Material {
             shader: custom_shader,
             base_color: Color::AZURE,
             ..Default::default()
         });
 
+        // Spawn an entity that references that custom shader.
         world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, custom_material));
-    }
-
-    // When a key is pressed change the camera's clear color.
-    if resources.get_mut::<Input>().key_down(Key::Space) {
-        let (_, camera) = world.query_mut::<&mut Camera>().into_iter().next().unwrap();
-        camera.clear_color = Some(Color::ELECTRIC_INDIGO);
     }
 }
