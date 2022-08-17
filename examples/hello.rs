@@ -13,7 +13,11 @@ fn main() {
             },
         ));
 
-        world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, Material::UNLIT));
+        world.spawn((
+            Transform::new(),
+            Mesh::VERTICAL_QUAD,
+            Material::PHYSICALLY_BASED,
+        ));
 
         // This function will run for major events liked a FixedUpdate occuring
         // and for any input events from the application.

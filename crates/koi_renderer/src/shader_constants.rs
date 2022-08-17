@@ -4,6 +4,7 @@ use koi_resources::Resources;
 
 impl Shader {
     pub const UNLIT: Handle<Self> = Handle::from_index(0);
+    pub const PHYSICALLY_BASED: Handle<Self> = Handle::from_index(1);
 }
 
 pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resources) {
@@ -39,13 +40,33 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         settings: ShaderSettings,
         resources: &Resources,
     ) -> Option<Shader> {
-        resources
+        let result = resources
             .get::<crate::Renderer>()
-            .new_shader(&source, settings)
-            .ok()
+            .new_shader(&source, settings);
+        match result {
+            Ok(s) => Some(s),
+            Err(e) => {
+                println!("Shader compilation error: {:#?}", e);
+                None
+            }
+        }
     }
 
-    let asset_store =
+    let mut asset_store =
         koi_assets::AssetStore::new_with_load_functions(shader, load_shader, finalize_shader_load);
+
+    let shader = renderer
+        .new_shader(
+            include_str!("shaders_glsl/physically_based.glsl"),
+            crate::ShaderSettings {
+                faces_to_render: kgraphics::FacesToRender::FrontAndBack,
+                blending: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED);
+
     resources.add(asset_store);
 }

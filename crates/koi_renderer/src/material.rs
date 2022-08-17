@@ -11,7 +11,7 @@ impl Default for Material {
         Self {
             base_color: Color::WHITE,
             base_color_texture: None,
-            shader: Shader::UNLIT,
+            shader: Shader::PHYSICALLY_BASED,
         }
     }
 }
