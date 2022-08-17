@@ -185,8 +185,6 @@ impl<Asset: AssetTrait> AssetStore<Asset> {
         {
             weak_handle
         } else {
-            println!("ISSUING LOAD!");
-
             let slot_map_handle = self
                 .asset_store_inner
                 .slot_map
