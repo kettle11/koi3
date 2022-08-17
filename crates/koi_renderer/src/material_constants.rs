@@ -12,17 +12,17 @@ impl AssetTrait for Material {
 
 pub fn initialize_materials() -> AssetStore<Material> {
     let material = Material {
-        base_color_texture: None,
         shader: crate::Shader::UNLIT,
         base_color: kcolor::Color::WHITE,
+        ..Default::default()
     };
 
     let mut materials = AssetStore::new(material);
 
     let material = Material {
-        base_color_texture: None,
         shader: crate::Shader::PHYSICALLY_BASED,
         base_color: kcolor::Color::WHITE,
+        ..Default::default()
     };
     materials.add_and_leak(material, &Material::PHYSICALLY_BASED);
 

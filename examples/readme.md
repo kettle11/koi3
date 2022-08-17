@@ -10,4 +10,4 @@ Example | Description
 --- | ---
 [hello.rs](hello.rs) | Setup and run a basic app.
 [random.rs](random.rs) | How to use `random`.
-[closure_state.rs](closure_state.rs) | Demonstrates a simple app architecture that requires less typing. This is useful for quick experiments or gamejams.
+[custom-shader.rs](custom_shader.rs) | Shows how to setup a custom shader and material with keypress reloading.

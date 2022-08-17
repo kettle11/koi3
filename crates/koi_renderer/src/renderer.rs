@@ -186,14 +186,15 @@ impl<'a> RenderPassExecutor<'a> {
 
                 // Bind the material properties
                 {
+                    let sp = &shader.shader_render_properties;
                     self.render_pass.set_vec4_property(
-                        &shader.shader_render_properties.p_base_color,
+                        &sp.p_base_color,
                         material.base_color.to_rgb_color(*self.color_space).into(),
                     );
                     let texture_unit = 0;
 
                     self.render_pass.set_texture_property(
-                        &shader.shader_render_properties.p_base_color_texture,
+                        &sp.p_base_color_texture,
                         Some(material.base_color_texture.as_ref().map_or_else(
                             || &self.textures.get(&Texture::WHITE).0,
                             |t| &self.textures.get(t).0,
@@ -201,6 +202,15 @@ impl<'a> RenderPassExecutor<'a> {
                         texture_unit,
                     );
                     //texture_unit += 1;
+
+                    self.render_pass
+                        .set_float_property(&sp.p_metallic, material.metallicness);
+                    self.render_pass
+                        .set_float_property(&sp.p_roughness, material.roughness);
+                    self.render_pass
+                        .set_float_property(&sp.p_ambient, material.ambient_scale);
+                    self.render_pass
+                        .set_float_property(&sp.p_emissive, material.emissiveness);
                 }
 
                 // Bind the mesh for this group.

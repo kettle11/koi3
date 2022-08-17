@@ -29,6 +29,11 @@ pub(crate) struct ShaderRenderProperties {
     // Per-object Uniforms
     pub(crate) p_base_color: kgraphics::Vec4Property,
     pub(crate) p_base_color_texture: kgraphics::TextureProperty,
+    //
+    pub(crate) p_metallic: kgraphics::FloatProperty,
+    pub(crate) p_roughness: kgraphics::FloatProperty,
+    pub(crate) p_ambient: kgraphics::FloatProperty,
+    pub(crate) p_emissive: kgraphics::FloatProperty,
 }
 
 #[derive(Clone, Copy)]
@@ -114,6 +119,10 @@ impl crate::Renderer {
             p_base_color_texture: pipeline
                 .get_texture_property("p_base_color_texture")
                 .unwrap(),
+            p_metallic: pipeline.get_float_property("p_metallic").unwrap(),
+            p_roughness: pipeline.get_float_property("p_roughness").unwrap(),
+            p_ambient: pipeline.get_float_property("p_ambient").unwrap(),
+            p_emissive: pipeline.get_float_property("p_emissive").unwrap(),
         };
         Ok(Shader {
             pipeline,

@@ -2,20 +2,11 @@
 
 /// For light sources that emit from a point, like a lightbulb.
 pub struct PointLight {
-    pub luminous_power: f32,
+    pub intensity_luminous_power: f32,
     pub influence_radius: f32,
 }
 
 impl PointLight {
-    /*
-    float getSquareFalloffAttenuation(vec3 posToLight, float lightInvRadius) {
-        float distanceSquare = dot(posToLight, posToLight);
-        float factor = distanceSquare * lightInvRadius * lightInvRadius;
-        float smoothFactor = max(1.0 - factor * factor, 0.0);
-        return (smoothFactor * smoothFactor) / max(distanceSquare, 1e-4);
-    }
-    */
-
     pub fn get_square_falloff_attenuation(
         &self,
         light_position: kmath::Vec3,
@@ -35,7 +26,7 @@ impl PointLight {
 /// Refer to this table for lighting values:
 /// https://en.wikipedia.org/wiki/Lux
 pub struct DirectionalLight {
-    pub illuminance: f32,
+    pub intensity_illuminance: f32,
     pub color: kcolor::Color,
 }
 
@@ -43,57 +34,54 @@ pub struct DirectionalLight {
 // Or the light source + ambient light?
 impl DirectionalLight {
     pub const MOONLESS_OVERCAST_NIGHT: Self = DirectionalLight {
-        illuminance: 0.0001,
+        intensity_illuminance: 0.0001,
         color: color_temperatures::NIGHT_SKY,
     };
     pub const MOONLESS_CLEAR_NIGHT: Self = DirectionalLight {
-        illuminance: 0.002,
+        intensity_illuminance: 0.002,
         color: color_temperatures::NIGHT_SKY,
     };
     pub const FULLMOON_CLEAR_NIGHT: Self = DirectionalLight {
-        illuminance: 0.175,
+        intensity_illuminance: 0.175,
         color: color_temperatures::NIGHT_SKY,
     };
     pub const LATE_TWILIGHT: Self = DirectionalLight {
-        illuminance: 1.0,
+        intensity_illuminance: 1.0,
         color: color_temperatures::NIGHT_SKY,
     };
     pub const EARLY_TWILIGHT: Self = DirectionalLight {
-        illuminance: 10.0,
+        intensity_illuminance: 10.0,
         color: color_temperatures::NIGHT_SKY,
     };
     pub const DARK_LIVING_ROOM: Self = DirectionalLight {
-        illuminance: 50.0,
+        intensity_illuminance: 50.0,
         color: color_temperatures::INCADESCENT_LAMP,
     };
     pub const VERY_DARK_OVERCAST_DAY: Self = DirectionalLight {
-        illuminance: 100.0,
+        intensity_illuminance: 100.0,
         color: color_temperatures::OVERCAST_SKY,
     };
     pub const OFFICE_LIGHTING: Self = DirectionalLight {
-        illuminance: 410.0,
+        intensity_illuminance: 410.0,
         color: color_temperatures::FLUORESCENT_LIGHT,
     };
     pub const SUNRISE_OR_SUNSET: Self = DirectionalLight {
-        illuminance: 400.0,
+        intensity_illuminance: 400.0,
         color: color_temperatures::CANDLE_FLAME,
     };
     pub const OVERCAST_DAY: Self = DirectionalLight {
-        illuminance: 1000.0,
+        intensity_illuminance: 1000.0,
         color: color_temperatures::OVERCAST_SKY,
     };
     pub const SUNNY_CLEAR_DAY_NOON: Self = DirectionalLight {
-        illuminance: 130_000.0,
+        intensity_illuminance: 130_000.0,
         color: color_temperatures::DAYLIGHT,
     };
 }
 
 impl Default for DirectionalLight {
     fn default() -> Self {
-        Self {
-            illuminance: 1.0,
-            color: color_temperatures::DAYLIGHT,
-        }
+        Self::OVERCAST_DAY
     }
 }
 
