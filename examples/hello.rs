@@ -15,6 +15,14 @@ fn main() {
 
         world.spawn((
             Transform::new(),
+            DirectionalLight {
+                intensity_illuminance: 1.0,
+                color: Color::RED,
+            },
+        ));
+
+        world.spawn((
+            Transform::new(),
             Mesh::VERTICAL_QUAD,
             Material::PHYSICALLY_BASED,
         ));

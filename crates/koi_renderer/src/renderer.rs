@@ -1,3 +1,5 @@
+use std::char::MAX;
+
 use crate::*;
 use kgraphics::{CommandBufferTrait, DataBuffer, GraphicsContextTrait, RenderPassTrait};
 use koi_assets::*;
@@ -43,6 +45,7 @@ impl Renderer {
             render_pass.view_height = view_height;
             render_pass.camera = camera.clone();
             render_pass.camera_transform = *camera_transform;
+            render_pass.lights_bound = 0;
             render_pass
         } else {
             RenderPass {
@@ -55,6 +58,8 @@ impl Renderer {
                 view_width,
                 view_height,
                 color_space: self.color_space.clone(),
+                light_info: [LightInfo::default(); MAX_BOUND_LIGHTS],
+                lights_bound: 0,
             }
         }
     }
@@ -86,9 +91,28 @@ pub struct RenderPass {
     data_buffers_to_cleanup: Vec<DataBuffer<kmath::Mat4>>,
     data_buffers_to_cleanup1: Vec<DataBuffer<SceneInfoUniformBlock>>,
     color_space: kcolor::ColorSpace,
+    light_info: [LightInfo; MAX_BOUND_LIGHTS],
+    lights_bound: usize,
 }
 
 impl RenderPass {
+    pub fn add_directional_light(
+        &mut self,
+        transform: &Transform,
+        directional_light: &crate::DirectionalLight,
+    ) {
+        if self.lights_bound < MAX_BOUND_LIGHTS {
+            let light_info = &mut self.light_info[self.lights_bound];
+            light_info.position = transform.position;
+            light_info.direction = transform.forward();
+            light_info.world_to_light = transform.local_to_world().inversed();
+            // TODO: Preexpose
+            let light_color: kmath::Vec4 = directional_light.color.to_rgb_color(self.color_space);
+            light_info.color_and_intensity =
+                light_color.xyz() * directional_light.intensity_illuminance;
+            self.lights_bound += 1;
+        }
+    }
     pub fn draw_mesh(
         &mut self,
         mesh: &Handle<Mesh>,
@@ -140,6 +164,8 @@ impl RenderPass {
             data_buffers_to_cleanup: &mut self.data_buffers_to_cleanup,
             data_buffers_to_cleanup1: &mut self.data_buffers_to_cleanup1,
             color_space: &self.color_space,
+            lights_bound: 0,
+            light_info: &mut self.light_info,
         };
         render_pass_executor.execute(&mut self.meshes_to_draw);
         command_buffer.present();
@@ -171,6 +197,8 @@ struct RenderPassExecutor<'a> {
     data_buffers_to_cleanup: &'a mut Vec<DataBuffer<kmath::Mat4>>,
     data_buffers_to_cleanup1: &'a mut Vec<DataBuffer<SceneInfoUniformBlock>>,
     color_space: &'a ColorSpace,
+    light_info: &'a mut [LightInfo; MAX_BOUND_LIGHTS],
+    lights_bound: usize,
 }
 
 impl<'a> RenderPassExecutor<'a> {
@@ -272,6 +300,10 @@ impl<'a> RenderPassExecutor<'a> {
                     p_dither_scale: 1.0,
                     p_fog_start: 0.0,
                     p_fog_end: 100.0,
+                    __padding: 0.0,
+                    light_count: self.lights_bound as _,
+                    // TODO: Don't do a clone here
+                    lights: self.light_info.clone(),
                 }])
                 .unwrap();
             self.render_pass.set_uniform_block(

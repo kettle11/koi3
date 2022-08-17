@@ -10,6 +10,11 @@ impl Shader {
 pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resources) {
     // Shader snippets
     renderer.register_shader_snippet(
+        "scene_info",
+        include_str!("shaders_glsl/snippets/scene_info.glsl"),
+    );
+
+    renderer.register_shader_snippet(
         "standard_vertex",
         include_str!("shaders_glsl/snippets/standard_vertex.glsl"),
     );

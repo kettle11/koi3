@@ -66,6 +66,49 @@ impl<'a> ShaderParser<'a> {
         &self.source[start..self.position]
     }
 
+    fn parse_snippet(source: &'a str, snippets: &'a HashMap<&'static str, &'static str>) -> String {
+        let mut parser = Self {
+            source,
+            iter: source.char_indices().peekable(),
+            position: 0,
+        };
+
+        let mut current_string = String::with_capacity(source.len());
+
+        loop {
+            current_string += parser.read_stretch();
+
+            match parser.read_command() {
+                None => {
+                    break;
+                }
+                Some("INSERT" | "INCLUDE") => {
+                    let key = parser.read_word();
+                    if !key.is_empty() {
+                        if let Some(snippet) = snippets.get(key) {
+                            let snippet = Self::parse_snippet(&snippet, snippets);
+                            current_string += &snippet;
+                        } else {
+                            klog::log!(
+                                "SHADER ERROR: No shader snippet with a matching name: {:?}",
+                                key
+                            );
+                        }
+                    } else {
+                        klog::log!("SHADER ERROR: Expected key after shader include");
+                    }
+                }
+                Some("") => {
+                    klog::log!("SHADER ERROR: Expected keyword after '#'");
+                }
+                Some(s) => {
+                    klog::log!("SHADER ERROR: Unknown keyword: {:?}", s);
+                }
+            }
+        }
+        current_string
+    }
+
     fn parse(
         source: &'a str,
         snippets: &'a HashMap<&'static str, &'static str>,
@@ -99,7 +142,8 @@ impl<'a> ShaderParser<'a> {
                     let key = parser.read_word();
                     if !key.is_empty() {
                         if let Some(snippet) = snippets.get(key) {
-                            current_string += snippet;
+                            let snippet = Self::parse_snippet(&snippet, snippets);
+                            current_string += &snippet;
                         } else {
                             klog::log!(
                                 "SHADER ERROR: No shader snippet with a matching name: {:?}",
@@ -118,8 +162,7 @@ impl<'a> ShaderParser<'a> {
                 }
             }
 
-            let next_stretch = parser.read_stretch();
-            current_string += next_stretch;
+            current_string += parser.read_stretch();
         }
 
         std::mem::swap(&mut fragment, &mut current_string);

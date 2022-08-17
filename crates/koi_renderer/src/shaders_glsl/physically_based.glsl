@@ -4,17 +4,7 @@
 
 #FRAGMENT
 
-struct Light {
-    vec3 position;
-    vec3 direction;
-    vec3 color_and_intensity;
-    float radius;
-    int mode;
-    float ambient;
-    mat4 world_to_light;
-};  
-
-uniform Light p_lights[1];
+#INCLUDE scene_info
 
 // Inputs from the vertex shader
 in vec2 f_texture_coordinates;
@@ -44,5 +34,5 @@ out vec4 color_out;
 
 void main()
 {
-  color_out = vec4(p_roughness, 0.0, 0.0, 1.0);
+  color_out = vec4(p_lights[0].color_and_intensity, 1.0);
 }

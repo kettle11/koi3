@@ -5,6 +5,8 @@ pub struct Shader {
     pub(crate) shader_render_properties: ShaderRenderProperties,
 }
 
+pub const MAX_BOUND_LIGHTS: usize = 100;
+
 #[allow(unused)]
 #[repr(C)]
 pub(crate) struct SceneInfoUniformBlock {
@@ -14,6 +16,34 @@ pub(crate) struct SceneInfoUniformBlock {
     pub p_dither_scale: f32,
     pub p_fog_start: f32,
     pub p_fog_end: f32,
+    pub __padding: f32,
+    pub light_count: u32,
+    pub lights: [LightInfo; MAX_BOUND_LIGHTS],
+}
+
+#[allow(unused)]
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub(crate) struct LightInfo {
+    pub position: kmath::Vec3,
+    pub radius: f32,
+    pub direction: kmath::Vec3,
+    pub ambient: f32,
+    pub color_and_intensity: kmath::Vec3,
+    pub world_to_light: kmath::Mat4,
+}
+
+impl Default for LightInfo {
+    fn default() -> Self {
+        Self {
+            position: kmath::Vec3::ZERO,
+            radius: 0.0,
+            direction: kmath::Vec3::ZERO,
+            ambient: 0.0,
+            color_and_intensity: kmath::Vec3::ZERO,
+            world_to_light: kmath::Mat4::ZERO,
+        }
+    }
 }
 
 /// Standard properties that a shader will use.

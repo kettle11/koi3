@@ -113,6 +113,13 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             window_height as f32,
         );
 
+        let mut directional_lights =
+            world.query::<koi_ecs::Without<(&DirectionalLight, &GlobalTransform), &Camera>>();
+
+        for (_, (light, light_transform)) in directional_lights.iter() {
+            render_pass.add_directional_light(light_transform, light)
+        }
+
         let mut renderables = world
             .query::<koi_ecs::Without<(&Handle<Mesh>, &Handle<Material>, &GlobalTransform), &Camera>>();
 
