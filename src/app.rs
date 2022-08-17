@@ -12,6 +12,7 @@ impl Default for App {
         let mut resources = Resources::new();
         resources.add(EventHandlers::new());
         resources.add(Time::new());
+
         Self {
             world: crate::World::new(),
             resources,
@@ -20,6 +21,12 @@ impl Default for App {
 }
 
 impl App {
+    #[inline]
+    pub fn with_resource<Resource: 'static>(mut self, resource: Resource) -> Self {
+        self.resources.add(resource);
+        self
+    }
+
     #[cfg(feature = "kapp")]
     #[inline]
     pub fn run(mut self, f: impl FnMut(&Event, &mut crate::World, &mut Resources) + 'static) {

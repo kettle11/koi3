@@ -5,8 +5,26 @@ use koi_assets::*;
 use koi_resources::Resources;
 use koi_transform::GlobalTransform;
 
+pub struct InitialSettings {
+    pub name: String,
+    pub window_width: usize,
+    pub window_height: usize,
+    pub color_space: kgraphics::ColorSpace,
+}
+
+impl Default for InitialSettings {
+    fn default() -> Self {
+        Self {
+            name: "Koi".into(),
+            window_width: 500,
+            window_height: 500,
+            color_space: kgraphics::ColorSpace::SRGB,
+        }
+    }
+}
+
 pub fn initialize_plugin(resources: &mut Resources) {
-    let color_space = kgraphics::ColorSpace::SRGB;
+    let initial_settings = resources.remove::<InitialSettings>().unwrap_or_default();
 
     // Initialize the graphics context.
     let mut graphics_context =
@@ -14,30 +32,33 @@ pub fn initialize_plugin(resources: &mut Resources) {
             high_resolution_framebuffer: true,
             /// How many MSAA samples the window framebuffer should have
             samples: 4,
-            color_space: Some(color_space),
+            color_space: Some(initial_settings.color_space),
         });
 
-    let dimensions = 500;
-
+    let window_width = initial_settings.window_width;
+    let window_height = initial_settings.window_height;
     // Create the primary window
     let window = {
         let kapp_app = resources.get::<kapp::Application>();
         kapp_app
             .new_window()
-            .title("Koi")
-            .size(dimensions, dimensions)
+            .title(&initial_settings.name)
+            .size(window_width as _, window_height as _)
             .build()
     };
 
-    graphics_context.resize(&window, dimensions, dimensions);
+    graphics_context.resize(&window, window_width as _, window_height as _);
 
     // For now this needs to be called even if it's not used.
-    let _render_target =
-        graphics_context.get_render_target_for_window(&window, dimensions, dimensions);
+    let _render_target = graphics_context.get_render_target_for_window(
+        &window,
+        window_width as _,
+        window_height as _,
+    );
 
     resources.add(window);
 
-    let mut renderer = Renderer::new(graphics_context, color_space);
+    let mut renderer = Renderer::new(graphics_context, initial_settings.color_space);
 
     initialize_shaders(&mut renderer, resources);
     let materials = initialize_materials();

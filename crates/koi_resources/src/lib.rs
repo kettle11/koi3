@@ -26,8 +26,7 @@ impl Resources {
     #[inline]
     pub fn remove<T: 'static>(&mut self) -> Option<T> {
         self.resources
-            .remove(&std::any::TypeId::of::<T>())
-            .unwrap()
+            .remove(&std::any::TypeId::of::<T>())?
             .downcast::<std::sync::RwLock<T>>()
             .unwrap()
             .into_inner()
