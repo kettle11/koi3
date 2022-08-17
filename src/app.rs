@@ -29,6 +29,26 @@ impl App {
 
     #[cfg(feature = "kapp")]
     #[inline]
+    pub fn setup_and_run<
+        Setup: FnMut(&mut crate::World, &mut Resources) -> Run + 'static,
+        Run: FnMut(&Event, &mut crate::World, &mut Resources) + 'static,
+    >(
+        self,
+        mut setup: Setup,
+    ) {
+        self.run(move |event, world, resources| {
+            if resources.try_get::<Box<Run>>().is_none() {
+                let f = Box::new(setup(world, resources));
+                resources.add(f);
+            }
+            let mut game_function = resources.remove::<Box<Run>>().unwrap();
+            (game_function)(event, world, resources);
+            resources.add(game_function);
+        });
+    }
+
+    #[cfg(feature = "kapp")]
+    #[inline]
     pub fn run(mut self, f: impl FnMut(&Event, &mut crate::World, &mut Resources) + 'static) {
         self.resources
             .get_mut::<EventHandlers>()

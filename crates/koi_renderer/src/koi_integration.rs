@@ -16,8 +16,8 @@ impl Default for InitialSettings {
     fn default() -> Self {
         Self {
             name: "Koi".into(),
-            window_width: 500,
-            window_height: 500,
+            window_width: 800,
+            window_height: 800,
             color_space: kgraphics::ColorSpace::SRGB,
         }
     }
