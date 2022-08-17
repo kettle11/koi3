@@ -31,13 +31,13 @@ fn run_loop(event: &Event, world: &mut World, resources: &mut Resources) {
             ..Default::default()
         });
 
-        // Spawn an entity that references that custom shader.
+        // Spawn an entity that references the custom material.
         world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, custom_material));
     }
 
     match event {
         Event::FixedUpdate => {
-            // When a key is pressed reload all shaders from a path.
+            // When a key is pressed reload all shaders that were loaded from a path.
             if resources.get_mut::<Input>().key_down(Key::Space) {
                 resources.get::<AssetStore<Shader>>().reload();
             }
