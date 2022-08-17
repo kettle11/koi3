@@ -5,17 +5,21 @@ pub struct Shader {
     pub(crate) shader_render_properties: ShaderRenderProperties,
 }
 
-/*
+#[allow(unused)]
+#[repr(C)]
 pub(crate) struct SceneInfoUniformBlock {
-    pub world_to_camera: kmath::Mat4,
-    pub camera_to_screen: kmath::Mat4,
+    pub p_world_to_camera: kmath::Mat4,
+    pub p_camera_to_screen: kmath::Mat4,
+    pub p_camera_position: kmath::Vec3,
+    pub p_dither_scale: f32,
+    pub p_fog_start: f32,
+    pub p_fog_end: f32,
 }
-*/
 
 /// Standard properties that a shader will use.
 pub(crate) struct ShaderRenderProperties {
     // Uniform blocks
-    // pub(crate) scene_info_uniform_block: kgraphics::UniformBlock<SceneInfoUniformBlock>,
+    // pub(crate) ub_scene_info: kgraphics::UniformBlock<SceneInfoUniformBlock>,
     // Per-instance attributes
     pub(crate) local_to_world_instance_attribute: kgraphics::VertexAttribute<kmath::Mat4>,
     // Atributes
@@ -23,9 +27,6 @@ pub(crate) struct ShaderRenderProperties {
     pub(crate) normal_attribute: kgraphics::VertexAttribute<kmath::Vec3>,
     pub(crate) texture_coordinate_attribute: kgraphics::VertexAttribute<kmath::Vec2>,
     pub(crate) color_attribute: kgraphics::VertexAttribute<kmath::Vec4>,
-    // Global Uniforms
-    pub(crate) world_to_camera: kgraphics::Mat4Property,
-    pub(crate) camera_to_screen: kgraphics::Mat4Property,
     // Per-object Uniforms
     pub(crate) p_base_color: kgraphics::Vec4Property,
     pub(crate) p_base_color_texture: kgraphics::TextureProperty,
@@ -99,7 +100,7 @@ impl crate::Renderer {
             .map_err(ShaderError::PipelineCompilationError)?;
 
         let shader_render_properties = ShaderRenderProperties {
-            // scene_info_uniform_block: pipeline.get_uniform_block("ub_SceneInfo").unwrap(),
+            // ub_scene_info: pipeline.get_uniform_block("ub_scene_info").unwrap(),
             // Per-instance attributes
             local_to_world_instance_attribute: pipeline
                 .get_vertex_attribute("ia_local_to_world")
@@ -111,9 +112,6 @@ impl crate::Renderer {
                 .get_vertex_attribute("a_texture_coordinate")
                 .unwrap(),
             color_attribute: pipeline.get_vertex_attribute("a_color").unwrap(),
-            // Global Uniforms
-            world_to_camera: pipeline.get_mat4_property("world_to_camera").unwrap(),
-            camera_to_screen: pipeline.get_mat4_property("camera_to_screen").unwrap(),
             // Per-object Uniforms
             p_base_color: pipeline.get_vec4_property("p_base_color").unwrap(),
             p_base_color_texture: pipeline

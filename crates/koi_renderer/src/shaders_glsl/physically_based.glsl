@@ -4,13 +4,6 @@
 
 #FRAGMENT
 
-// Global properties.
-// These should be in a uniform buffer
-uniform vec3 p_camera_position;
-uniform float p_dither_scale;
-uniform float p_fog_start;
-uniform float p_fog_end;
-
 struct Light {
     vec3 position;
     vec3 direction;

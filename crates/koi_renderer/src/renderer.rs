@@ -49,6 +49,7 @@ impl Renderer {
                 meshes_to_draw: Vec::new(),
                 local_to_world_matrices: Vec::new(),
                 data_buffers_to_cleanup: Vec::new(),
+                data_buffers_to_cleanup1: Vec::new(),
                 camera: camera.clone(),
                 camera_transform: *camera_transform,
                 view_width,
@@ -83,6 +84,7 @@ pub struct RenderPass {
     view_width: f32,
     view_height: f32,
     data_buffers_to_cleanup: Vec<DataBuffer<kmath::Mat4>>,
+    data_buffers_to_cleanup1: Vec<DataBuffer<SceneInfoUniformBlock>>,
     color_space: kcolor::ColorSpace,
 }
 
@@ -130,12 +132,13 @@ impl RenderPass {
             local_to_world_matrices: &mut self.local_to_world_matrices,
             current_material_and_shader: None,
             current_gpu_mesh: None,
+            camera_position: self.camera_transform.position,
             world_to_camera: self.camera_transform.local_to_world().inversed(),
-            // TODO: This projection matrix doesn't account for window dimensions.
             camera_to_screen: self
                 .camera
                 .projection_matrix(self.view_width, self.view_height),
-            data_buffers_to_cleanup: &mut &mut self.data_buffers_to_cleanup,
+            data_buffers_to_cleanup: &mut self.data_buffers_to_cleanup,
+            data_buffers_to_cleanup1: &mut self.data_buffers_to_cleanup1,
             color_space: &self.color_space,
         };
         render_pass_executor.execute(&mut self.meshes_to_draw);
@@ -143,6 +146,10 @@ impl RenderPass {
         graphics.commit_command_buffer(command_buffer);
 
         for data_buffer in self.data_buffers_to_cleanup.drain(..) {
+            graphics.delete_data_buffer(data_buffer);
+        }
+
+        for data_buffer in self.data_buffers_to_cleanup1.drain(..) {
             graphics.delete_data_buffer(data_buffer);
         }
     }
@@ -158,9 +165,11 @@ struct RenderPassExecutor<'a> {
     local_to_world_matrices: &'a mut Vec<kmath::Mat4>,
     current_material_and_shader: Option<(&'a Material, &'a Shader)>,
     current_gpu_mesh: Option<&'a GPUMesh>,
+    camera_position: kmath::Vec3,
     world_to_camera: kmath::Mat4,
     camera_to_screen: kmath::Mat4,
     data_buffers_to_cleanup: &'a mut Vec<DataBuffer<kmath::Mat4>>,
+    data_buffers_to_cleanup1: &'a mut Vec<DataBuffer<SceneInfoUniformBlock>>,
     color_space: &'a ColorSpace,
 }
 
@@ -170,19 +179,6 @@ impl<'a> RenderPassExecutor<'a> {
             if let Some((material, shader)) = self.current_material_and_shader {
                 self.render_pass.set_pipeline(&shader.pipeline);
                 let shader_properties = &shader.shader_render_properties;
-
-                // TODO: Use uniform buffer objects instead to avoid needing to rebind this data
-                // on each material change.
-                {
-                    self.render_pass.set_mat4_property(
-                        &shader_properties.world_to_camera,
-                        self.world_to_camera.as_array(),
-                    );
-                    self.render_pass.set_mat4_property(
-                        &shader_properties.camera_to_screen,
-                        self.camera_to_screen.as_array(),
-                    );
-                }
 
                 // Bind the material properties
                 {
@@ -265,6 +261,28 @@ impl<'a> RenderPassExecutor<'a> {
     }
 
     fn execute(&mut self, meshes_to_draw: &mut [(Handle<Material>, Handle<Mesh>, kmath::Mat4)]) {
+        // Bind global data.
+        {
+            let data_buffer = self
+                .graphics
+                .new_data_buffer(&[SceneInfoUniformBlock {
+                    p_world_to_camera: self.world_to_camera,
+                    p_camera_to_screen: self.camera_to_screen,
+                    p_camera_position: self.camera_position,
+                    p_dither_scale: 1.0,
+                    p_fog_start: 0.0,
+                    p_fog_end: 100.0,
+                }])
+                .unwrap();
+            self.render_pass.set_uniform_block(
+                &kgraphics::UniformBlock::from_location(0),
+                Some(&data_buffer),
+            );
+
+            // TODO: Come up with a more elegant way to cleanup allocation buffers.
+            self.data_buffers_to_cleanup1.push(data_buffer);
+        }
+
         meshes_to_draw.sort_by_key(|v| (v.0.clone(), v.1.clone()));
 
         let mut current_mesh = None;
