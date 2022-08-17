@@ -122,4 +122,6 @@ impl crate::Renderer {
     }
 }
 
-impl koi_assets::Loadable for Shader {}
+impl koi_assets::AssetTrait for Shader {
+    type Settings = crate::ShaderSettings;
+}

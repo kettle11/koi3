@@ -1,30 +1,27 @@
 /// TODO: Paths aren't handled correctly yet.
 mod slotmap;
+use koi_resources::Resources;
+use loader::AssetLoaderTrait;
 use slotmap::*;
 
-pub struct AssetStore<Asset> {
+pub mod loader;
+
+pub struct AssetStoreInner<Asset: AssetTrait> {
     slot_map: SlotMap<Asset>,
-    path_to_slotmap: std::collections::HashMap<String, WeakHandle<Asset>>,
+    path_to_slotmap: std::collections::HashMap<String, (WeakHandle<Asset>, Asset::Settings)>,
     drop_channel_sender: std::sync::mpsc::Sender<usize>,
     drop_channel_receiver: std::sync::mpsc::Receiver<usize>,
-    pub need_loading: Vec<(String, Handle<Asset>)>,
 }
 
-impl<Asset> AssetStore<Asset> {
+impl<Asset: AssetTrait> AssetStoreInner<Asset> {
     pub fn new(placeholder: Asset) -> Self {
         let (drop_channel_sender, drop_channel_receiver) = std::sync::mpsc::channel();
         Self {
             slot_map: SlotMap::new(placeholder),
             path_to_slotmap: std::collections::HashMap::new(),
-            need_loading: Vec::new(),
             drop_channel_receiver,
             drop_channel_sender,
         }
-    }
-
-    /// Removes all assets without a handle pointing to them.
-    pub fn cleanup_dropped_assets(&mut self) {
-        for _ in self.get_dropped_assets() {}
     }
 
     /// Iterates over and removes all dropped assets without a handle pointing to them.
@@ -99,32 +96,117 @@ impl<Asset> AssetStore<Asset> {
             *self.get_mut(handle) = asset;
         }
     }
-
-    pub fn reload(&mut self) {
-        for (name, weak_handle) in &mut self.path_to_slotmap {
-            if let Some(handle) = weak_handle.upgrade() {
-                self.need_loading.push((name.clone(), handle));
-            }
-        }
-    }
 }
 
-impl<Asset: Loadable> AssetStore<Asset> {
-    pub fn load(&mut self, path: &str) -> Handle<Asset> {
+pub struct AssetStore<Asset: AssetTrait> {
+    asset_store_inner: AssetStoreInner<Asset>,
+    loader: Box<dyn AssetLoaderTrait<Asset>>,
+}
+
+impl<Asset: AssetTrait> AssetStore<Asset> {
+    pub fn new(placeholder: Asset) -> Self {
+        Self {
+            asset_store_inner: AssetStoreInner::new(placeholder),
+            loader: Box::new(crate::loader::DoNothingLoader),
+        }
+    }
+
+    pub fn new_with_load_functions<
+        LoadResult: Send + 'static,
+        F: std::future::Future<Output = Option<LoadResult>> + Send + 'static,
+    >(
+        placeholder: Asset,
+        load_task: fn(String, Asset::Settings) -> F,
+        handle_result: fn(LoadResult, Asset::Settings, &koi_resources::Resources) -> Option<Asset>,
+    ) -> Self {
+        Self {
+            asset_store_inner: AssetStoreInner::new(placeholder),
+            loader: Box::new(crate::loader::Loader::new(load_task, handle_result)),
+        }
+    }
+
+    /// Removes all assets without a handle pointing to them.
+    pub fn cleanup_dropped_assets(&mut self) {
+        for _ in self.get_dropped_assets() {}
+    }
+
+    /// Iterates over and removes all dropped assets without a handle pointing to them.
+    pub fn get_dropped_assets(&mut self) -> impl Iterator<Item = Asset> + '_ {
+        self.asset_store_inner.get_dropped_assets()
+    }
+
+    pub fn items_iter(&self) -> impl Iterator<Item = &Asset> + '_ {
+        self.asset_store_inner.items_iter()
+    }
+
+    pub fn add(&mut self, asset: Asset) -> Handle<Asset> {
+        self.asset_store_inner.add(asset)
+    }
+
+    /// Used to initialize static variables
+    /// Adds an asset and leaks it.
+    /// Panics of `handle_to_check` is not equivalent to the handle allocated.
+    pub fn add_and_leak(&mut self, asset: Asset, handle_to_check: &Handle<Asset>) {
+        self.asset_store_inner.add_and_leak(asset, handle_to_check)
+    }
+
+    // pub fn replace_placeholder(&mut self, handle: &Handle<Asset>, asset: Asset) {
+    //     self.slot_map
+    //         .replace_placeholder(&handle.slot_map_handle, asset)
+    // }
+
+    pub fn get(&self, handle: &Handle<Asset>) -> &Asset {
+        self.asset_store_inner.get(handle)
+    }
+
+    pub fn get_mut(&mut self, handle: &Handle<Asset>) -> &mut Asset {
+        self.asset_store_inner.get_mut(handle)
+    }
+
+    pub fn replace(&mut self, handle: &Handle<Asset>, asset: Asset) {
+        self.asset_store_inner.replace(handle, asset)
+    }
+
+    pub fn finalize_asset_loads(&mut self, resources: &Resources) {
+        let AssetStore {
+            asset_store_inner,
+            loader,
+        } = self;
+
+        loader.finalize_load_on_main_thread(resources, asset_store_inner);
+    }
+
+    pub fn load(&mut self, path: &str, settings: Asset::Settings) -> Handle<Asset> {
         if let Some(weak_handle) = self
+            .asset_store_inner
             .path_to_slotmap
             .get(path)
-            .and_then(|weak_handle| weak_handle.upgrade())
+            .and_then(|weak_handle| weak_handle.0.upgrade())
         {
             weak_handle
         } else {
+            println!("ISSUING LOAD!");
+
             let slot_map_handle = self
+                .asset_store_inner
                 .slot_map
                 .new_handle_pointing_at_placeholder(Some(path.into()));
-            let handle = self.new_handle(slot_map_handle);
-            self.path_to_slotmap.insert(path.into(), handle.to_weak());
-            self.need_loading.push((path.into(), handle.clone()));
+            let handle = self.asset_store_inner.new_handle(slot_map_handle);
+            self.asset_store_inner
+                .path_to_slotmap
+                .insert(path.into(), (handle.to_weak(), settings.clone()));
+            self.loader.load(path.into(), settings, handle.clone());
             handle
+        }
+    }
+
+    /// Reloads all assets that were loaded from a path.
+    pub fn reload(&self) {
+        for (path, weak_handle) in &self.asset_store_inner.path_to_slotmap {
+            if let Some(handle) = weak_handle.0.upgrade() {
+                self.loader
+                    .load(path.into(), weak_handle.1.clone(), handle.clone());
+            }
         }
     }
 }
@@ -207,7 +289,9 @@ impl Drop for DropHandle {
     }
 }
 
-pub trait Loadable {}
+pub trait AssetTrait: Sized + 'static {
+    type Settings: Clone + Send;
+}
 
 pub struct SyncGuard<T> {
     inner: T,

@@ -13,10 +13,10 @@ core = ["kapp", "koi_renderer", "koi_transform", "koi_audio", "koi_input", "koi_
 window = []
 
 [dependencies]
-kapp = {path = "../koi2/crates/kapp", default-features=false, optional = true}
 kapp_platform_common = {path = "../koi2/crates/kapp/kapp_platform_common"}
 kinstant = {path = "../koi2/crates/kinstant"}
 kmath = {path = "../koi2/crates/kmath"}
+ktasks = {path = "../koi2/crates/ktasks"}
 koi_hierarchy = {path = "crates/koi_hierarchy"}
 koi_ecs = {path = "crates/koi_ecs"}
 koi_resources = {path = "crates/koi_resources"}
@@ -24,7 +24,7 @@ koi_events = {path = "crates/koi_events"}
 koi_time = {path = "crates/koi_time"}
 koi_assets = {path = "crates/koi_assets"}
 
-
+kapp = {path = "../koi2/crates/kapp", default-features=false, optional = true}
 koi_renderer =  {path = "crates/koi_renderer", optional = true}
 koi_transform = {path = "crates/koi_transform", optional = true}
 koi_audio = {path = "crates/koi_audio", optional = true}

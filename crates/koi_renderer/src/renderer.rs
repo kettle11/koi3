@@ -8,15 +8,23 @@ pub struct Renderer {
     render_pass_pool: Vec<RenderPass>,
     pub automatically_redraw: bool,
     pub(crate) shader_snippets: std::collections::HashMap<&'static str, &'static str>,
+    color_space: kcolor::ColorSpace,
 }
 
 impl Renderer {
-    pub(crate) fn new(raw_graphics_context: kgraphics::GraphicsContext) -> Self {
+    pub(crate) fn new(
+        raw_graphics_context: kgraphics::GraphicsContext,
+        color_space: kgraphics::ColorSpace,
+    ) -> Self {
         Self {
             raw_graphics_context,
             render_pass_pool: Vec::new(),
             automatically_redraw: true,
             shader_snippets: std::collections::HashMap::new(),
+            color_space: match color_space {
+                kgraphics::ColorSpace::SRGB => kcolor::color_spaces::ENCODED_SRGB,
+                kgraphics::ColorSpace::DisplayP3 => kcolor::color_spaces::ENCODED_DISPLAY_P3,
+            },
         }
     }
     pub fn begin_render_pass(
@@ -45,6 +53,7 @@ impl Renderer {
                 camera_transform: *camera_transform,
                 view_width,
                 view_height,
+                color_space: self.color_space.clone(),
             }
         }
     }
@@ -74,6 +83,7 @@ pub struct RenderPass {
     view_width: f32,
     view_height: f32,
     data_buffers_to_cleanup: Vec<DataBuffer<kmath::Mat4>>,
+    color_space: kcolor::ColorSpace,
 }
 
 impl RenderPass {
@@ -104,7 +114,9 @@ impl RenderPass {
 
         let mut render_pass = command_buffer.begin_render_pass_with_framebuffer(
             &kgraphics::Framebuffer::default(),
-            self.camera.clear_color.map(|v| v.to_linear_srgb().into()),
+            self.camera
+                .clear_color
+                .map(|v| v.to_rgb_color(self.color_space).into()),
         );
         render_pass.set_viewport(0, 0, self.view_width as u32, self.view_height as u32);
 
@@ -124,6 +136,7 @@ impl RenderPass {
                 .camera
                 .projection_matrix(self.view_width, self.view_height),
             data_buffers_to_cleanup: &mut &mut self.data_buffers_to_cleanup,
+            color_space: &self.color_space,
         };
         render_pass_executor.execute(&mut self.meshes_to_draw);
         command_buffer.present();
@@ -148,6 +161,7 @@ struct RenderPassExecutor<'a> {
     world_to_camera: kmath::Mat4,
     camera_to_screen: kmath::Mat4,
     data_buffers_to_cleanup: &'a mut Vec<DataBuffer<kmath::Mat4>>,
+    color_space: &'a ColorSpace,
 }
 
 impl<'a> RenderPassExecutor<'a> {
@@ -174,7 +188,7 @@ impl<'a> RenderPassExecutor<'a> {
                 {
                     self.render_pass.set_vec4_property(
                         &shader.shader_render_properties.p_base_color,
-                        material.base_color.to_linear_srgb().into(),
+                        material.base_color.to_rgb_color(*self.color_space).into(),
                     );
                     let texture_unit = 0;
 

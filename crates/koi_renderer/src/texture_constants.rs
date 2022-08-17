@@ -11,6 +11,10 @@ impl Texture {
     pub const DEFAULT_NORMAL: Handle<Texture> = Handle::<Texture>::from_index(2);
 }
 
+impl AssetTrait for Texture {
+    type Settings = ();
+}
+
 pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetStore<Texture> {
     let texture = Texture(
         renderer

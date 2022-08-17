@@ -31,6 +31,9 @@ impl App {
 
     #[cfg(feature = "kapp")]
     fn run_inner(mut self) {
+        // TODO: This should also run for headless builds.
+        ktasks::create_workers();
+
         let (kapp_app, kapp_event_loop) = kapp::initialize();
 
         self.resources.add(kapp_app);
@@ -51,8 +54,7 @@ impl App {
                     self.handle_event(Event::PostDraw);
                 }
                 kapp_platform_common::Event::Quit => {
-                    // klog::log!("ABOUT TO QUIT");
-                    // ktasks::shutdown_worker_threads();
+                    ktasks::shutdown_worker_threads();
                 }
                 _ => {}
             }
@@ -60,6 +62,8 @@ impl App {
     }
 
     pub fn handle_event(&mut self, event: Event) {
+        ktasks::run_tasks_unless_there_are_workers();
+
         // This funky memory-swap approach allows `EventHandlers` to be part of `Resources`
         let event_handlers = self.resources.get_mut::<EventHandlers>();
         let mut temp_event_handlers = EventHandlers::new();

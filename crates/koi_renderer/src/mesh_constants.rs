@@ -1,6 +1,6 @@
 use crate::*;
 use kmath::*;
-use koi_assets::Handle;
+use koi_assets::{AssetTrait, Handle};
 
 impl Mesh {
     pub const EMPTY: Handle<Self> = Handle::from_index(0);
@@ -13,6 +13,10 @@ impl Mesh {
     pub const CONE: Handle<Self> = Handle::from_index(7);
     pub const CUBE_MAP_CUBE: Handle<Self> = Handle::from_index(8);
     pub const CYLINDER: Handle<Self> = Handle::from_index(9);
+}
+
+impl AssetTrait for Mesh {
+    type Settings = ();
 }
 
 pub fn initialize_meshes(

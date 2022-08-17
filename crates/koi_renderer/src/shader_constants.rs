@@ -1,11 +1,12 @@
-use crate::Shader;
+use crate::{Shader, ShaderSettings};
 use koi_assets::Handle;
+use koi_resources::Resources;
 
 impl Shader {
     pub const UNLIT: Handle<Self> = Handle::from_index(0);
 }
 
-pub fn initialize_shaders(renderer: &mut crate::Renderer) -> koi_assets::AssetStore<Shader> {
+pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resources) {
     // Shader snippets
     renderer.register_shader_snippet(
         "standard_vertex",
@@ -23,7 +24,28 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer) -> koi_assets::AssetSt
             },
         )
         .unwrap();
-    let asset_store = koi_assets::AssetStore::new(shader);
 
-    asset_store
+    async fn load_shader(path: String, _settings: ShaderSettings) -> Option<String> {
+        match std::fs::read_to_string(&path) {
+            Ok(shader_string) => Some(shader_string),
+            Err(_) => {
+                println!("Could not load shader from path: {:?}", path);
+                None
+            }
+        }
+    }
+    fn finalize_shader_load(
+        source: String,
+        settings: ShaderSettings,
+        resources: &Resources,
+    ) -> Option<Shader> {
+        resources
+            .get::<crate::Renderer>()
+            .new_shader(&source, settings)
+            .ok()
+    }
+
+    let asset_store =
+        koi_assets::AssetStore::new_with_load_functions(shader, load_shader, finalize_shader_load);
+    resources.add(asset_store);
 }
