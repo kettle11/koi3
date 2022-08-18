@@ -40,7 +40,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
             .unwrap(),
     );
 
-    async fn load(path: String, _settings: kgraphics::TextureSettings) -> Option<TextureResult> {
+    async fn load(path: String, settings: kgraphics::TextureSettings) -> Option<TextureResult> {
         let extension = std::path::Path::new(&path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
@@ -52,7 +52,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                 let bytes = match std::fs::read(&path) {
                     Ok(b) => b,
                     Err(_) => {
-                        println!("Could not load shader from path: {:?}", path);
+                        println!("Could not open path: {:?}", path);
                         None?
                     }
                 };
@@ -79,8 +79,65 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                     height: height as _,
                 })
             }
+            #[cfg(feature = "jpeg")]
             "jpg" | "jpeg" => {
-                todo!()
+                #[allow(unused)]
+                fn extend_pixels_1_with_alpha(pixels: Vec<u8>) -> Vec<u8> {
+                    pixels.iter().flat_map(|a| [*a, *a, *a, 255]).collect()
+                }
+
+                #[allow(unused)]
+                fn extend_pixels_3_with_alpha(pixels: Vec<u8>) -> Vec<u8> {
+                    pixels
+                        .chunks_exact(3)
+                        .flat_map(|a| [a[0], a[1], a[2], 255])
+                        .collect()
+                }
+
+                let bytes = match std::fs::read(&path) {
+                    Ok(b) => b,
+                    Err(_) => {
+                        println!("Could not open path: {:?}", path);
+                        None?
+                    }
+                };
+                let reader = std::io::BufReader::new(&*bytes);
+
+                let mut decoder = jpeg_decoder::Decoder::new(reader);
+                let mut pixels = decoder.decode().expect("failed to decode image");
+                let metadata = decoder.info().unwrap();
+
+                let pixel_format = match metadata.pixel_format {
+                    jpeg_decoder::PixelFormat::RGB24 => {
+                        // Convert to RGBA sRGB8_ALPHA8 is the only color renderable format
+                        // which is required for mipmap generation
+                        if settings.srgb {
+                            pixels = extend_pixels_3_with_alpha(pixels);
+                            kgraphics::PixelFormat::RGBA8Unorm
+                        } else {
+                            kgraphics::PixelFormat::RGB8Unorm
+                        }
+                    }
+                    jpeg_decoder::PixelFormat::L8 => {
+                        // Convert to RGBA sRGB8_ALPHA8 is the only color renderable format
+                        // which is required for mipmap generation
+                        if settings.srgb {
+                            pixels = extend_pixels_1_with_alpha(pixels);
+                            kgraphics::PixelFormat::RGBA8Unorm
+                        } else {
+                            kgraphics::PixelFormat::R8Unorm
+                        }
+                    }
+                    jpeg_decoder::PixelFormat::CMYK32 => {
+                        panic!("CMYK is currently unsupported")
+                    } // _ => unimplemented!("Unsupported Jpeg pixel format: {:?}", metadata.pixel_format,),
+                };
+                Some(TextureResult {
+                    data: TextureData::Bytes(Box::new(pixels)),
+                    pixel_format,
+                    width: metadata.width as u32,
+                    height: metadata.height as u32,
+                })
             }
             _ => {
                 println!(
