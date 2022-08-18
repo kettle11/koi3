@@ -44,6 +44,7 @@ impl Renderer {
             render_pass.camera = camera.clone();
             render_pass.camera_transform = *camera_transform;
             render_pass.lights_bound = 0;
+            render_pass.exposure_scale_factor = 1.0 / camera.max_luminance_without_clipping();
             render_pass
         } else {
             RenderPass {
@@ -127,9 +128,8 @@ impl RenderPass {
 
             // Preexpose the light based on the camera's exposure settings
             let light_color: kmath::Vec4 = point_light.color.to_rgb_color(self.color_space);
-            light_info.color_and_intensity = light_color.xyz()
-                * point_light.intensity_luminous_power
-                * self.exposure_scale_factor;
+            light_info.color_and_intensity =
+                light_color.xyz() * point_light.intensity_lumens * self.exposure_scale_factor;
 
             self.lights_bound += 1;
         }
@@ -250,12 +250,19 @@ impl<'a> RenderPassExecutor<'a> {
 
                     self.render_pass
                         .set_float_property(&sp.p_metallic, material.metallicness);
-                    self.render_pass
-                        .set_float_property(&sp.p_roughness, material.roughness);
+
+                    // Roughness is multiplied by itself to make roughness increase in a more *perceptually* linear way.
+                    // TODO: Investigate how this matches with other software.
+                    self.render_pass.set_float_property(
+                        &sp.p_roughness,
+                        material.roughness * material.roughness,
+                    );
                     self.render_pass
                         .set_float_property(&sp.p_ambient, material.ambient_scale);
                     self.render_pass
                         .set_float_property(&sp.p_emissive, material.emissiveness);
+                    self.render_pass
+                        .set_float_property(&sp.p_reflectance, material.reflectance);
                 }
 
                 // Bind the mesh for this group.

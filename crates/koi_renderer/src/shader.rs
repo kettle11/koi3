@@ -67,6 +67,7 @@ pub(crate) struct ShaderRenderProperties {
     pub(crate) p_roughness: kgraphics::FloatProperty,
     pub(crate) p_ambient: kgraphics::FloatProperty,
     pub(crate) p_emissive: kgraphics::FloatProperty,
+    pub(crate) p_reflectance: kgraphics::FloatProperty,
 }
 
 #[derive(Clone, Copy)]
@@ -153,6 +154,7 @@ impl crate::Renderer {
             p_roughness: pipeline.get_float_property("p_roughness").unwrap(),
             p_ambient: pipeline.get_float_property("p_ambient").unwrap(),
             p_emissive: pipeline.get_float_property("p_emissive").unwrap(),
+            p_reflectance: pipeline.get_float_property("p_reflectance").unwrap(),
         };
         Ok(Shader {
             pipeline,

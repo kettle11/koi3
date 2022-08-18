@@ -8,6 +8,7 @@ pub struct Material {
     pub roughness: f32,
     pub ambient_scale: f32,
     pub emissiveness: f32,
+    pub reflectance: f32,
 }
 
 impl Default for Material {
@@ -20,6 +21,7 @@ impl Default for Material {
             roughness: 0.7,
             ambient_scale: 1.0,
             emissiveness: 0.0,
+            reflectance: 0.5,
         }
     }
 }

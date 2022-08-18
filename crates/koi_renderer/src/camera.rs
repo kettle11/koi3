@@ -5,7 +5,32 @@ pub struct Camera {
     pub projection_mode: ProjectionMode,
     /// How much light this camera will accept
     /// https://en.wikipedia.org/wiki/Exposure_value
-    pub exposure_value_ev100: f32,
+    pub exposure: Exposure,
+}
+
+#[derive(Clone, Debug)]
+pub enum Exposure {
+    EV100(f32),
+    PhysicalCamera {
+        aperture_f_stops: f32,
+        shutter_speed_seconds: f32,
+        sensitivity_iso: f32,
+    },
+}
+
+impl Exposure {
+    pub fn to_ev100(&self) -> f32 {
+        match *self {
+            Self::EV100(v) => v,
+            Self::PhysicalCamera {
+                aperture_f_stops,
+                shutter_speed_seconds,
+                sensitivity_iso,
+            } => ((aperture_f_stops * aperture_f_stops) / shutter_speed_seconds * 100.0
+                / sensitivity_iso)
+                .log2(),
+        }
+    }
 }
 
 impl Default for Camera {
@@ -17,7 +42,7 @@ impl Default for Camera {
                 field_of_view_y_radians: (72.0_f32).to_radians(),
                 z_near: 0.3,
             },
-            exposure_value_ev100: 8.0,
+            exposure: Exposure::EV100(8.0),
         }
     }
 }
@@ -33,7 +58,8 @@ impl Camera {
     /// The max luminance possible without clipping.
     /// Is used as a scale factor to scale the scene.
     pub fn max_luminance_without_clipping(&self) -> f32 {
-        2.0f32.powf(self.exposure_value_ev100) * 1.2
+        //  println!("EXPOSURE VALUE: {:?}", self.exposure.to_ev100());
+        2.0f32.powf(self.exposure.to_ev100()) * 1.2
     }
 }
 

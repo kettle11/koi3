@@ -37,10 +37,13 @@ uniform vec3 p_emissive;
 
 // uniform sampler2D p_normal_texture;
 
+uniform float p_reflectance;
+
 out vec4 color_out;
 
 const float PI = 3.14159265359;
 const float MEDIUMP_FLT_MAX = 65504.0;
+const float MIN_ROUGHNESS = 0.007921;
 
 float D_GGX(float roughness, float NoH, const vec3 n, const vec3 h) {
     vec3 NxH = cross(n, h);
@@ -52,21 +55,23 @@ float D_GGX(float roughness, float NoH, const vec3 n, const vec3 h) {
 
 // As explained on the Filament explainer this version is more accurate, 
 // but the two square-roots is probably slower.
-/*
+
 float V_SmithGGXCorrelated(float NoV, float NoL, float roughness) {
     float a2 = roughness * roughness;
     float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
     float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
-    return 0.5 / (GGXV + GGXL);
+    float v = 0.5 / (GGXV + GGXL);
+    return min(v, MEDIUMP_FLT_MAX);
+}
+
+/*
+float V_SmithGGXCorrelated(float roughness, float NoV, float NoL) {
+     // Hammon 2017, "PBR Diffuse Lighting for GGX+Smith Microsurfaces"
+    float v = 0.5 / mix(2.0 * NoL * NoV, NoL + NoV, roughness);
+    return  min(v, MEDIUMP_FLT_MAX);
 }
 */
 
-float V_SmithGGXCorrelated(float NoV, float NoL, float roughness) {
-    float a = roughness;
-    float GGXV = NoL * (NoV * (1.0 - a) + a);
-    float GGXL = NoV * (NoL * (1.0 - a) + a);
-    return 0.5 / (GGXV + GGXL);
-}
 
 /* 
 vec3 F_Schlick(float u, vec3 f0, float f90) {
@@ -119,8 +124,8 @@ vec3 BRDF(vec3 v, vec3 n, float roughness, vec3 f0, const LightInfo light) {
     float NoH = clamp(dot(n, h), 0.0, 1.0);
     float LoH = clamp(dot(l, h), 0.0, 1.0);
 
-    float D = D_GGX(NoH, roughness, n, h);
-    float V = V_SmithGGXCorrelated(NoV, NoL, roughness);
+    float D = D_GGX(roughness, NoH, n, h);
+    float V = V_SmithGGXCorrelated(roughness, NoV, NoL);
     vec3  F = F_Schlick(LoH, f0);
 
     // specular BRDF
@@ -140,10 +145,13 @@ void main()
     vec3 n = normalize(f_normal);
     vec3 v = normalize(p_camera_position - f_world_position);
 
-    vec3 f0 = vec3(0.16 * 0.25);
+    vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance);
 
     color_out = vec4(0, 0, 0, 1);
     for (int i = 0; i < light_count; i++) {
-      color_out.rgb += BRDF(v, n, p_roughness, f0, p_lights[i]);
+      color_out.rgb += BRDF(v, n, max(p_roughness, MIN_ROUGHNESS), f0, p_lights[i]);
     }
+
+    // Clamp because Macs *will* display values outside gamut. 
+    color_out = clamp(color_out, 0.0, 1.0);
 }
