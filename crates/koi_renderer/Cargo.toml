@@ -3,6 +3,10 @@ name = "koi_renderer"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["png"]
+png = ["imagine", "bytemuck"]
+
 [dependencies]
 kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
 kmath = {path = "../../../koi2/crates/kmath"}
@@ -16,6 +20,6 @@ koi_resources = {path = "../koi_resources"}
 koi_events = {path = "../koi_events"}
 kapp = {path = "../../../koi2/crates/kapp", default-features=false}
 
-
-
+imagine = {git="https://github.com/Lokathor/imagine", optional = true, features = ["png", "miniz_oxide"]}
+bytemuck = {version = "1.7.3", features = ["extern_crate_alloc"], optional = true}
 
