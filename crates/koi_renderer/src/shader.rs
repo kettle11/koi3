@@ -30,6 +30,7 @@ pub(crate) struct LightInfo {
     pub inverse_direction: kmath::Vec3,
     pub ambient: f32,
     pub color_and_intensity: kmath::Vec3,
+    pub mode: i32,
     pub world_to_light: kmath::Mat4,
 }
 
@@ -41,6 +42,7 @@ impl Default for LightInfo {
             inverse_direction: kmath::Vec3::ZERO,
             ambient: 0.0,
             color_and_intensity: kmath::Vec3::ZERO,
+            mode: 0,
             world_to_light: kmath::Mat4::ZERO,
         }
     }

@@ -99,7 +99,19 @@ float Fd_Burley(float NoV, float NoL, float LoH, float roughness) {
 
 // TODO: Make roughness perceptually linear by using Filament's square approach.
 vec3 BRDF(vec3 v, vec3 n, float roughness, vec3 f0, const LightInfo light) {
-    vec3 l = light.inverse_direction;
+    vec3 l;
+    float attenuation;
+
+    if (light.mode == 0) {
+        l = light.inverse_direction;
+        attenuation = 1.0;
+    } else {
+        vec3 diff = light.position - f_world_position;
+        float distance = length(diff);
+        l = diff / distance;
+        attenuation = 1.0 / (distance * distance);
+    };
+
     vec3 h = normalize(v + l);
 
     float NoV = abs(dot(n, v)) + 1e-5;
@@ -120,7 +132,7 @@ vec3 BRDF(vec3 v, vec3 n, float roughness, vec3 f0, const LightInfo light) {
     vec3 color = Fr + Fd;
 
     // apply lighting...
-    return color * NoL * light.color_and_intensity;
+    return color * NoL * light.color_and_intensity * attenuation;
 }
 
 void main()

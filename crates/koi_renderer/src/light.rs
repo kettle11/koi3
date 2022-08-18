@@ -3,6 +3,7 @@
 /// For light sources that emit from a point, like a lightbulb.
 pub struct PointLight {
     pub intensity_luminous_power: f32,
+    pub color: kcolor::Color,
     pub influence_radius: f32,
 }
 

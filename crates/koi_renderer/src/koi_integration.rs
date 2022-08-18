@@ -120,6 +120,13 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             render_pass.add_directional_light(light_transform, light)
         }
 
+        let mut point_lights =
+            world.query::<koi_ecs::Without<(&PointLight, &GlobalTransform), &Camera>>();
+
+        for (_, (light, light_transform)) in point_lights.iter() {
+            render_pass.add_point_light(light_transform, light)
+        }
+
         let mut renderables = world
             .query::<koi_ecs::Without<(&Handle<Mesh>, &Handle<Material>, &GlobalTransform), &Camera>>();
 

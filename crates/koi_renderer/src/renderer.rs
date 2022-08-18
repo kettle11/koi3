@@ -103,13 +103,32 @@ impl RenderPass {
     ) {
         if self.lights_bound < MAX_BOUND_LIGHTS {
             let light_info = &mut self.light_info[self.lights_bound];
+            light_info.mode = 0; // 0 denotes directional
             light_info.position = transform.position;
             light_info.inverse_direction = -transform.forward();
             light_info.world_to_light = transform.local_to_world().inversed();
-            // TODO: Preexpose
+
+            // Preexpose the light based on the camera's exposure settings
             let light_color: kmath::Vec4 = directional_light.color.to_rgb_color(self.color_space);
             light_info.color_and_intensity = light_color.xyz()
                 * directional_light.intensity_illuminance
+                * self.exposure_scale_factor;
+
+            self.lights_bound += 1;
+        }
+    }
+    pub fn add_point_light(&mut self, transform: &Transform, point_light: &crate::PointLight) {
+        if self.lights_bound < MAX_BOUND_LIGHTS {
+            let light_info = &mut self.light_info[self.lights_bound];
+            light_info.mode = 1; // // 1 denotes point
+            light_info.position = transform.position;
+            light_info.inverse_direction = -transform.forward();
+            light_info.world_to_light = transform.local_to_world().inversed();
+
+            // Preexpose the light based on the camera's exposure settings
+            let light_color: kmath::Vec4 = point_light.color.to_rgb_color(self.color_space);
+            light_info.color_and_intensity = light_color.xyz()
+                * point_light.intensity_luminous_power
                 * self.exposure_scale_factor;
 
             self.lights_bound += 1;
