@@ -1,7 +1,7 @@
 struct LightInfo {
     vec3 position;
     float radius;
-    vec3 direction;
+    vec3 inverse_direction;
     float ambient;
     vec3 color_and_intensity;
     int mode;

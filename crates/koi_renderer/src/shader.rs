@@ -27,7 +27,7 @@ pub(crate) struct SceneInfoUniformBlock {
 pub(crate) struct LightInfo {
     pub position: kmath::Vec3,
     pub radius: f32,
-    pub direction: kmath::Vec3,
+    pub inverse_direction: kmath::Vec3,
     pub ambient: f32,
     pub color_and_intensity: kmath::Vec3,
     pub world_to_light: kmath::Mat4,
@@ -38,7 +38,7 @@ impl Default for LightInfo {
         Self {
             position: kmath::Vec3::ZERO,
             radius: 0.0,
-            direction: kmath::Vec3::ZERO,
+            inverse_direction: kmath::Vec3::ZERO,
             ambient: 0.0,
             color_and_intensity: kmath::Vec3::ZERO,
             world_to_light: kmath::Mat4::ZERO,

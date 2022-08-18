@@ -1,5 +1,3 @@
-use std::char::MAX;
-
 use crate::*;
 use kgraphics::{CommandBufferTrait, DataBuffer, GraphicsContextTrait, RenderPassTrait};
 use koi_assets::*;
@@ -60,6 +58,7 @@ impl Renderer {
                 color_space: self.color_space.clone(),
                 light_info: [LightInfo::default(); MAX_BOUND_LIGHTS],
                 lights_bound: 0,
+                exposure_scale_factor: 1.0 / camera.max_luminance_without_clipping(),
             }
         }
     }
@@ -93,6 +92,7 @@ pub struct RenderPass {
     color_space: kcolor::ColorSpace,
     light_info: [LightInfo; MAX_BOUND_LIGHTS],
     lights_bound: usize,
+    exposure_scale_factor: f32,
 }
 
 impl RenderPass {
@@ -104,12 +104,14 @@ impl RenderPass {
         if self.lights_bound < MAX_BOUND_LIGHTS {
             let light_info = &mut self.light_info[self.lights_bound];
             light_info.position = transform.position;
-            light_info.direction = transform.forward();
+            light_info.inverse_direction = -transform.forward();
             light_info.world_to_light = transform.local_to_world().inversed();
             // TODO: Preexpose
             let light_color: kmath::Vec4 = directional_light.color.to_rgb_color(self.color_space);
-            light_info.color_and_intensity =
-                light_color.xyz() * directional_light.intensity_illuminance;
+            light_info.color_and_intensity = light_color.xyz()
+                * directional_light.intensity_illuminance
+                * self.exposure_scale_factor;
+
             self.lights_bound += 1;
         }
     }
@@ -164,7 +166,7 @@ impl RenderPass {
             data_buffers_to_cleanup: &mut self.data_buffers_to_cleanup,
             data_buffers_to_cleanup1: &mut self.data_buffers_to_cleanup1,
             color_space: &self.color_space,
-            lights_bound: 0,
+            lights_bound: self.lights_bound,
             light_info: &mut self.light_info,
         };
         render_pass_executor.execute(&mut self.meshes_to_draw);

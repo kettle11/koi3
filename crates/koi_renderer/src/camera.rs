@@ -3,6 +3,9 @@ pub struct Camera {
     pub clear_color: Option<kcolor::Color>,
     pub output_rect: kmath::Box2,
     pub projection_mode: ProjectionMode,
+    /// How much light this camera will accept
+    /// https://en.wikipedia.org/wiki/Exposure_value
+    pub exposure_value_ev100: f32,
 }
 
 impl Default for Camera {
@@ -14,6 +17,7 @@ impl Default for Camera {
                 field_of_view_y_radians: (72.0_f32).to_radians(),
                 z_near: 0.3,
             },
+            exposure_value_ev100: 8.0,
         }
     }
 }
@@ -24,6 +28,12 @@ impl Camera {
         let (width, height) = self.output_rect.size().into();
         self.projection_mode
             .to_mat4((width * view_width) / (height * view_height))
+    }
+
+    /// The max luminance possible without clipping.
+    /// Is used as a scale factor to scale the scene.
+    pub fn max_luminance_without_clipping(&self) -> f32 {
+        2.0f32.powf(self.exposure_value_ev100) * 1.2
     }
 }
 
