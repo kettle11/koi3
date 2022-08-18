@@ -44,9 +44,10 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
         let extension = std::path::Path::new(&path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
-            .expect("Expected image file extension");
+            .expect("Expected image file extension")
+            .to_lowercase();
 
-        match extension {
+        match &*extension {
             #[cfg(feature = "png")]
             "png" => {
                 let bytes = match std::fs::read(&path) {
