@@ -9,10 +9,6 @@
 // This shader is largely based on Filament's implementation:
 // https://google.github.io/filament/Filament.md.html
 
-// TODO: 
-// Bitpack if a texture is assigned and conditionally avoid 
-// texture reads.
-
 // Inputs from the vertex shader
 in vec2 f_texture_coordinates;
 in vec3 f_world_position;  
@@ -20,12 +16,16 @@ in vec4 f_vertex_color;
 in vec3 f_normal;
 
 // Properties and textures
+uniform int p_textures_enabled;
+
 uniform vec4 p_base_color;
-// uniform sampler2D p_base_color_texture;
+uniform sampler2D p_base_color_texture;
 
 uniform float p_metallic;
+
+// This value is squared on the CPU side before being passed in.
 uniform float p_roughness;
-// uniform sampler2D p_metallic_roughness_texture;
+uniform sampler2D p_metallic_roughness_texture;
 
 // How much ambient light is visible to this model.
 uniform float p_ambient;
@@ -102,8 +102,7 @@ float Fd_Burley(float NoV, float NoL, float LoH, float roughness) {
 */
 
 
-// TODO: Make roughness perceptually linear by using Filament's square approach.
-vec3 BRDF(vec3 v, vec3 n, float roughness, vec3 f0, const LightInfo light) {
+vec3 BRDF(vec3 v, vec3 n, vec3 base_color, float roughness, vec3 f0, const LightInfo light) {
     vec3 l;
     float attenuation;
 
@@ -132,7 +131,7 @@ vec3 BRDF(vec3 v, vec3 n, float roughness, vec3 f0, const LightInfo light) {
     vec3 Fr = (D * V) * F;
 
     // diffuse BRDF
-    vec3 Fd = p_base_color.rgb * Fd_Lambert;
+    vec3 Fd = base_color.rgb * Fd_Lambert;
 
     vec3 color = Fr + Fd;
 
@@ -142,14 +141,30 @@ vec3 BRDF(vec3 v, vec3 n, float roughness, vec3 f0, const LightInfo light) {
 
 void main()
 {
+    // Only read from textures if they're set to enabled.
+    bool base_color_texture_enabled = (p_textures_enabled & 0x1) > 0;
+    bool metallic_roughness_texture_enabled = (p_textures_enabled & 0x2) > 0;
+
     vec3 n = normalize(f_normal);
     vec3 v = normalize(p_camera_position - f_world_position);
 
     vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance);
 
+    vec4 base_color = p_base_color * f_vertex_color;
+    if (base_color_texture_enabled) {
+        base_color *= texture(p_base_color_texture, f_texture_coordinates);
+    }
+
+    float roughness = p_roughness;
+    if (metallic_roughness_texture_enabled) {
+        vec4 metallic_roughness = texture(p_metallic_roughness_texture, f_texture_coordinates);
+        roughness *= metallic_roughness.g;
+    }
+    roughness = max(p_roughness, MIN_ROUGHNESS);
+
     color_out = vec4(0, 0, 0, 1);
     for (int i = 0; i < light_count; i++) {
-      color_out.rgb += BRDF(v, n, max(p_roughness, MIN_ROUGHNESS), f0, p_lights[i]);
+      color_out.rgb += BRDF(v, n, base_color.rgb, roughness, f0, p_lights[i]);
     }
 
     // Clamp because Macs *will* display values outside gamut. 

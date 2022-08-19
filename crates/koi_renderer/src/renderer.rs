@@ -231,12 +231,24 @@ impl<'a> RenderPassExecutor<'a> {
 
                 // Bind the material properties
                 {
+                    let mut p_textures_enabled: i32 = 0;
+                    if material.base_color_texture.is_some() {
+                        p_textures_enabled |= 1 << 0;
+                    }
+                    if material.metallic_roughness_texture.is_some() {
+                        p_textures_enabled |= 1 << 1;
+                    }
+
                     let sp = &shader.shader_render_properties;
+
+                    self.render_pass
+                        .set_int_property(&sp.p_textures_enabled, p_textures_enabled);
+
                     self.render_pass.set_vec4_property(
                         &sp.p_base_color,
                         material.base_color.to_rgb_color(*self.color_space).into(),
                     );
-                    let texture_unit = 0;
+                    let mut texture_unit = 0;
 
                     self.render_pass.set_texture_property(
                         &sp.p_base_color_texture,
@@ -246,7 +258,17 @@ impl<'a> RenderPassExecutor<'a> {
                         )),
                         texture_unit,
                     );
-                    //texture_unit += 1;
+                    texture_unit += 1;
+
+                    self.render_pass.set_texture_property(
+                        &sp.p_metallic_roughness_texture,
+                        Some(material.metallic_roughness_texture.as_ref().map_or_else(
+                            || &self.textures.get(&Texture::WHITE).0,
+                            |t| &self.textures.get(t).0,
+                        )),
+                        texture_unit,
+                    );
+                    // texture_unit += 1;
 
                     self.render_pass
                         .set_float_property(&sp.p_metallic, material.metallicness);
@@ -255,7 +277,7 @@ impl<'a> RenderPassExecutor<'a> {
                     // TODO: Investigate how this matches with other software.
                     self.render_pass.set_float_property(
                         &sp.p_roughness,
-                        material.roughness * material.roughness,
+                        material.perceptual_roughness * material.perceptual_roughness,
                     );
                     self.render_pass
                         .set_float_property(&sp.p_ambient, material.ambient_scale);

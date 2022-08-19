@@ -65,9 +65,13 @@ pub(crate) struct ShaderRenderProperties {
     //
     pub(crate) p_metallic: kgraphics::FloatProperty,
     pub(crate) p_roughness: kgraphics::FloatProperty,
+    pub(crate) p_metallic_roughness_texture: kgraphics::TextureProperty,
+    //
     pub(crate) p_ambient: kgraphics::FloatProperty,
     pub(crate) p_emissive: kgraphics::FloatProperty,
     pub(crate) p_reflectance: kgraphics::FloatProperty,
+    //
+    pub(crate) p_textures_enabled: kgraphics::IntProperty,
 }
 
 #[derive(Clone, Copy)]
@@ -150,11 +154,18 @@ impl crate::Renderer {
             p_base_color_texture: pipeline
                 .get_texture_property("p_base_color_texture")
                 .unwrap(),
+            //
             p_metallic: pipeline.get_float_property("p_metallic").unwrap(),
             p_roughness: pipeline.get_float_property("p_roughness").unwrap(),
+            p_metallic_roughness_texture: pipeline
+                .get_texture_property("p_metallic_roughness_texture")
+                .unwrap(),
+            //
             p_ambient: pipeline.get_float_property("p_ambient").unwrap(),
             p_emissive: pipeline.get_float_property("p_emissive").unwrap(),
             p_reflectance: pipeline.get_float_property("p_reflectance").unwrap(),
+            //
+            p_textures_enabled: pipeline.get_int_property("p_textures_enabled").unwrap(),
         };
         Ok(Shader {
             pipeline,
