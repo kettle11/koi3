@@ -148,23 +148,26 @@ void main()
     vec3 n = normalize(f_normal);
     vec3 v = normalize(p_camera_position - f_world_position);
 
-    vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance);
-
     vec4 base_color = p_base_color * f_vertex_color;
     if (base_color_texture_enabled) {
         base_color *= texture(p_base_color_texture, f_texture_coordinates);
     }
 
     float roughness = p_roughness;
+    float metallic = p_metallic;
     if (metallic_roughness_texture_enabled) {
         vec4 metallic_roughness = texture(p_metallic_roughness_texture, f_texture_coordinates);
+        metallic *= metallic_roughness.b;
         roughness *= metallic_roughness.g;
     }
     roughness = max(p_roughness, MIN_ROUGHNESS);
 
+    vec3 diffuse_color = (1.0 - metallic) * base_color.rgb;
+    vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance) * (1.0 - metallic) + base_color.rgb * metallic;
+
     color_out = vec4(0, 0, 0, 1);
     for (int i = 0; i < light_count; i++) {
-      color_out.rgb += BRDF(v, n, base_color.rgb, roughness, f0, p_lights[i]);
+      color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
     }
 
     // Clamp because Macs *will* display values outside gamut. 
