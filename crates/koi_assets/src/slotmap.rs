@@ -122,7 +122,7 @@ impl<T> SlotMap<T> {
     }
 
     pub fn remove(&mut self, handle: SlotMapHandle<T>) -> (T, Option<String>) {
-        assert!(self.handle_is_placeholder(&handle));
+        assert!(!self.handle_is_placeholder(&handle));
 
         let item_entry = &mut self.indirection_indices[handle.indirection_index];
         let item_index = item_entry.item_index;

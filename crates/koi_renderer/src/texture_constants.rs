@@ -16,11 +16,11 @@ impl AssetTrait for Texture {
     type Settings = kgraphics::TextureSettings;
 }
 
-pub struct TextureResult {
-    width: u32,
-    height: u32,
-    pixel_format: kgraphics::PixelFormat,
-    data: TextureData,
+pub(crate) struct TextureResult {
+    pub width: u32,
+    pub height: u32,
+    pub pixel_format: kgraphics::PixelFormat,
+    pub data: TextureData,
 }
 
 pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetStore<Texture> {
@@ -204,7 +204,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
     textures
 }
 
-pub fn new_texture_from_texture_load_data(
+fn new_texture_from_texture_load_data(
     graphics: &mut kgraphics::GraphicsContext,
     texture_load_data: TextureResult,
     texture_settings: kgraphics::TextureSettings,

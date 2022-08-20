@@ -5,6 +5,7 @@ use koi_resources::Resources;
 impl Shader {
     pub const UNLIT: Handle<Self> = Handle::from_index(0);
     pub const PHYSICALLY_BASED: Handle<Self> = Handle::from_index(1);
+    pub(crate) const EQUIRECTANGULAR_TO_CUBE_MAP: Handle<Self> = Handle::from_index(2);
 }
 
 pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resources) {
@@ -72,6 +73,20 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .unwrap();
 
     asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED);
+
+    let shader = renderer
+        .new_shader(
+            include_str!("shaders_glsl/equirectangular_to_cubemap.glsl"),
+            crate::ShaderSettings {
+                // Todo: is this necessary?
+                depth_test: kgraphics::DepthTest::LessOrEqual,
+                blending: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    asset_store.add_and_leak(shader, &Shader::EQUIRECTANGULAR_TO_CUBE_MAP);
 
     resources.add(asset_store);
 }

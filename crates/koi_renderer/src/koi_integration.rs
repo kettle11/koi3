@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    cube_map::{initialize_cube_maps, CubeMap},
+    *,
+};
 
 use kgraphics::GraphicsContextTrait;
 use koi_assets::*;
@@ -70,12 +73,17 @@ pub fn initialize_plugin(resources: &mut Resources) {
     resources.add(meshes);
     resources.add(textures);
 
+    initialize_cube_maps(resources);
+
     resources
         .get_mut::<koi_events::EventHandlers>()
         .add_handler(koi_events::Event::Draw, draw);
 }
 
 pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {
+    let mut cube_maps = resources.get::<AssetStore<CubeMap>>();
+    cube_maps.finalize_asset_loads(resources);
+
     let window = resources.get::<kapp::Window>();
     let mut meshes = resources.get::<AssetStore<Mesh>>();
     let mut materials = resources.get::<AssetStore<Material>>();
@@ -98,6 +106,15 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     materials.cleanup_dropped_assets();
     // TODO: Properly deallocate dropped programs.
     shaders.cleanup_dropped_assets();
+
+    #[allow(clippy::significant_drop_in_scrutinee)]
+    for texture in textures.get_dropped_assets() {
+        renderer.raw_graphics_context.delete_texture(texture.0);
+    }
+    #[allow(clippy::significant_drop_in_scrutinee)]
+    for cube_map in cube_maps.get_dropped_assets() {
+        renderer.raw_graphics_context.delete_cube_map(cube_map.0);
+    }
 
     let (window_width, window_height) = window.size();
     renderer

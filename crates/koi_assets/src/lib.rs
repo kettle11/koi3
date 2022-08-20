@@ -24,25 +24,28 @@ impl<Asset: AssetTrait> AssetStoreInner<Asset> {
         }
     }
 
+    pub fn cleanup_dropped_assets(&mut self) {
+        for _ in self.drop_channel_receiver.try_iter() {}
+    }
+
     /// Iterates over and removes all dropped assets without a handle pointing to them.
     pub fn get_dropped_assets(&mut self) -> impl Iterator<Item = Asset> + '_ {
         self.drop_channel_receiver
             .try_iter()
             .filter_map(|indirection_index| {
-                if indirection_index == 0 {
-                    // Placeholder, skip this one!
-                    return None;
-                }
-                // Todo: Also remove from path_to_slotmap if necessary.
-                println!("DROPPING ASSET: {:?}", std::any::type_name::<Asset>());
-                let (asset, path) = self
-                    .slot_map
-                    .remove(SlotMapHandle::from_index(indirection_index));
+                let slot_map_handle = SlotMapHandle::from_index(indirection_index);
+                if !self.slot_map.handle_is_placeholder(&slot_map_handle) {
+                    // Todo: Also remove from path_to_slotmap if necessary.
+                    println!("DROPPING ASSET: {:?}", std::any::type_name::<Asset>());
+                    let (asset, path) = self.slot_map.remove(slot_map_handle);
 
-                if let Some(path) = path {
-                    self.path_to_slotmap.remove(&path);
+                    if let Some(path) = path {
+                        self.path_to_slotmap.remove(&path);
+                    }
+                    Some(asset)
+                } else {
+                    None
                 }
-                Some(asset)
             })
     }
 
@@ -127,7 +130,7 @@ impl<Asset: AssetTrait> AssetStore<Asset> {
 
     /// Removes all assets without a handle pointing to them.
     pub fn cleanup_dropped_assets(&mut self) {
-        for _ in self.get_dropped_assets() {}
+        self.asset_store_inner.cleanup_dropped_assets();
     }
 
     /// Iterates over and removes all dropped assets without a handle pointing to them.

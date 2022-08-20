@@ -31,6 +31,9 @@ pub use texture::*;
 mod texture_constants;
 pub use texture_constants::*;
 
+mod cube_map;
+pub use cube_map::CubeMap;
+
 pub use kcolor::*;
 pub use kgraphics;
 
@@ -38,5 +41,4 @@ mod renderer;
 pub use renderer::*;
 
 mod shader_parser;
-
 mod spherical_harmonics;
