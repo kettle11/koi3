@@ -70,6 +70,7 @@ impl Renderer {
         materials: &AssetStore<Material>,
         shaders: &AssetStore<Shader>,
         textures: &AssetStore<Texture>,
+        cube_maps: &AssetStore<CubeMap>,
     ) {
         render_pass.execute(
             &mut self.raw_graphics_context,
@@ -77,6 +78,7 @@ impl Renderer {
             materials,
             shaders,
             textures,
+            cube_maps,
         );
         self.render_pass_pool.push(render_pass);
     }
@@ -152,6 +154,7 @@ impl RenderPass {
         materials: &AssetStore<Material>,
         shaders: &AssetStore<Shader>,
         textures: &AssetStore<Texture>,
+        cube_maps: &AssetStore<CubeMap>,
     ) {
         // Sort meshes by material, then mesh.
         // TODO: This could be made more efficient by sorting by pipeline as well.
@@ -173,6 +176,7 @@ impl RenderPass {
             materials,
             shaders,
             textures,
+            cube_maps,
             render_pass,
             local_to_world_matrices: &mut self.local_to_world_matrices,
             current_material_and_shader: None,
@@ -208,6 +212,7 @@ struct RenderPassExecutor<'a> {
     materials: &'a AssetStore<Material>,
     shaders: &'a AssetStore<Shader>,
     textures: &'a AssetStore<Texture>,
+    cube_maps: &'a AssetStore<CubeMap>,
     render_pass: kgraphics::RenderPass<'a>,
     local_to_world_matrices: &'a mut Vec<kmath::Mat4>,
     current_material_and_shader: Option<(&'a Material, &'a Shader)>,
@@ -268,7 +273,7 @@ impl<'a> RenderPassExecutor<'a> {
                         )),
                         texture_unit,
                     );
-                    // texture_unit += 1;
+                    texture_unit += 1;
 
                     self.render_pass
                         .set_float_property(&sp.p_metallic, material.metallicness);
@@ -285,6 +290,16 @@ impl<'a> RenderPassExecutor<'a> {
                         .set_float_property(&sp.p_emissive, material.emissiveness);
                     self.render_pass
                         .set_float_property(&sp.p_reflectance, material.reflectance);
+
+                    self.render_pass.set_cube_map_property(
+                        &sp.p_cube_map,
+                        Some(material.cube_map.as_ref().map_or_else(
+                            || &self.cube_maps.get(&Handle::PLACEHOLDER).0,
+                            |t| &self.cube_maps.get(t).0,
+                        )),
+                        texture_unit,
+                    );
+                    // texture_unit += 1;
                 }
 
                 // Bind the mesh for this group.
@@ -320,7 +335,6 @@ impl<'a> RenderPassExecutor<'a> {
                     .graphics
                     .new_data_buffer(self.local_to_world_matrices)
                     .unwrap();
-
                 self.render_pass.set_instance_attribute(
                     &shader_properties.local_to_world_instance_attribute,
                     Some(&local_to_world_data),
@@ -331,7 +345,6 @@ impl<'a> RenderPassExecutor<'a> {
                     self.local_to_world_matrices.len() as u32,
                 );
                 self.local_to_world_matrices.clear();
-
                 // This data buffer is deleted later after the commands are submitted.
                 self.data_buffers_to_cleanup.push(local_to_world_data);
             }

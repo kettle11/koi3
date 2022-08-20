@@ -72,6 +72,8 @@ pub(crate) struct ShaderRenderProperties {
     pub(crate) p_reflectance: kgraphics::FloatProperty,
     //
     pub(crate) p_textures_enabled: kgraphics::IntProperty,
+    // Optional extras:
+    pub(crate) p_cube_map: kgraphics::CubeMapProperty,
 }
 
 #[derive(Clone, Copy)]
@@ -166,6 +168,8 @@ impl crate::Renderer {
             p_reflectance: pipeline.get_float_property("p_reflectance").unwrap(),
             //
             p_textures_enabled: pipeline.get_int_property("p_textures_enabled").unwrap(),
+            //
+            p_cube_map: pipeline.get_cube_map_property("p_cube_map").unwrap(),
         };
         Ok(Shader {
             pipeline,

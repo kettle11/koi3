@@ -24,5 +24,7 @@ layout (std140) uniform ub0_scene_info
     uniform float __padding;
     uniform uint light_count;
 
+    // uniform vec3 irradiance_spherical_harmonics[9];
+    
     uniform LightInfo p_lights[100];
 }; 

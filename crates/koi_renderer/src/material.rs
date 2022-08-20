@@ -1,5 +1,8 @@
 use crate::*;
 
+// A useful chart for making materials:
+// https://google.github.io/filament/images/material_chart.jpg
+
 pub struct Material {
     pub base_color: Color,
     pub base_color_texture: Option<koi_assets::Handle<crate::Texture>>,
@@ -10,6 +13,8 @@ pub struct Material {
     pub ambient_scale: f32,
     pub emissiveness: f32,
     pub reflectance: f32,
+    //
+    pub cube_map: Option<koi_assets::Handle<crate::CubeMap>>,
 }
 
 impl Default for Material {
@@ -24,6 +29,8 @@ impl Default for Material {
             ambient_scale: 1.0,
             emissiveness: 0.0,
             reflectance: 0.5,
+            //
+            cube_map: None,
         }
     }
 }

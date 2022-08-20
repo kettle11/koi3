@@ -1,25 +1,17 @@
 use koi3::*;
 
-pub struct Running;
-
 fn main() {
-    App::default().setup_and_run(|world, resources| {
-        resources.add(Running);
+    App::default().setup_and_run(|world, _resources| {
         world.spawn((
             Transform::new().with_position(Vec3::Z * 2.0),
             Camera {
                 clear_color: Some(Color::ORANGE),
+                exposure: Exposure::EV100(6.0),
                 ..Default::default()
             },
         ));
 
-        world.spawn((
-            Transform::new(),
-            DirectionalLight {
-                intensity_illuminance: 1.0,
-                color: Color::RED,
-            },
-        ));
+        world.spawn((Transform::new(), DirectionalLight::OFFICE_LIGHTING));
 
         world.spawn((
             Transform::new(),

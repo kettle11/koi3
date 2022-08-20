@@ -227,6 +227,12 @@ impl<T> core::fmt::Debug for Handle<T> {
 }
 
 impl<T> Handle<T> {
+    pub const PLACEHOLDER: Self = Handle {
+        slot_map_handle: SlotMapHandle::from_index(0),
+        drop_handle: None,
+        phantom: std::marker::PhantomData,
+    };
+
     /// Construct a handle directly from an underlying index.
     /// This is used internally to set up global asset constants.
     pub const fn from_index(index: usize) -> Self {

@@ -56,7 +56,8 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
         })
     }
 
-    let placeholder = equirectangular_to_cubemap(resources, &[255, 255, 255], 1, 1);
+    let placeholder =
+        equirectangular_to_cubemap(resources, &[0; std::mem::size_of::<f32>() * 4], 1, 1);
 
     let cube_maps =
         koi_assets::AssetStore::new_with_load_functions(placeholder, load, finalize_load);
@@ -69,6 +70,9 @@ pub fn equirectangular_to_cubemap(
     width: u32,
     height: u32,
 ) -> CubeMap {
+    // TODO: Convert incoming data into correct color space.
+    // TODO: Consider normalizing incoming data to get it in expected range.
+
     // TODO: This function has a lot of manual memory management and it would be
     // good to figure out how to make this and other low-level-ish graphics code nicer.
     let mut renderer = resources.get::<Renderer>();
@@ -131,6 +135,7 @@ pub fn equirectangular_to_cubemap(
     let shader = shaders.get(&Shader::EQUIRECTANGULAR_TO_CUBE_MAP);
     let cube_mesh = meshes.get(&Mesh::CUBE_MAP_CUBE).gpu_mesh.as_ref().unwrap();
 
+    println!("DRAWING CUBE MAP");
     for (i, view) in views.iter().enumerate() {
         let mut raw_command_buffer = graphics.new_command_buffer();
         let face_texture = cube_map.get_face_texture(i);
@@ -138,7 +143,7 @@ pub fn equirectangular_to_cubemap(
         let framebuffer = graphics.new_framebuffer(Some(&face_texture), None, None);
 
         let mut render_pass = raw_command_buffer
-            .begin_render_pass_with_framebuffer(&framebuffer, Some((1.0, 0.0, 0.0, 1.0)));
+            .begin_render_pass_with_framebuffer(&framebuffer, Some((1.0, 1.0, 0.0, 1.0)));
         render_pass.set_viewport(0, 0, face_size as u32, face_size as u32);
         render_pass.set_pipeline(&shader.pipeline);
         render_pass.set_mat4_property(
@@ -170,6 +175,7 @@ pub fn equirectangular_to_cubemap(
         graphics.delete_framebuffer(framebuffer);
     }
 
+    println!("DONE RENDERING CUBE MAP");
     graphics.delete_texture(equirectangular_texture);
     CubeMap(cube_map)
 }

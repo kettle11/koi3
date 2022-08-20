@@ -151,7 +151,14 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             //todo
             render_pass.draw_mesh(gpu_mesh, material, transform);
         }
-        renderer.submit_render_pass(render_pass, &meshes, &materials, &shaders, &textures);
+        renderer.submit_render_pass(
+            render_pass,
+            &meshes,
+            &materials,
+            &shaders,
+            &textures,
+            &cube_maps,
+        );
     }
 
     if renderer.automatically_redraw {
