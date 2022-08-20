@@ -38,3 +38,5 @@ mod renderer;
 pub use renderer::*;
 
 mod shader_parser;
+
+mod spherical_harmonics;
