@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["png", "jpeg"]
+default = ["png", "jpeg", "hdri"]
 png = ["imagine", "bytemuck"]
 jpeg = ["jpeg-decoder"]
+hdri = ["hdrldr"]
 
 [dependencies]
 kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
@@ -24,4 +25,4 @@ kapp = {path = "../../../koi2/crates/kapp", default-features=false}
 imagine = {git="https://github.com/Lokathor/imagine", optional = true, features = ["png", "miniz_oxide"]}
 bytemuck = {version = "1.7.3", features = ["extern_crate_alloc"], optional = true}
 jpeg-decoder = {version = "0.1.20", default-features = false, optional = true}
-
+hdrldr = {version = "0.1.2", optional = true}
