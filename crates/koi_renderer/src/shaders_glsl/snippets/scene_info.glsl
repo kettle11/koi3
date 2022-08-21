@@ -1,3 +1,5 @@
+precision mediump float;
+
 struct LightInfo {
     vec3 position;
     float radius;
@@ -22,7 +24,7 @@ layout (std140) uniform ub0_scene_info
     uniform float p_fog_end;
 
     uniform float _padding;
-    uniform mediump uint light_count;
+    lowp uint light_count;
 
     // uniform vec3 irradiance_spherical_harmonics[9];
     

@@ -6,6 +6,8 @@
 
 #INCLUDE scene_info
 
+precision mediump float;
+
 // This shader is largely based on Filament's implementation:
 // https://google.github.io/filament/Filament.md.html
 
@@ -166,8 +168,10 @@ void main()
     vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance) * (1.0 - metallic) + base_color.rgb * metallic;
 
     color_out = vec4(0, 0, 0, 1);
-    for (uint i = 0; i < light_count; i++) {
-      color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
+    int count = int(light_count);
+    
+    for (int i = 0; i < 10; i++) {
+        color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
     }
 
     // Clamp because Macs *will* display values outside gamut. 
