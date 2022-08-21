@@ -156,6 +156,17 @@ impl RenderPass {
         textures: &AssetStore<Texture>,
         cube_maps: &AssetStore<CubeMap>,
     ) {
+        // Cleanup last frame's data buffers.
+        // These are cleaned up here for now because if a buffer is deleted it can
+        // leave an attribute unbound which makes OpenGL grumpy and refuse to render properly.
+        for data_buffer in self.data_buffers_to_cleanup.drain(..) {
+            graphics.delete_data_buffer(data_buffer);
+        }
+
+        for data_buffer in self.data_buffers_to_cleanup1.drain(..) {
+            graphics.delete_data_buffer(data_buffer);
+        }
+
         // Sort meshes by material, then mesh.
         // TODO: This could be made more efficient by sorting by pipeline as well.
         // As-is small material variants will incur a cost.
@@ -192,17 +203,10 @@ impl RenderPass {
             lights_bound: self.lights_bound,
             light_info: &mut self.light_info,
         };
+
         render_pass_executor.execute(&mut self.meshes_to_draw);
         command_buffer.present();
         graphics.commit_command_buffer(command_buffer);
-
-        for data_buffer in self.data_buffers_to_cleanup.drain(..) {
-            graphics.delete_data_buffer(data_buffer);
-        }
-
-        for data_buffer in self.data_buffers_to_cleanup1.drain(..) {
-            graphics.delete_data_buffer(data_buffer);
-        }
     }
 }
 
@@ -339,6 +343,7 @@ impl<'a> RenderPassExecutor<'a> {
                     .graphics
                     .new_data_buffer(self.local_to_world_matrices)
                     .unwrap();
+
                 self.render_pass.set_instance_attribute(
                     &shader_properties.local_to_world_instance_attribute,
                     Some(&local_to_world_data),
@@ -351,6 +356,7 @@ impl<'a> RenderPassExecutor<'a> {
                 );
                 self.local_to_world_matrices.clear();
                 // This data buffer is deleted later after the commands are submitted.
+
                 self.data_buffers_to_cleanup.push(local_to_world_data);
             }
         }

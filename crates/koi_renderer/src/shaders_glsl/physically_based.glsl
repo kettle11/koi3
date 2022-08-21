@@ -141,7 +141,6 @@ vec3 BRDF(vec3 v, vec3 n, vec3 base_color, float roughness, vec3 f0, const Light
 
 void main()
 {
-    /*
     // Only read from textures if they're set to enabled.
     bool base_color_texture_enabled = (p_textures_enabled & 0x1) > 0;
     bool metallic_roughness_texture_enabled = (p_textures_enabled & 0x2) > 0;
@@ -173,6 +172,4 @@ void main()
 
     // Clamp because Macs *will* display values outside gamut. 
     color_out = clamp(color_out, 0.0, 1.0);
-    */
-    color_out = vec4(1.0, 0.0, 0.0, 1.0);
 }

@@ -183,10 +183,10 @@ pub fn equirectangular_to_cubemap(
             None,
         );
 
-        // render_pass.draw_triangles(
-        //     cube_mesh.index_end - cube_mesh.index_start,
-        //     &cube_mesh.index_buffer,
-        // );
+        render_pass.draw_triangles(
+            cube_mesh.index_end - cube_mesh.index_start,
+            &cube_mesh.index_buffer,
+        );
         graphics.commit_command_buffer(raw_command_buffer);
         graphics.delete_framebuffer(framebuffer);
     }
