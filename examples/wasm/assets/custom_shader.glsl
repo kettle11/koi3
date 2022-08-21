@@ -72,13 +72,11 @@ float V_SmithGGXCorrelated(float roughness, float NoV, float NoL) {
 }
 */
 
-
 /* 
 vec3 F_Schlick(float u, vec3 f0, float f90) {
     return f0 + (vec3(f90) - f0) * pow(1.0 - u, 5.0);
 }
 */
-
 
 const float Fd_Lambert = 1.0 / PI;
 
@@ -139,9 +137,25 @@ vec3 BRDF(vec3 v, vec3 n, vec3 base_color, float roughness, vec3 f0, const Light
     return color * NoL * light.color_and_intensity * attenuation;
 }
 
+/*
+vec3 spherical_harmonic_irradiance(vec3 n) {
+    // uniform vec3 sphericalHarmonics[9]
+    // We can use only the first 2 bands for better performance
+    return
+          spherical_harmonics_irradiance[0]
+        + spherical_harmonics_irradiance[1] * (n.y)
+        + spherical_harmonics_irradiance[2] * (n.z)
+        + spherical_harmonics_irradiance[3] * (n.x)
+        + spherical_harmonics_irradiance[4] * (n.y * n.x)
+        + spherical_harmonics_irradiance[5] * (n.y * n.z)
+        + spherical_harmonics_irradiance[6] * (3.0 * n.z * n.z - 1.0)
+        + spherical_harmonics_irradiance[7] * (n.z * n.x)
+        + spherical_harmonics_irradiance[8] * (n.x * n.x - n.y * n.y);
+}
+*/
+
 void main()
 {
-    /*
     // Only read from textures if they're set to enabled.
     bool base_color_texture_enabled = (p_textures_enabled & 0x1) > 0;
     bool metallic_roughness_texture_enabled = (p_textures_enabled & 0x2) > 0;
@@ -149,30 +163,25 @@ void main()
     vec3 n = normalize(f_normal);
     vec3 v = normalize(p_camera_position - f_world_position);
 
+    vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance);
+
     vec4 base_color = p_base_color * f_vertex_color;
     if (base_color_texture_enabled) {
         base_color *= texture(p_base_color_texture, f_texture_coordinates);
     }
 
     float roughness = p_roughness;
-    float metallic = p_metallic;
     if (metallic_roughness_texture_enabled) {
         vec4 metallic_roughness = texture(p_metallic_roughness_texture, f_texture_coordinates);
-        metallic *= metallic_roughness.b;
         roughness *= metallic_roughness.g;
     }
     roughness = max(p_roughness, MIN_ROUGHNESS);
 
-    vec3 diffuse_color = (1.0 - metallic) * base_color.rgb;
-    vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance) * (1.0 - metallic) + base_color.rgb * metallic;
-
     color_out = vec4(0, 0, 0, 1);
-    for (uint i = 0; i < light_count; i++) {
-      color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
+    for (int i = 0; i < light_count; i++) {
+      color_out.rgb += BRDF(v, n, base_color.rgb, roughness, f0, p_lights[i]);
     }
 
     // Clamp because Macs *will* display values outside gamut. 
     color_out = clamp(color_out, 0.0, 1.0);
-    */
-    color_out = vec4(1.0, 0.0, 0.0, 1.0);
 }

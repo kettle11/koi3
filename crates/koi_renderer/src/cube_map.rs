@@ -22,13 +22,9 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
         match &*extension {
             #[cfg(feature = "hdri")]
             "hdr" => {
-                let bytes = match std::fs::read(&path) {
-                    Ok(b) => b,
-                    Err(_) => {
-                        println!("Could not open path: {:?}", path);
-                        None?
-                    }
-                };
+                let bytes = koi_fetch::fetch_bytes(&path)
+                    .await
+                    .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
                 Some(hdri_data_from_bytes(&bytes)?)
             }
             _ => {
@@ -144,6 +140,8 @@ pub fn equirectangular_to_cubemap(
 
         let mut render_pass = raw_command_buffer
             .begin_render_pass_with_framebuffer(&framebuffer, Some((1.0, 1.0, 0.0, 1.0)));
+
+        render_pass.set_uniform_block(&kgraphics::UniformBlock::<()>::from_location(0), None);
         render_pass.set_viewport(0, 0, face_size as u32, face_size as u32);
         render_pass.set_pipeline(&shader.pipeline);
         render_pass.set_mat4_property(
@@ -167,10 +165,28 @@ pub fn equirectangular_to_cubemap(
             &shader.pipeline.get_vertex_attribute("a_position").unwrap(),
             Some(&cube_mesh.positions),
         );
-        render_pass.draw_triangles(
-            cube_mesh.index_end - cube_mesh.index_start,
-            &cube_mesh.index_buffer,
+
+        render_pass.set_vertex_attribute::<Vec2>(
+            &shader
+                .pipeline
+                .get_vertex_attribute("texture_coordinate_attributes")
+                .unwrap(),
+            None,
         );
+        render_pass.set_vertex_attribute::<Vec3>(
+            &shader.pipeline.get_vertex_attribute("a_normal").unwrap(),
+            None,
+        );
+
+        render_pass.set_vertex_attribute::<Vec4>(
+            &shader.pipeline.get_vertex_attribute("a_color").unwrap(),
+            None,
+        );
+
+        // render_pass.draw_triangles(
+        //     cube_mesh.index_end - cube_mesh.index_start,
+        //     &cube_mesh.index_buffer,
+        // );
         graphics.commit_command_buffer(raw_command_buffer);
         graphics.delete_framebuffer(framebuffer);
     }

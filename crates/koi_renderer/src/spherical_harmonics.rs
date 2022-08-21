@@ -1,8 +1,8 @@
-pub fn spherical_harmonics_from_cubemap<const CHNANELS: usize>(
-    faces: &[Vec<kmath::Vector<f32, CHNANELS>>],
+pub fn spherical_harmonics_from_cubemap<const CHANNELS: usize>(
+    faces: &[Vec<kmath::Vector<f32, CHANNELS>>],
     face_dimensions: usize,
-) -> [kmath::Vector<f32, CHNANELS>; 9] {
-    let mut coefficients = [kmath::Vector::<f32, CHNANELS>::ZERO; 9];
+) -> [kmath::Vector<f32, CHANNELS>; 9] {
+    let mut coefficients = [kmath::Vector::<f32, CHANNELS>::ZERO; 9];
     for (index, face) in faces.iter().enumerate() {
         for (data_index, sample) in face.iter().enumerate() {
             let y = data_index / face_dimensions;
@@ -29,8 +29,8 @@ pub fn spherical_harmonics_from_cubemap<const CHNANELS: usize>(
     coefficients
 }
 
-pub fn prepare_spherical_harmonics_for_shader<const CHNANELS: usize>(
-    coefficients: &mut [kmath::Vector<f32, CHNANELS>; 9],
+pub fn prepare_spherical_harmonics_for_shader<const CHANNELS: usize>(
+    coefficients: &mut [kmath::Vector<f32, CHANNELS>; 9],
 ) {
     *coefficients = convolve_with_cos_irradiance(*coefficients);
     for i in 0..9 {
@@ -93,9 +93,9 @@ fn reconstruct_from_spherical_harmonic_coefficients(
     total
 }
 
-fn convolve_with_cos_irradiance<const CHNANELS: usize>(
-    coefficients: [kmath::Vector<f32, CHNANELS>; 9],
-) -> [kmath::Vector<f32, CHNANELS>; 9] {
+fn convolve_with_cos_irradiance<const CHANNELS: usize>(
+    coefficients: [kmath::Vector<f32, CHANNELS>; 9],
+) -> [kmath::Vector<f32, CHANNELS>; 9] {
     // Based upon "An Efficient Representation for Irradiance Environment Maps"
     // https://cseweb.ucsd.edu/~ravir/papers/envmap/envmap.pdf
     // But the explanation on this page is what made it click for me:

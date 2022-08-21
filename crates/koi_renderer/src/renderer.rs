@@ -229,6 +229,10 @@ struct RenderPassExecutor<'a> {
 
 impl<'a> RenderPassExecutor<'a> {
     fn render_group(&mut self) {
+        if self.local_to_world_matrices.is_empty() {
+            return;
+        }
+
         if let Some(gpu_mesh) = self.current_gpu_mesh {
             if let Some((material, shader)) = self.current_material_and_shader {
                 self.render_pass.set_pipeline(&shader.pipeline);
@@ -339,6 +343,7 @@ impl<'a> RenderPassExecutor<'a> {
                     &shader_properties.local_to_world_instance_attribute,
                     Some(&local_to_world_data),
                 );
+
                 self.render_pass.draw_triangles_instanced(
                     gpu_mesh.index_end - gpu_mesh.index_start,
                     &gpu_mesh.index_buffer,
@@ -363,7 +368,7 @@ impl<'a> RenderPassExecutor<'a> {
                     p_dither_scale: 1.0,
                     p_fog_start: 0.0,
                     p_fog_end: 100.0,
-                    __padding: 0.0,
+                    _padding: 0.0,
                     light_count: self.lights_bound as _,
                     // TODO: Don't do a clone here
                     lights: self.light_info.clone(),

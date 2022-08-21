@@ -34,13 +34,11 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .unwrap();
 
     async fn load_shader(path: String, _settings: ShaderSettings) -> Option<String> {
-        match std::fs::read_to_string(&path) {
-            Ok(shader_string) => Some(shader_string),
-            Err(_) => {
-                println!("Could not load shader from path: {:?}", path);
-                None
-            }
-        }
+        let bytes = koi_fetch::fetch_bytes(&path)
+            .await
+            .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
+
+        Some(std::str::from_utf8(&bytes).ok()?.to_owned())
     }
     fn finalize_shader_load(
         source: String,

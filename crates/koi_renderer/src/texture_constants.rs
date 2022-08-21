@@ -50,13 +50,10 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
         match &*extension {
             #[cfg(feature = "png")]
             "png" => {
-                let bytes = match std::fs::read(&path) {
-                    Ok(b) => b,
-                    Err(_) => {
-                        println!("Could not open path: {:?}", path);
-                        None?
-                    }
-                };
+                let bytes = koi_fetch::fetch_bytes(&path)
+                    .await
+                    .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
+
                 let imagine::ImageRGBA8 {
                     width,
                     height,
@@ -95,13 +92,9 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                         .collect()
                 }
 
-                let bytes = match std::fs::read(&path) {
-                    Ok(b) => b,
-                    Err(_) => {
-                        println!("Could not open path: {:?}", path);
-                        None?
-                    }
-                };
+                let bytes = koi_fetch::fetch_bytes(&path)
+                    .await
+                    .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
                 let reader = std::io::BufReader::new(&*bytes);
 
                 let mut decoder = jpeg_decoder::Decoder::new(reader);
@@ -220,20 +213,22 @@ fn new_texture_from_texture_load_data(
             )
             .unwrap(),
         #[cfg(target_arch = "wasm32")]
-        TextureData::JSObject(data) => Texture(
-            graphics
-                .context
-                .new_texture_from_js_object(
-                    texture_load_data.width,
-                    texture_load_data.height,
-                    &data,
-                    texture_load_data.pixel_format,
-                    texture_settings,
-                )
-                .unwrap(),
-        ),
+        TextureData::JSObject(data) => graphics
+            .new_texture_from_js_object(
+                texture_load_data.width,
+                texture_load_data.height,
+                &data,
+                texture_load_data.pixel_format,
+                texture_settings,
+            )
+            .unwrap(),
     })
 }
+
+// Todo: This shouldn't be necessary.
+// kwasm::JSObjectDynamic should instead be wrapped in a `NotSyncSend`, but `NotSyncSend` isn't its own crate yet.
+unsafe impl Send for TextureData {}
+unsafe impl Sync for TextureData {}
 
 pub enum TextureData {
     Bytes(Box<dyn AsU8Array>),

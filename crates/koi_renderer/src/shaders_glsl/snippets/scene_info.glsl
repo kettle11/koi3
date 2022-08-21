@@ -4,7 +4,7 @@ struct LightInfo {
     vec3 inverse_direction;
     float ambient;
     vec3 color_and_intensity;
-    int mode;
+    lowp int mode;
     mat4 world_to_light; 
 };
 
@@ -21,8 +21,8 @@ layout (std140) uniform ub0_scene_info
     uniform float p_fog_start;
     uniform float p_fog_end;
 
-    uniform float __padding;
-    uniform uint light_count;
+    uniform float _padding;
+    uniform mediump uint light_count;
 
     // uniform vec3 irradiance_spherical_harmonics[9];
     
