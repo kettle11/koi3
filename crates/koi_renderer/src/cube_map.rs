@@ -1,3 +1,4 @@
+use crate::spherical_harmonics::spherical_harmonics_from_cubemap;
 use crate::{Mesh, Renderer, Shader};
 use kgraphics::{CommandBufferTrait, GraphicsContextTrait, TextureSettings};
 use kgraphics::{PipelineTrait, RenderPassTrait};
@@ -63,38 +64,62 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
 pub fn equirectangular_to_cubemap(
     resources: &Resources,
     equirectangular_texture: &[u8],
-    width: u32,
-    height: u32,
+    equirectangular_width: u32,
+    equirectangular_height: u32,
 ) -> CubeMap {
     // TODO: Convert incoming data into correct color space.
     // TODO: Consider normalizing incoming data to get it in expected range.
 
-    // TODO: This function has a lot of manual memory management and it would be
-    // good to figure out how to make this and other low-level-ish graphics code nicer.
     let mut renderer = resources.get::<Renderer>();
-    let meshes = resources.get::<AssetStore<Mesh>>();
-    let shaders = resources.get::<AssetStore<Shader>>();
 
-    let projection: Mat4 =
-        kmath::projection_matrices::perspective_gl(90.0_f32.to_radians(), 1.0, 0.1, 10.);
-
-    // I assume the -Y here is to flip the image as well.
-    let views = [
-        Mat4::looking_at(Vec3::ZERO, Vec3::X, -Vec3::Y),
-        Mat4::looking_at(Vec3::ZERO, -Vec3::X, -Vec3::Y),
-        Mat4::looking_at(Vec3::ZERO, Vec3::Y, Vec3::Z),
-        Mat4::looking_at(Vec3::ZERO, -Vec3::Y, -Vec3::Z),
-        Mat4::looking_at(Vec3::ZERO, Vec3::Z, -Vec3::Y),
-        Mat4::looking_at(Vec3::ZERO, -Vec3::Z, -Vec3::Y),
-    ];
-
+    let face_size = 512
+        .min(equirectangular_width as usize)
+        .min(equirectangular_height as usize);
     let graphics = &mut renderer.raw_graphics_context;
 
-    let equirectangular_texture = graphics
-        .new_texture(
-            width as _,
-            height as _,
-            Some(equirectangular_texture),
+    assert_eq!(
+        equirectangular_texture.len(),
+        (equirectangular_width * equirectangular_height) as usize * std::mem::size_of::<Vec4>()
+    );
+    let equirectangular_data: &[Vec4] = unsafe { std::mem::transmute(equirectangular_texture) };
+
+    // TODO: Do this off the main thread.
+    let output_faces = equirectangular_to_cubemap_cpu(
+        equirectangular_data,
+        equirectangular_width as _,
+        equirectangular_height as _,
+        face_size,
+    );
+
+    let output_faces = [
+        output_faces[0].as_slice(),
+        output_faces[1].as_slice(),
+        output_faces[2].as_slice(),
+        output_faces[3].as_slice(),
+        output_faces[4].as_slice(),
+        output_faces[5].as_slice(),
+    ];
+
+    let spherical_harmonics = spherical_harmonics_from_cubemap(&output_faces, face_size);
+
+    println!("SPHERICAL HARMONICS: {:?}", spherical_harmonics);
+    
+    let output_faces = unsafe {
+        [
+            slice_to_bytes(output_faces[0]),
+            slice_to_bytes(output_faces[1]),
+            slice_to_bytes(output_faces[2]),
+            slice_to_bytes(output_faces[3]),
+            slice_to_bytes(output_faces[4]),
+            slice_to_bytes(output_faces[5]),
+        ]
+    };
+
+    let cube_map = graphics
+        .new_cube_map(
+            face_size as _,
+            face_size as _,
+            Some(output_faces),
             kgraphics::PixelFormat::RGBA32F,
             TextureSettings {
                 wrapping_horizontal: kgraphics::WrappingMode::ClampToEdge,
@@ -108,91 +133,6 @@ pub fn equirectangular_to_cubemap(
         )
         .unwrap();
 
-    let face_size = 512;
-    // Hardcode the cube map's size for now.
-    let cube_map = graphics
-        .new_cube_map(
-            face_size,
-            face_size,
-            None,
-            kgraphics::PixelFormat::RGBA16F,
-            TextureSettings {
-                wrapping_horizontal: kgraphics::WrappingMode::ClampToEdge,
-                wrapping_vertical: kgraphics::WrappingMode::ClampToEdge,
-                minification_filter: kgraphics::FilterMode::Linear,
-                magnification_filter: kgraphics::FilterMode::Linear,
-                generate_mipmaps: false,
-                srgb: false,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-    let shader = shaders.get(&Shader::EQUIRECTANGULAR_TO_CUBE_MAP);
-    let cube_mesh = meshes.get(&Mesh::CUBE_MAP_CUBE).gpu_mesh.as_ref().unwrap();
-
-    println!("DRAWING CUBE MAP");
-    for (i, view) in views.iter().enumerate() {
-        let mut raw_command_buffer = graphics.new_command_buffer();
-        let face_texture = cube_map.get_face_texture(i);
-
-        let framebuffer = graphics.new_framebuffer(Some(&face_texture), None, None);
-
-        let mut render_pass = raw_command_buffer
-            .begin_render_pass_with_framebuffer(&framebuffer, Some((1.0, 1.0, 0.0, 1.0)));
-
-        render_pass.set_uniform_block(&kgraphics::UniformBlock::<()>::from_location(0), None);
-        render_pass.set_viewport(0, 0, face_size as u32, face_size as u32);
-        render_pass.set_pipeline(&shader.pipeline);
-        render_pass.set_mat4_property(
-            &shader.pipeline.get_mat4_property("p_projection").unwrap(),
-            projection.as_array(),
-        );
-        render_pass.set_mat4_property(
-            &shader.pipeline.get_mat4_property("p_view").unwrap(),
-            view.as_array(),
-        );
-
-        render_pass.set_texture_property(
-            &shader
-                .pipeline
-                .get_texture_property("p_equirectangular_texture")
-                .unwrap(),
-            Some(&equirectangular_texture),
-            0,
-        );
-        render_pass.set_vertex_attribute(
-            &shader.pipeline.get_vertex_attribute("a_position").unwrap(),
-            Some(&cube_mesh.positions),
-        );
-
-        render_pass.set_vertex_attribute::<Vec2>(
-            &shader
-                .pipeline
-                .get_vertex_attribute("texture_coordinate_attributes")
-                .unwrap(),
-            None,
-        );
-        render_pass.set_vertex_attribute::<Vec3>(
-            &shader.pipeline.get_vertex_attribute("a_normal").unwrap(),
-            None,
-        );
-
-        render_pass.set_vertex_attribute::<Vec4>(
-            &shader.pipeline.get_vertex_attribute("a_color").unwrap(),
-            None,
-        );
-
-        render_pass.draw_triangles(
-            cube_mesh.index_end - cube_mesh.index_start,
-            &cube_mesh.index_buffer,
-        );
-        graphics.commit_command_buffer(raw_command_buffer);
-        graphics.delete_framebuffer(framebuffer);
-    }
-
-    println!("DONE RENDERING CUBE MAP");
-    graphics.delete_texture(equirectangular_texture);
     CubeMap(cube_map)
 }
 
@@ -215,4 +155,97 @@ fn hdri_data_from_bytes(bytes: &[u8]) -> Option<crate::TextureResult> {
         height: image.height as u32,
         pixel_format: kgraphics::PixelFormat::RGBA32F,
     })
+}
+
+pub fn equirectangular_to_cubemap_cpu(
+    equirectangular_data: &[Vec4],
+    equirectangular_width: usize,
+    equirectangular_height: usize,
+    output_dim: usize,
+) -> [Vec<Vec4>; 6] {
+    let equirectangular_width_f32 = equirectangular_width as f32;
+    let equirectangular_height_f32 = equirectangular_height as f32;
+
+    const F_1_PI: f32 = 0.318309886183790671537767526745028724;
+
+    /*
+
+
+        auto toRectilinear = [width, height](float3 s) -> float2 {
+            float xf = std::atan2(s.x, s.z) * F_1_PI;   // range [-1.0, 1.0]
+            float yf = std::asin(s.y) * (2 * F_1_PI);   // range [-1.0, 1.0]
+            xf = (xf + 1.0f) * 0.5f * (width  - 1);        // range [0, width [
+            yf = (1.0f - yf) * 0.5f * (height - 1);        // range [0, height[
+            return float2(xf, yf);
+        };
+    */
+    let mut data_out = [
+        vec![Vec4::ZERO; output_dim * output_dim],
+        vec![Vec4::ZERO; output_dim * output_dim],
+        vec![Vec4::ZERO; output_dim * output_dim],
+        vec![Vec4::ZERO; output_dim * output_dim],
+        vec![Vec4::ZERO; output_dim * output_dim],
+        vec![Vec4::ZERO; output_dim * output_dim],
+    ];
+
+    println!("LEN: {:?}", output_dim * output_dim);
+
+    fn to_rectilinear(width: f32, height: f32, s: Vec3) -> Vec2 {
+        let xf = s.x.atan2(s.z) * F_1_PI; // range [-1.0, 1.0]
+        let yf = s.y.asin() * (2.0 * F_1_PI); // range [-1.0, 1.0]
+        let xf = (xf + 1.0) * 0.5 * (width - 1.0); // range [0, width]
+        let yf = (1.0 - yf) * 0.5 * (height - 1.0); // range [0, height]
+        return Vec2::new(xf, yf);
+    }
+
+    for (face_index, data_out) in data_out.iter_mut().enumerate() {
+        for (i, pixel) in data_out.iter_mut().enumerate() {
+            let x = i % output_dim;
+            let y = i / output_dim;
+
+            // Get a direction for this cube map pixel
+            let direction = get_direction_for(face_index, x as f32, y as f32, output_dim as f32);
+
+            // Convert to sample in equirectangular
+            let sample_pos = to_rectilinear(
+                equirectangular_width_f32,
+                equirectangular_height_f32,
+                direction,
+            );
+
+            let sample = equirectangular_data
+                [sample_pos.y as usize * equirectangular_width + sample_pos.x as usize];
+
+            // TODO: Take multiple samples
+            *pixel = sample;
+        }
+    }
+    data_out
+}
+
+pub(crate) fn get_direction_for(index: usize, x: f32, y: f32, dimensions: f32) -> kmath::Vec3 {
+    let x = x + 0.5;
+    let y = y + 0.5;
+    let m_scale = 2.0 / dimensions;
+    // map [0, dim] to [-1,1] with (-1,-1) at bottom left
+    let cx: f32 = (x as f32 * m_scale) - 1.0;
+    let cy: f32 = 1.0 - (y as f32 * m_scale);
+
+    let l: f32 = (cx * cx + cy * cy + 1.0).sqrt();
+    let dir = match index {
+        0 => kmath::Vec3::new(1.0, cy, -cx),
+        1 => kmath::Vec3::new(-1.0, cy, cx),
+        2 => kmath::Vec3::new(cx, 1.0, -cy),
+        3 => kmath::Vec3::new(cx, -1.0, cy),
+        4 => kmath::Vec3::new(cx, cy, 1.0),
+        5 => kmath::Vec3::new(-cx, cy, -1.0),
+        _ => unreachable!(),
+    };
+    dir * (1.0 / l)
+}
+
+unsafe fn slice_to_bytes<T>(t: &[T]) -> &[u8] {
+    let ptr = t.as_ptr() as *const u8;
+    let size = std::mem::size_of::<T>() * t.len();
+    std::slice::from_raw_parts(ptr, size)
 }

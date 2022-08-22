@@ -429,7 +429,7 @@ pub fn ring(
 ) -> MeshData {
     let mut tube_points = Vec::with_capacity(tube_resolution);
     let mut angle: f32 = 0.;
-    let increment = (2.0 * std::f32::consts::PI) / (tube_resolution) as f32;
+    let increment = (2.0 * core::f32::consts::PI) / (tube_resolution) as f32;
 
     for _ in 0..tube_resolution {
         let (sin, cos) = angle.sin_cos();
@@ -451,7 +451,7 @@ fn revolve(polygon: &[Vec3], radius: f32, resolution: usize) -> MeshData {
     let mut uvs = Vec::with_capacity(len);
     let mut indices = Vec::with_capacity(resolution * 3 * 2 * polygon_len);
 
-    let increment = -(2.0 * std::f32::consts::PI) / (resolution) as f32;
+    let increment = -(2.0 * core::f32::consts::PI) / (resolution) as f32;
     let mut angle: f32 = 0.;
 
     let uv_increment_x = 1.0 / resolution as f32;
@@ -514,7 +514,7 @@ pub fn cone(radius: f32, height: f32, resolution: usize) -> MeshData {
     let mut indices: Vec<[u32; 3]> = Vec::with_capacity(resolution * 3);
 
     let mut angle: f32 = 0.;
-    let increment = (2.0 * std::f32::consts::PI) / (resolution) as f32;
+    let increment = (2.0 * core::f32::consts::PI) / (resolution) as f32;
 
     // The top point of the cone
     positions.push(Vec3::Y * height);
@@ -553,7 +553,7 @@ pub fn cone(radius: f32, height: f32, resolution: usize) -> MeshData {
 }
 
 pub fn uv_sphere(horizontal_segments: u32, vertical_segments: u32, uv_scale: Vec2) -> MeshData {
-    use std::f32::consts::PI;
+    use core::f32::consts::PI;
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
@@ -618,7 +618,7 @@ pub fn cylinder(start: Vec3, end: Vec3, resolution: u32, radius: f32) -> MeshDat
     let right = dir.cross(other_dir).normalized() * radius;
     let forward = dir.cross(right).normalized() * radius;
 
-    let increment = std::f32::consts::PI * 2.0 / resolution as f32;
+    let increment = core::f32::consts::PI * 2.0 / resolution as f32;
     let mut current_angle = 0.;
 
     let start_index = positions.len() as u32;

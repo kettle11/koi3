@@ -76,7 +76,7 @@ pub fn new_gpu_mesh(
 
     // Flatten the index buffer
     let index_buffer: &[u32] = unsafe {
-        std::slice::from_raw_parts(
+        core::slice::from_raw_parts(
             mesh_data.indices.as_ptr() as *const u32,
             mesh_data.indices.len() * 3,
         )

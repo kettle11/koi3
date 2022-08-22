@@ -94,10 +94,10 @@ impl App {
         // This funky memory-swap approach allows `EventHandlers` to be part of `Resources`
         let event_handlers = self.resources.get_mut::<EventHandlers>();
         let mut temp_event_handlers = EventHandlers::new();
-        std::mem::swap(&mut temp_event_handlers, event_handlers);
+        core::mem::swap(&mut temp_event_handlers, event_handlers);
         temp_event_handlers.handle_event(&event, &mut self.world, &mut self.resources);
         let event_handlers = self.resources.get_mut::<EventHandlers>();
-        std::mem::swap(&mut temp_event_handlers, event_handlers);
+        core::mem::swap(&mut temp_event_handlers, event_handlers);
     }
 
     /// This is called automatically when using `run`.

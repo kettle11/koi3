@@ -168,9 +168,10 @@ void main()
     vec3 f0 = 0.16 * vec3(p_reflectance * p_reflectance) * (1.0 - metallic) + base_color.rgb * metallic;
 
     color_out = vec4(0, 0, 0, 1);
+
     int count = int(light_count);
-    
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 9; i++) {
+        if (i == count) break;
         color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
     }
 

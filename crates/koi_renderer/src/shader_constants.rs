@@ -38,7 +38,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
             .await
             .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
 
-        Some(std::str::from_utf8(&bytes).ok()?.to_owned())
+        Some(core::str::from_utf8(&bytes).ok()?.to_owned())
     }
     fn finalize_shader_load(
         source: String,

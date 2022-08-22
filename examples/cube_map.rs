@@ -38,7 +38,19 @@ fn main() {
                 },
             ));
 
-            world.spawn((Transform::new(), Mesh::SPHERE, Material::UNLIT));
+            world.spawn((Transform::new(), Mesh::SPHERE, Material::PHYSICALLY_BASED));
+
+            let cube_map = resources
+                .get::<AssetStore<CubeMap>>()
+                .load("assets/venice_sunset_1k.hdr", ());
+
+            // Create a material that uses the custom shader
+            let custom_material = resources.get::<AssetStore<Material>>().add(Material {
+                shader: Shader::SKYBOX,
+                cube_map: Some(cube_map),
+                ..Default::default()
+            });
+            world.spawn((Transform::new(), Mesh::CUBE_MAP_CUBE, custom_material));
 
             |event, world, resources| {
                 match event {
@@ -46,18 +58,6 @@ fn main() {
                         // When a key is pressed reload all shaders that were loaded from a path.
                         if resources.get_mut::<Input>().key_down(Key::Space) {
                             resources.get::<AssetStore<Shader>>().reload();
-                            let cube_map = resources
-                                .get::<AssetStore<CubeMap>>()
-                                .load("examples/assets/venice_sunset_small.hdr", ());
-
-                            // Create a material that uses the custom shader
-                            let custom_material =
-                                resources.get::<AssetStore<Material>>().add(Material {
-                                    shader: Shader::SKYBOX,
-                                    cube_map: Some(cube_map),
-                                    ..Default::default()
-                                });
-                            world.spawn((Transform::new(), Mesh::CUBE_MAP_CUBE, custom_material));
                         }
                     }
                     _ => {}

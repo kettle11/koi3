@@ -1,5 +1,7 @@
+use crate::cube_map::*;
+
 pub fn spherical_harmonics_from_cubemap<const CHANNELS: usize>(
-    faces: &[Vec<kmath::Vector<f32, CHANNELS>>],
+    faces: &[&[kmath::Vector<f32, CHANNELS>]],
     face_dimensions: usize,
 ) -> [kmath::Vector<f32, CHANNELS>; 9] {
     let mut coefficients = [kmath::Vector::<f32, CHANNELS>::ZERO; 9];
@@ -8,7 +10,7 @@ pub fn spherical_harmonics_from_cubemap<const CHANNELS: usize>(
             let y = data_index / face_dimensions;
             let x = data_index % face_dimensions;
 
-            let direction = get_direction_for(index, x, y, face_dimensions);
+            let direction = get_direction_for(index, x as f32, y as f32, face_dimensions as f32);
 
             let solid_angle =
                 solid_angle_of_cube_map_pixel(face_dimensions as f32, x as f32, y as f32);
@@ -24,7 +26,7 @@ pub fn spherical_harmonics_from_cubemap<const CHANNELS: usize>(
 
     for i in 0..9 {
         // The sume of all the solid angles is PI * 4.0, so normalize by that here.
-        coefficients[i] /= std::f32::consts::PI * 4.0;
+        coefficients[i] /= core::f32::consts::PI * 4.0;
     }
     coefficients
 }
@@ -103,7 +105,7 @@ fn convolve_with_cos_irradiance<const CHANNELS: usize>(
     // Spherical harmonics for the *radiance* of a cubemap can be transformed into
     // *irradiance* for a given direction with the following simple transformation.
     const A: [f32; 3] = [
-        std::f32::consts::PI,
+        core::f32::consts::PI,
         2.094395, // (2*PI) / 3
         0.785398, // PI / 4
                   // These are unused but are the terms for the next few orders:
@@ -126,25 +128,6 @@ fn convolve_with_cos_irradiance<const CHANNELS: usize>(
         coefficients[7] * A[2],
         coefficients[8] * A[2],
     ]
-}
-
-fn get_direction_for(index: usize, x: usize, y: usize, dimensions: usize) -> kmath::Vec3 {
-    let m_scale = dimensions as f32 / 2.0;
-    // map [0, dim] to [-1,1] with (-1,-1) at bottom left
-    let cx: f32 = (x as f32 * m_scale) - 1.0;
-    let cy: f32 = 1.0 - (y as f32 * m_scale);
-
-    let l: f32 = (cx * cx + cy * cy + 1.0).sqrt();
-    let dir = match index {
-        0 => kmath::Vec3::new(1.0, cy, -cx),
-        1 => kmath::Vec3::new(-1.0, cy, cx),
-        2 => kmath::Vec3::new(cx, 1.0, -cy),
-        3 => kmath::Vec3::new(cx, -1.0, cy),
-        4 => kmath::Vec3::new(cx, cy, 1.0),
-        5 => kmath::Vec3::new(-cx, cy, -1.0),
-        _ => unreachable!(),
-    };
-    dir * (1.0 / l)
 }
 
 // Quick approximation of solid angle.
@@ -202,9 +185,9 @@ fn factorial(mut n: isize, mut d: isize) -> f32 {
 
 /// Spherical harmonic normalization factor
 fn k_lm(l: isize, m: isize) -> f32 {
-    // Filament's math code removes the / (4.0 * std::f32::consts::PI) and instead replaces
+    // Filament's math code removes the / (4.0 * core::f32::consts::PI) and instead replaces
     // it with a constant.
-    (((2 * l + 1) as f32 / (4.0 * std::f32::consts::PI)) * factorial(l - m, l + m)).sqrt()
+    (((2 * l + 1) as f32 / (4.0 * core::f32::consts::PI)) * factorial(l - m, l + m)).sqrt()
 }
 
 /// Evaluate an Associated Legendre Polynomial P(l,m,x) at x
