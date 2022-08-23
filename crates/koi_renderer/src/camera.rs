@@ -31,6 +31,14 @@ impl Exposure {
                 .log2(),
         }
     }
+
+    /// The max luminance possible without clipping.
+    /// Is used as a scale factor to scale the scene.
+    pub fn max_luminance_without_clipping(&self) -> f32 {
+        //  println!("EXPOSURE VALUE: {:?}", self.exposure.to_ev100());
+        let v = 2.0f32.powf(self.to_ev100()) * 1.2;
+        v
+    }
 }
 
 impl Default for Camera {
@@ -53,13 +61,6 @@ impl Camera {
         let (width, height) = self.output_rect.size().into();
         self.projection_mode
             .to_mat4((width * view_width) / (height * view_height))
-    }
-
-    /// The max luminance possible without clipping.
-    /// Is used as a scale factor to scale the scene.
-    pub fn max_luminance_without_clipping(&self) -> f32 {
-        //  println!("EXPOSURE VALUE: {:?}", self.exposure.to_ev100());
-        2.0f32.powf(self.exposure.to_ev100()) * 1.2
     }
 }
 

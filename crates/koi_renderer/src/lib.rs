@@ -32,7 +32,7 @@ mod texture_constants;
 pub use texture_constants::*;
 
 mod cube_map;
-pub use cube_map::CubeMap;
+pub use cube_map::*;
 
 pub use kcolor::*;
 pub use kgraphics;

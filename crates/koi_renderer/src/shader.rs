@@ -16,7 +16,7 @@ pub(crate) struct SceneInfoUniformBlock {
     pub p_dither_scale: f32,
     pub p_fog_start: f32,
     pub p_fog_end: f32,
-    pub _padding: f32,
+    pub p_exposure: f32,
     pub light_count: u32,
     pub spherical_harmonic_weights: [kmath::Vec4; 9],
     pub lights: [LightInfo; MAX_BOUND_LIGHTS],

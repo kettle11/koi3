@@ -29,6 +29,8 @@ void main()
   
     color_out.rgb = texture(p_cube_map, local_position).rgb;
     color_out.rgb = read_spherical_harmonics(normalize(local_position));
+    color_out.rgb = pow(color_out.rgb, vec3(1.0/2.2));
+        
     //color_out.a = 1.0;
    // color_out = vec4(1.0, 0.0, 0.0, 1.0);
 }

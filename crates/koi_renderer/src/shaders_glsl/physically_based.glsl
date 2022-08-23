@@ -175,6 +175,11 @@ void main()
         color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
     }
 
+    color_out.rgb += diffuse_color * read_spherical_harmonics(normalize(n));
+    
+    color_out.rgb = pow(color_out.rgb, vec3(1.0/2.2));
+    
     // Clamp because Macs *will* display values outside gamut. 
     color_out = clamp(color_out, 0.0, 1.0);
+
 }

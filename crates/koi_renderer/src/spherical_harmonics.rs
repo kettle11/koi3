@@ -34,13 +34,21 @@ impl<const CHANNELS: usize> SphericalHarmonics<CHANNELS> {
             }
         }
 
-        let normalization_factor = solid_angle_total / (core::f32::consts::PI * 4.0);
+        let normalization_factor = (core::f32::consts::PI * 4.0) / solid_angle_total;
         for i in 0..9 {
             // The coefficients should be normalized to PI * 4.0
             // The sum of all the solid angles is PI * 4.0, so normalize by that here.
             coefficients[i] *= normalization_factor;
         }
+
+        //println!("COEFFICIENTS: {:#?}", coefficients);
         Self { coefficients }
+    }
+
+    pub fn scale(&mut self, scale: f32) {
+        for c in self.coefficients.iter_mut() {
+            *c *= scale;
+        }
     }
 
     /// Convolves with cos irradiance and multiplies by constants.
@@ -55,10 +63,11 @@ impl<const CHANNELS: usize> SphericalHarmonics<CHANNELS> {
     /// Convolves with cos irradiance and multiplies by constants.
     pub fn convolve_with_cos_irradiance_and_premultiply_constants(
         &self,
+        exposure: f32,
     ) -> [kmath::Vector<f32, CHANNELS>; 9] {
         let mut coefficients = convolve_with_cos_irradiance(self.coefficients);
         for i in 0..9 {
-            coefficients[i] *= A[i];
+            coefficients[i] *= A[i] * exposure;
         }
         coefficients
     }
@@ -81,15 +90,15 @@ const A: [f32; 9] = [
     // Order l = 0
     0.28209479177475605, // 0.5 * (1.0 / PI).sqrt()
     // Order l = 1
-    0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
-    0.4886025119132201, // 0.5 * (3.0 / PI).sqrt()
-    0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
+    -0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
+    0.4886025119132201,  // 0.5 * (3.0 / PI).sqrt()
+    -0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
     // Order l = 2
-    1.0925484305933868, // 0.5 * (15.0 / PI).sqrt()
-    1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
-    0.94617469576,      // 3.0 * 0.25 * (5.0 / PI).sqrt() * z * z - (0.25 * (5.0 / PI).sqrt())
-    1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
-    0.5462742152966934, // 0.25 * (15.0 / PI).sqrt()
+    1.0925484305933868,  // 0.5 * (15.0 / PI).sqrt()
+    -1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
+    0.94617469576,       // 3.0 * 0.25 * (5.0 / PI).sqrt() * z * z - (0.25 * (5.0 / PI).sqrt())
+    -1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
+    0.5462742152966934,  // 0.25 * (15.0 / PI).sqrt()
 ];
 
 fn spherical_harmonic_sample_analytical_order2(x: f32, y: f32, z: f32) -> kmath::Vector<f32, 9> {
@@ -124,7 +133,7 @@ pub fn convolve_with_cos_irradiance<const CHANNELS: usize>(
     // https://imdoingitwrong.wordpress.com/2011/04/14/spherical-harmonics-wtf/
     // Spherical harmonics for the *radiance* of a cubemap can be transformed into
     // *irradiance* for a given direction with the following simple transformation.
-    const A: [f32; 3] = [
+    const B: [f32; 3] = [
         core::f32::consts::PI,
         2.094395, // (2*PI) / 3
         0.785398, // PI / 4
@@ -132,17 +141,17 @@ pub fn convolve_with_cos_irradiance<const CHANNELS: usize>(
 
     [
         // Order l = 0
-        coefficients[0] * A[0],
+        coefficients[0] * B[0],
         // Order l = 1
-        coefficients[1] * A[1],
-        coefficients[2] * A[1],
-        coefficients[3] * A[1],
+        coefficients[1] * B[1],
+        coefficients[2] * B[1],
+        coefficients[3] * B[1],
         // Order l = 2
-        coefficients[4] * A[2],
-        coefficients[5] * A[2],
-        coefficients[6] * A[2],
-        coefficients[7] * A[2],
-        coefficients[8] * A[2],
+        coefficients[4] * B[2],
+        coefficients[5] * B[2],
+        coefficients[6] * B[2],
+        coefficients[7] * B[2],
+        coefficients[8] * B[2],
     ]
 }
 

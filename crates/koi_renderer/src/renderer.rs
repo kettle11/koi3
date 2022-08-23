@@ -44,7 +44,8 @@ impl Renderer {
             render_pass.camera = camera.clone();
             render_pass.camera_transform = *camera_transform;
             render_pass.lights_bound = 0;
-            render_pass.exposure_scale_factor = 1.0 / camera.max_luminance_without_clipping();
+            render_pass.exposure_scale_factor =
+                1.0 / camera.exposure.max_luminance_without_clipping();
             render_pass
         } else {
             RenderPass {
@@ -59,7 +60,7 @@ impl Renderer {
                 color_space: self.color_space.clone(),
                 light_info: [LightInfo::default(); MAX_BOUND_LIGHTS],
                 lights_bound: 0,
-                exposure_scale_factor: 1.0 / camera.max_luminance_without_clipping(),
+                exposure_scale_factor: 1.0 / camera.exposure.max_luminance_without_clipping(),
             }
         }
     }
@@ -202,6 +203,7 @@ impl RenderPass {
             color_space: &self.color_space,
             lights_bound: self.lights_bound,
             light_info: &mut self.light_info,
+            exposure_scale_factor: self.exposure_scale_factor,
         };
 
         render_pass_executor.execute(&mut self.meshes_to_draw);
@@ -229,6 +231,7 @@ struct RenderPassExecutor<'a> {
     color_space: &'a ColorSpace,
     light_info: &'a mut [LightInfo; MAX_BOUND_LIGHTS],
     lights_bound: usize,
+    exposure_scale_factor: f32,
 }
 
 impl<'a> RenderPassExecutor<'a> {
@@ -374,13 +377,15 @@ impl<'a> RenderPassExecutor<'a> {
                     p_dither_scale: 1.0,
                     p_fog_start: 0.0,
                     p_fog_end: 100.0,
-                    _padding: 0.0,
+                    p_exposure: self.exposure_scale_factor,
                     light_count: self.lights_bound as _,
                     spherical_harmonic_weights: self
                         .cube_maps
                         .get(&Handle::from_index(1))
                         .spherical_harmonics
-                        .premultiply_constants(),
+                        .convolve_with_cos_irradiance_and_premultiply_constants(
+                            self.exposure_scale_factor,
+                        ),
                     // TODO: Don't do a clone here
                     lights: self.light_info.clone(),
                 }])

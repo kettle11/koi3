@@ -8,14 +8,39 @@ pub struct CubeMap {
     pub(crate) texture: kgraphics::CubeMap,
     /// Used for efficient irradiance.
     pub spherical_harmonics: SphericalHarmonics<4>,
+    pub brightest_direction: Vec3,
+}
+
+#[derive(Clone)]
+pub struct CubeMapSettings {
+    pub luminance_of_brightest_pixel: Option<f32>,
+}
+
+pub mod illuminance {
+    pub const SUNRISE_OR_SUNSET_PHOTO: f32 = 25.0;
+    pub const CLOUDY_DAY: f32 = 2_000.0;
+    pub const TYPICAL_SUNLIT_SCENE: f32 = 5_000.0;
+    pub const CLOUD: f32 = 5_000.0;
+    pub const CLEAR_SKY: f32 = 7_000.0;
+    pub const SUN_AT_NOON: f32 = 1000_000_000.0;
+}
+
+impl Default for CubeMapSettings {
+    fn default() -> Self {
+        Self {
+            /// Candelas per meter squared
+            /// ttps://en.wikipedia.org/wiki/Orders_of_magnitude_(luminance)
+            luminance_of_brightest_pixel: None,
+        }
+    }
 }
 
 impl AssetTrait for CubeMap {
-    type Settings = ();
+    type Settings = CubeMapSettings;
 }
 
 pub fn initialize_cube_maps(resources: &mut Resources) {
-    async fn load(path: String, _settings: ()) -> Option<crate::TextureResult> {
+    async fn load(path: String, _settings: CubeMapSettings) -> Option<crate::TextureResult> {
         let extension = std::path::Path::new(&path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
@@ -41,34 +66,41 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
 
     fn finalize_load(
         source: crate::TextureResult,
-        _settings: (),
+        settings: CubeMapSettings,
         resources: &Resources,
     ) -> Option<CubeMap> {
         Some(match source.data {
-            crate::TextureData::Bytes(data) => equirectangular_to_cubemap(
+            crate::TextureData::Bytes(data) => prepare_cubemap(
                 resources,
                 data.as_u8_array(),
                 source.width,
                 source.height,
+                settings,
             ),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         })
     }
 
-    let placeholder =
-        equirectangular_to_cubemap(resources, &[0; std::mem::size_of::<f32>() * 4], 1, 1);
+    let placeholder = prepare_cubemap(
+        resources,
+        &[0; std::mem::size_of::<f32>() * 4],
+        1,
+        1,
+        CubeMapSettings::default(),
+    );
 
     let cube_maps =
         koi_assets::AssetStore::new_with_load_functions(placeholder, load, finalize_load);
     resources.add(cube_maps);
 }
 
-pub fn equirectangular_to_cubemap(
+pub fn prepare_cubemap(
     resources: &Resources,
     equirectangular_texture: &[u8],
     equirectangular_width: u32,
     equirectangular_height: u32,
+    settings: CubeMapSettings,
 ) -> CubeMap {
     // TODO: Convert incoming data into correct color space.
     // TODO: Consider normalizing incoming data to get it in expected range.
@@ -87,7 +119,7 @@ pub fn equirectangular_to_cubemap(
     let equirectangular_data: &[Vec4] = unsafe { std::mem::transmute(equirectangular_texture) };
 
     // TODO: Do this off the main thread.
-    let output_faces = equirectangular_to_cubemap_cpu(
+    let mut output_faces0 = equirectangular_to_cubemap_cpu(
         equirectangular_data,
         equirectangular_width as _,
         equirectangular_height as _,
@@ -95,16 +127,42 @@ pub fn equirectangular_to_cubemap(
     );
 
     let output_faces = [
-        output_faces[0].as_slice(),
-        output_faces[1].as_slice(),
-        output_faces[2].as_slice(),
-        output_faces[3].as_slice(),
-        output_faces[4].as_slice(),
-        output_faces[5].as_slice(),
+        output_faces0[0].as_slice(),
+        output_faces0[1].as_slice(),
+        output_faces0[2].as_slice(),
+        output_faces0[3].as_slice(),
+        output_faces0[4].as_slice(),
+        output_faces0[5].as_slice(),
     ];
 
-    let spherical_harmonics = SphericalHarmonics::from_cube_map(&output_faces);
-    // let spherical_harmonics = convolve_with_cos_irradiance(spherical_harmonics);
+    let (brightest_value, brightest_direction) = get_brightest_value_and_direction(&output_faces);
+    println!("BRIGHTEST VALUE: {:?}", brightest_value);
+
+    let mut spherical_harmonics = SphericalHarmonics::from_cube_map(&output_faces);
+
+    println!(
+        "LUMINANCE OF BRIGHTEST PIXEL: {:?}",
+        settings.luminance_of_brightest_pixel
+    );
+    if let Some(luminance_of_brightest_pixel) = settings.luminance_of_brightest_pixel {
+        let scale_factor = luminance_of_brightest_pixel / brightest_value;
+        println!("SCALE FACTOR: {:?}", scale_factor);
+        for face in output_faces0.iter_mut() {
+            for d in face.iter_mut() {
+                *d = (d.xyz() * scale_factor).extend(d.w);
+            }
+        }
+        spherical_harmonics.scale(scale_factor);
+    }
+
+    let output_faces = [
+        output_faces0[0].as_slice(),
+        output_faces0[1].as_slice(),
+        output_faces0[2].as_slice(),
+        output_faces0[3].as_slice(),
+        output_faces0[4].as_slice(),
+        output_faces0[5].as_slice(),
+    ];
 
     let output_faces = unsafe {
         [
@@ -137,6 +195,7 @@ pub fn equirectangular_to_cubemap(
 
     CubeMap {
         texture: cube_map,
+        brightest_direction,
         spherical_harmonics,
     }
 }
@@ -162,6 +221,31 @@ fn hdri_data_from_bytes(bytes: &[u8]) -> Option<crate::TextureResult> {
     })
 }
 
+pub fn get_brightest_value_and_direction(data: &[&[Vec4]]) -> (f32, Vec3) {
+    let mut brightest_value = f32::MIN;
+    let mut brightest_direction = Vec3::ZERO;
+
+    let dim = (data.len() as f32).sqrt() as usize;
+    for (face_index, data_out) in data.iter().enumerate() {
+        for (i, pixel) in data_out.iter().enumerate() {
+            let x = i % dim;
+            let y = i / dim;
+
+            let magnitude = pixel.xyz().length_squared();
+            if magnitude > brightest_value {
+                brightest_value = magnitude;
+                println!("V: {:?}", magnitude.sqrt());
+
+                // Get a direction for this cube map pixel
+                let direction = get_direction_for(face_index, x as f32, y as f32, dim as f32);
+
+                brightest_direction = direction;
+            }
+        }
+    }
+
+    (brightest_value.sqrt(), brightest_direction)
+}
 pub fn equirectangular_to_cubemap_cpu(
     equirectangular_data: &[Vec4],
     equirectangular_width: usize,

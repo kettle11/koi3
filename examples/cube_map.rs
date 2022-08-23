@@ -17,17 +17,28 @@ fn main() {
                     .looking_at(Vec3::ZERO, Vec3::Y),
                 Camera {
                     clear_color: Some(Color::BLACK),
-                    exposure: Exposure::PhysicalCamera {
-                        aperture_f_stops: 16.0,
-                        shutter_speed_seconds: 1.0 / 125.0,
-                        sensitivity_iso: 100.0,
-                    },
-
+                    exposure: Exposure::EV100(1.0),
                     ..Default::default()
                 },
                 CameraControls::default(),
             ));
 
+            world.spawn((
+                Transform::new()
+                    .with_position(Vec3::new(2.5, 5.0, 0.1))
+                    .looking_at(Vec3::ZERO, Vec3::Y),
+                PointLight {
+                    intensity_lumens: 450.0,
+                    color: color_temperatures::LIGHTBULB,
+                    influence_radius: 20.0,
+                },
+                Mesh::SPHERE,
+                Material::UNLIT,
+            ));
+
+            println!("LUMINANCE HERE: {:?}", 2.0f32.powf(15.0) * (12.5 / 100.0));
+
+            /*
             world.spawn((
                 Transform::new()
                     .with_position(Vec3::ZERO)
@@ -37,6 +48,7 @@ fn main() {
                     color: Color::from_linear_srgb(1.0, 0.96, 0.95, 1.0),
                 },
             ));
+            */
 
             world.spawn((Transform::new(), Mesh::SPHERE, Material::PHYSICALLY_BASED));
 
@@ -44,9 +56,12 @@ fn main() {
                 .get::<AssetStore<Shader>>()
                 .load("assets/skybox_sh.glsl", ShaderSettings::default());
 
-            let cube_map = resources
-                .get::<AssetStore<CubeMap>>()
-                .load("assets/venice_sunset_1k.hdr", ());
+            let cube_map = resources.get::<AssetStore<CubeMap>>().load(
+                "assets/venice_sunset_1k.hdr",
+                CubeMapSettings {
+                    luminance_of_brightest_pixel: None,
+                },
+            );
 
             // Create a material that uses the custom shader
             let custom_material = resources.get::<AssetStore<Material>>().add(Material {
@@ -67,6 +82,32 @@ fn main() {
                 Mesh::CUBE_MAP_CUBE,
                 custom_material.clone(),
             ));
+
+            let mut materials = resources.get::<AssetStore<Material>>();
+            let rows = 6;
+            let columns = 6;
+
+            let spacing = 2.0;
+
+            for i in 0..rows {
+                for j in 0..columns {
+                    world.spawn((
+                        Transform::new().with_position(Vec3::new(
+                            j as f32 * spacing,
+                            i as f32 * spacing,
+                            -2.0,
+                        )),
+                        materials.add(Material {
+                            shader: Shader::PHYSICALLY_BASED,
+                            // base_color: Random::new().color(),
+                            // metallic: i as f32 / rows as f32,
+                            perceptual_roughness: (j as f32 / columns as f32).clamp(0.01, 1.0),
+                            ..Default::default()
+                        }),
+                        Mesh::SPHERE,
+                    ));
+                }
+            }
 
             move |event, world, resources| {
                 match event {
