@@ -26,7 +26,21 @@ layout (std140) uniform ub0_scene_info
     uniform float _padding;
     lowp uint light_count;
 
-    // uniform vec3 irradiance_spherical_harmonics[9];
+    uniform vec4 spherical_harmonic_weights[9];
     
     uniform LightInfo p_lights[20];
 }; 
+
+vec3 read_spherical_harmonics(const vec3 n) {
+    return max(
+          spherical_harmonic_weights[0].rgb
+        + spherical_harmonic_weights[1].rgb * (n.y)
+        + spherical_harmonic_weights[2].rgb * (n.z)
+        + spherical_harmonic_weights[3].rgb * (n.x)
+        + spherical_harmonic_weights[4].rgb * (n.y * n.x)
+        + spherical_harmonic_weights[5].rgb * (n.y * n.z)
+        + spherical_harmonic_weights[6].rgb * (3.0 * n.z * n.z - 1.0)
+        + spherical_harmonic_weights[7].rgb * (n.z * n.x)
+        + spherical_harmonic_weights[8].rgb * (n.x * n.x - n.y * n.y)
+        , 0.0);
+}

@@ -17,6 +17,8 @@ void main()
 
 #FRAGMENT
 
+#INCLUDE scene_info
+
 in vec3 local_position;
 out vec4 color_out;
 
@@ -26,6 +28,7 @@ void main()
 {
   
     color_out.rgb = texture(p_cube_map, local_position).rgb;
+    color_out.rgb = read_spherical_harmonics(normalize(local_position));
     //color_out.a = 1.0;
    // color_out = vec4(1.0, 0.0, 0.0, 1.0);
 }

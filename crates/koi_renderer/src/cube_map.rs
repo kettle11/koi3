@@ -1,12 +1,14 @@
-use crate::spherical_harmonics::spherical_harmonics_from_cubemap;
-use crate::{Mesh, Renderer, Shader};
-use kgraphics::{CommandBufferTrait, GraphicsContextTrait, TextureSettings};
-use kgraphics::{PipelineTrait, RenderPassTrait};
+use crate::{spherical_harmonics::SphericalHarmonics, Renderer};
+use kgraphics::{GraphicsContextTrait, TextureSettings};
 use kmath::*;
-use koi_assets::{AssetStore, AssetTrait};
+use koi_assets::AssetTrait;
 use koi_resources::Resources;
 
-pub struct CubeMap(pub(crate) kgraphics::CubeMap);
+pub struct CubeMap {
+    pub(crate) texture: kgraphics::CubeMap,
+    /// Used for efficient irradiance.
+    pub spherical_harmonics: SphericalHarmonics<4>,
+}
 
 impl AssetTrait for CubeMap {
     type Settings = ();
@@ -49,6 +51,7 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
                 source.width,
                 source.height,
             ),
+            #[allow(unreachable_patterns)]
             _ => unreachable!(),
         })
     }
@@ -100,10 +103,9 @@ pub fn equirectangular_to_cubemap(
         output_faces[5].as_slice(),
     ];
 
-    let spherical_harmonics = spherical_harmonics_from_cubemap(&output_faces, face_size);
+    let spherical_harmonics = SphericalHarmonics::from_cube_map(&output_faces);
+    // let spherical_harmonics = convolve_with_cos_irradiance(spherical_harmonics);
 
-    println!("SPHERICAL HARMONICS: {:?}", spherical_harmonics);
-    
     let output_faces = unsafe {
         [
             slice_to_bytes(output_faces[0]),
@@ -133,7 +135,10 @@ pub fn equirectangular_to_cubemap(
         )
         .unwrap();
 
-    CubeMap(cube_map)
+    CubeMap {
+        texture: cube_map,
+        spherical_harmonics,
+    }
 }
 
 #[cfg(feature = "hdri")]
@@ -187,8 +192,6 @@ pub fn equirectangular_to_cubemap_cpu(
         vec![Vec4::ZERO; output_dim * output_dim],
         vec![Vec4::ZERO; output_dim * output_dim],
     ];
-
-    println!("LEN: {:?}", output_dim * output_dim);
 
     fn to_rectilinear(width: f32, height: f32, s: Vec3) -> Vec2 {
         let xf = s.x.atan2(s.z) * F_1_PI; // range [-1.0, 1.0]

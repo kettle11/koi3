@@ -113,7 +113,9 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     }
     #[allow(clippy::significant_drop_in_scrutinee)]
     for cube_map in cube_maps.get_dropped_assets() {
-        renderer.raw_graphics_context.delete_cube_map(cube_map.0);
+        renderer
+            .raw_graphics_context
+            .delete_cube_map(cube_map.texture);
     }
 
     let (window_width, window_height) = window.size();

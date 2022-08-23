@@ -40,6 +40,10 @@ fn main() {
 
             world.spawn((Transform::new(), Mesh::SPHERE, Material::PHYSICALLY_BASED));
 
+            let skybox_spherical_harmonics = resources
+                .get::<AssetStore<Shader>>()
+                .load("assets/skybox_sh.glsl", ShaderSettings::default());
+
             let cube_map = resources
                 .get::<AssetStore<CubeMap>>()
                 .load("assets/venice_sunset_1k.hdr", ());
@@ -47,17 +51,37 @@ fn main() {
             // Create a material that uses the custom shader
             let custom_material = resources.get::<AssetStore<Material>>().add(Material {
                 shader: Shader::SKYBOX,
-                cube_map: Some(cube_map),
+                cube_map: Some(cube_map.clone()),
                 ..Default::default()
             });
-            world.spawn((Transform::new(), Mesh::CUBE_MAP_CUBE, custom_material));
 
-            |event, world, resources| {
+            // Create a material that uses the custom shader
+            let skybox_spherical_harmonics =
+                resources.get::<AssetStore<Material>>().add(Material {
+                    shader: skybox_spherical_harmonics.clone(),
+                    cube_map: Some(cube_map),
+                    ..Default::default()
+                });
+            let skybox_entity = world.spawn((
+                Transform::new(),
+                Mesh::CUBE_MAP_CUBE,
+                custom_material.clone(),
+            ));
+
+            move |event, world, resources| {
                 match event {
                     Event::FixedUpdate => {
                         // When a key is pressed reload all shaders that were loaded from a path.
                         if resources.get_mut::<Input>().key_down(Key::Space) {
                             resources.get::<AssetStore<Shader>>().reload();
+
+                            let mut skybox_material =
+                                world.get::<&mut Handle<Material>>(skybox_entity).unwrap();
+                            if *skybox_material == custom_material {
+                                *skybox_material = skybox_spherical_harmonics.clone();
+                            } else {
+                                *skybox_material = custom_material.clone();
+                            }
                         }
                     }
                     _ => {}

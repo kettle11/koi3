@@ -302,8 +302,8 @@ impl<'a> RenderPassExecutor<'a> {
                     self.render_pass.set_cube_map_property(
                         &sp.p_cube_map,
                         Some(material.cube_map.as_ref().map_or_else(
-                            || &self.cube_maps.get(&Handle::PLACEHOLDER).0,
-                            |t| &self.cube_maps.get(t).0,
+                            || &self.cube_maps.get(&Handle::PLACEHOLDER).texture,
+                            |t| &self.cube_maps.get(t).texture,
                         )),
                         texture_unit,
                     );
@@ -376,6 +376,11 @@ impl<'a> RenderPassExecutor<'a> {
                     p_fog_end: 100.0,
                     _padding: 0.0,
                     light_count: self.lights_bound as _,
+                    spherical_harmonic_weights: self
+                        .cube_maps
+                        .get(&Handle::from_index(1))
+                        .spherical_harmonics
+                        .premultiply_constants(),
                     // TODO: Don't do a clone here
                     lights: self.light_info.clone(),
                 }])
