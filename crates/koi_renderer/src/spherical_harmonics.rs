@@ -1,9 +1,52 @@
 use crate::cube_map::*;
+use kmath::*;
 
+#[test]
+fn spherical_harmonics_from_cubemap_test() {
+    const SIZE: usize = 1;
+    let faces = &[
+        [kmath::Vector::<f32, 2>::X; SIZE * SIZE].as_ref(),
+        [kmath::Vector::<f32, 2>::X; SIZE * SIZE].as_ref(),
+        [kmath::Vector::<f32, 2>::X; SIZE * SIZE].as_ref(),
+        [kmath::Vector::<f32, 2>::X; SIZE * SIZE].as_ref(),
+        [kmath::Vector::<f32, 2>::X; SIZE * SIZE].as_ref(),
+        [kmath::Vector::<f32, 2>::X; SIZE * SIZE].as_ref(),
+    ];
+
+    let harmonics = spherical_harmonics_from_cubemap(faces);
+    println!("HARMONICS: {:#?}", harmonics);
+
+    println!(
+        "RECONSTRUCTION: {:?}",
+        reconstruct_from_spherical_harmonic_coefficients(1.0, 0.0, 0.0, &harmonics)
+    );
+
+    // These coefficients are
+    let hardcoded: [kmath::Vector<f32, 1>; 9] = [
+        // 1
+        [3.544907701811029543].into(),
+        // 2
+        [0.000000167044750729].into(),
+        [-0.000000000000000210].into(),
+        [-0.000000093661696103].into(),
+        // 3
+        [0.000000000000000017].into(),
+        [-0.000000119904752782].into(),
+        [-0.000000021228957056].into(),
+        [0.000000000000001350].into(),
+        [-0.000000000000000165].into(),
+    ];
+    println!(
+        "RECONSTRUCTION: {:?}",
+        reconstruct_from_spherical_harmonic_coefficients(1.0, 0.0, 0.0, &hardcoded)
+    );
+}
 pub fn spherical_harmonics_from_cubemap<const CHANNELS: usize>(
     faces: &[&[kmath::Vector<f32, CHANNELS>]],
-    face_dimensions: usize,
 ) -> [kmath::Vector<f32, CHANNELS>; 9] {
+    let face_dimensions = (faces[0].len() as f32).sqrt() as usize;
+
+    let mut solid_angle_total = 0.0;
     let mut coefficients = [kmath::Vector::<f32, CHANNELS>::ZERO; 9];
     for (index, face) in faces.iter().enumerate() {
         for (data_index, sample) in face.iter().enumerate() {
@@ -12,9 +55,9 @@ pub fn spherical_harmonics_from_cubemap<const CHANNELS: usize>(
 
             let direction = get_direction_for(index, x as f32, y as f32, face_dimensions as f32);
 
-            let solid_angle =
-                solid_angle_of_cube_map_pixel(face_dimensions as f32, x as f32, y as f32);
+            let solid_angle = solid_angle2(face_dimensions as f32, x as f32, y as f32);
 
+            solid_angle_total += solid_angle;
             let sh_value =
                 spherical_harmonic_sample_analytical_order2(direction.x, direction.y, direction.z);
 
@@ -24,9 +67,11 @@ pub fn spherical_harmonics_from_cubemap<const CHANNELS: usize>(
         }
     }
 
+    let normalization_factor = solid_angle_total / (core::f32::consts::PI * 4.0);
     for i in 0..9 {
-        // The sume of all the solid angles is PI * 4.0, so normalize by that here.
-        coefficients[i] /= core::f32::consts::PI * 4.0;
+        // The coefficients should be normalized to PI * 4.0
+        // The sum of all the solid angles is PI * 4.0, so normalize by that here.
+        coefficients[i] *= normalization_factor;
     }
     coefficients
 }
@@ -45,15 +90,15 @@ const A: [f32; 9] = [
     // Order l = 0
     0.28209479177475605, // 0.5 * (1.0 / PI).sqrt()
     // Order l = 1
-    -0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
-    0.4886025119132201,  // 0.5 * (3.0 / PI).sqrt()
-    -0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
+    0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
+    0.4886025119132201, // 0.5 * (3.0 / PI).sqrt()
+    0.4886025119132201, // -0.5 * (3.0 / PI).sqrt()
     // Order l = 2
-    1.0925484305933868,  // 0.5 * (15.0 / PI).sqrt()
-    -1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
-    0.3153915652535312,  // 0.25 * (5.0 / PI).sqrt()
-    -1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
-    0.5462742152966934,  // 0.25 * (15.0 / PI).sqrt()
+    1.0925484305933868, // 0.5 * (15.0 / PI).sqrt()
+    1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
+    0.94617469576,      // 3.0 * 0.25 * (5.0 / PI).sqrt() * z * z - (0.25 * (5.0 / PI).sqrt())
+    1.0925484305933868, // -0.5 * (15.0 / PI).sqrt()
+    0.5462742152966934, // 0.25 * (15.0 / PI).sqrt()
 ];
 
 fn spherical_harmonic_sample_analytical_order2(x: f32, y: f32, z: f32) -> kmath::Vector<f32, 9> {
@@ -70,24 +115,24 @@ fn spherical_harmonic_sample_analytical_order2(x: f32, y: f32, z: f32) -> kmath:
         A[2] * z, // 0.5 * (3.0 / PI).sqrt() * z
         A[3] * x, // -0.5 * (3.0 / PI).sqrt() * x
         // Order l = 2
-        A[4] * x * y,               // 0.5 * (15.0 / PI).sqrt() * x * y
-        A[5] * y * z,               // -0.5 * (15.0 / PI).sqrt() * y * z
-        A[6] * (3.0 * z * z - 1.0), // 0.25 * (5.0 / PI).sqrt() * (3.0 * z * z - 1.0)
-        A[7] * x * z,               // -0.5 * (15.0 / PI).sqrt() * x * z
-        A[8] * (x * x - y * y),     // 0.25 * (15.0 / PI).sqrt() * (x * x - y * y)
+        A[4] * x * y,                      // 0.5 * (15.0 / PI).sqrt() * x * y
+        A[5] * y * z,                      // -0.5 * (15.0 / PI).sqrt() * y * z
+        A[6] * z * z - 0.3153915652535312, // 0.25 * (5.0 / PI).sqrt() * (3.0 * z * z - 1.0)
+        A[7] * x * z,                      // -0.5 * (15.0 / PI).sqrt() * x * z
+        A[8] * (x * x - y * y),            // 0.25 * (15.0 / PI).sqrt() * (x * x - y * y)
     ]
     .into()
 }
 
-fn reconstruct_from_spherical_harmonic_coefficients(
+fn reconstruct_from_spherical_harmonic_coefficients<const CHANNELS: usize>(
     //theta: f32,
     //phi: f32,
     x: f32,
     y: f32,
     z: f32,
-    coefficients: &[f32; 9],
-) -> f32 {
-    let mut total = 0.0;
+    coefficients: &[kmath::Vector<f32, CHANNELS>; 9],
+) -> kmath::Vector<f32, CHANNELS> {
+    let mut total = kmath::Vector::<f32, CHANNELS>::ZERO;
     let v: [f32; 9] = spherical_harmonic_sample_analytical_order2(x, y, z).into();
     for i in 0..9 {
         total += v[i] * coefficients[i];
@@ -95,7 +140,7 @@ fn reconstruct_from_spherical_harmonic_coefficients(
     total
 }
 
-fn convolve_with_cos_irradiance<const CHANNELS: usize>(
+pub fn convolve_with_cos_irradiance<const CHANNELS: usize>(
     coefficients: [kmath::Vector<f32, CHANNELS>; 9],
 ) -> [kmath::Vector<f32, CHANNELS>; 9] {
     // Based upon "An Efficient Representation for Irradiance Environment Maps"
@@ -140,12 +185,12 @@ fn solid_angle_of_cube_map_pixel(dim: f32, x: f32, y: f32) -> f32 {
 }
 
 // More complex but slightly more accurate approach to calculating solid angle.
-/*
+
 fn sphere_quadrant_area(x: f32, y: f32) -> f32 {
     (x * y).atan2((x * x + y * y + 1.0).sqrt())
 }
 
-fn solid_angle(dim: f32, u: f32, v: f32) -> f32 {
+fn solid_angle2(dim: f32, u: f32, v: f32) -> f32 {
     let i_dim = 1.0 / dim;
     let s = ((u + 0.5) * 2.0 * i_dim) - 1.0;
     let t = ((v + 0.5) * 2.0 * i_dim) - 1.0;
@@ -158,7 +203,6 @@ fn solid_angle(dim: f32, u: f32, v: f32) -> f32 {
             + sphere_quadrant_area(x1, y1);
     solid_angle
 }
-*/
 
 // Unused code that could be used for higher order cases or for verifying the above code
 /*
