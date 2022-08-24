@@ -1,0 +1,10 @@
+[package]
+name = "koi_ecs_derive_impl"
+version = "0.1.0"
+authors = ["Ian Kettlewell <ian.kettlewell@gmail.com>"]
+edition = "2021"
+
+[dependencies]
+kreflect_common = {path = "../../../../../koi2/crates/kreflect/kreflect_common", features = ["proc_macro"]}
+
+[lib]

@@ -1,8 +1,14 @@
+use std::any::TypeId;
+
 use koi_hierarchy::*;
+
+pub mod world_cloner;
 
 pub use hecs::*;
 
-pub struct World(hecs::World);
+pub struct World {
+    hecs_world: hecs::World,
+}
 
 impl Default for World {
     fn default() -> Self {
@@ -12,11 +18,19 @@ impl Default for World {
 
 impl World {
     pub fn new() -> Self {
-        Self(hecs::World::new())
+        Self {
+            hecs_world: hecs::World::new(),
+        }
     }
 
     pub fn despawn(&mut self, entity: hecs::Entity) -> Result<(), hecs::NoSuchEntity> {
-        self.0.despawn_hierarchy(entity)
+        self.hecs_world.despawn_hierarchy(entity)
+    }
+}
+
+impl Clone for World {
+    fn clone(&self) -> Self {
+        todo!()
     }
 }
 
@@ -24,13 +38,13 @@ impl core::ops::Deref for World {
     type Target = hecs::World;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.hecs_world
     }
 }
 
 impl core::ops::DerefMut for World {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.hecs_world
     }
 }
 

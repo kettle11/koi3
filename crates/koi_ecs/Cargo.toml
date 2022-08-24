@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 hecs = "0.9.0"
 koi_hierarchy = {path = "../koi_hierarchy"}
+koi_ecs_derive = {path = "koi_ecs_derive"}
