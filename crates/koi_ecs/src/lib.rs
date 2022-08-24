@@ -1,5 +1,3 @@
-use std::any::TypeId;
-
 use koi_hierarchy::*;
 
 pub mod world_cloner;
