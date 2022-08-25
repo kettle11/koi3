@@ -1,6 +1,8 @@
 /// Time elapsed since last draw call
 pub struct Time {
     pub fixed_time_step_seconds: f64,
+    /// Seconds between the last draw and this draw.
+    pub delta_seconds_f64: f64,
     time_accumulator_seconds: f64,
     last_time_step: kinstant::Instant,
 }
@@ -16,6 +18,7 @@ impl Time {
         Self {
             fixed_time_step_seconds: 1.0 / 60.0,
             time_accumulator_seconds: 0.0,
+            delta_seconds_f64: 0.0,
             last_time_step: kinstant::Instant::now(),
         }
     }
@@ -23,7 +26,8 @@ impl Time {
     pub fn update(&mut self) {
         let now = kinstant::Instant::now();
         let elapsed = now - self.last_time_step;
-        self.time_accumulator_seconds += elapsed.as_secs_f64();
+        self.delta_seconds_f64 = elapsed.as_secs_f64();
+        self.time_accumulator_seconds += self.delta_seconds_f64;
         self.last_time_step = now;
     }
 

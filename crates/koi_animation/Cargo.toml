@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+koi_ecs = {path = "../koi_ecs"}
+koi_resources = {path = "../koi_resources"}
+koi_assets = {path = "../koi_assets"}
+koi_time = {path = "../koi_time"}
+koi_events = {path = "../koi_events"}
+

@@ -59,4 +59,5 @@ pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
     });
     let event_handlers = resources.get_mut::<koi_events::EventHandlers>();
     event_handlers.add_handler(koi_events::Event::PostFixedUpdate, add_global_transform);
+    koi_animation::initialize_animation_plugin::<crate::Transform>(resources);
 }

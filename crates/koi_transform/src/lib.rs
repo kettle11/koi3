@@ -1,4 +1,5 @@
 use kmath::*;
+use koi_animation::InterpolateTrait;
 use koi_ecs::Component;
 
 pub mod transform_plugin;
@@ -116,5 +117,19 @@ impl Transform {
     #[inline]
     pub fn back(&self) -> Vec3 {
         self.rotation.rotate_vector3(Vec3::Z)
+    }
+}
+
+impl InterpolateTrait for Transform {
+    /// Linearly interpolate transform and scale. Spherically interpolate rotation.
+    fn interpolate(&self, other: &Self, amount: f32) -> Self {
+        let position = self.position.lerp(other.position, amount);
+        let rotation = self.rotation.slerp(other.rotation, amount);
+        let scale = self.scale.lerp(other.scale, amount);
+        Transform {
+            position,
+            rotation,
+            scale,
+        }
     }
 }
