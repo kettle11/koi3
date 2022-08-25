@@ -203,13 +203,18 @@ impl<Asset: AssetTrait> AssetStore<Asset> {
     }
 
     /// Reloads all assets that were loaded from a path.
-    pub fn reload(&self) {
+    pub fn reload(&mut self) {
         for (path, weak_handle) in &self.asset_store_inner.path_to_slotmap {
             if let Some(handle) = weak_handle.0.upgrade() {
                 self.loader
                     .load(path.into(), weak_handle.1.clone(), handle.clone());
             }
         }
+    }
+
+    /// How many assets are currently loading.
+    pub fn currently_loading(&self) -> usize {
+        self.loader.currently_loading()
     }
 }
 

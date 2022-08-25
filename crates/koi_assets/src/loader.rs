@@ -8,7 +8,10 @@ pub trait AssetLoaderTrait<Asset: AssetTrait> {
         _asset_store_inner: &mut AssetStoreInner<Asset>,
     ) {
     }
-    fn load(&self, _path: String, _settings: Asset::Settings, _handle: crate::Handle<Asset>) {}
+    fn load(&mut self, _path: String, _settings: Asset::Settings, _handle: crate::Handle<Asset>) {}
+    fn currently_loading(&self) -> usize {
+        0
+    }
 }
 /// Abstract away off-thread loading boilerplate.
 pub struct Loader<
@@ -20,6 +23,7 @@ pub struct Loader<
     handle_result: fn(LoadResult, Asset::Settings, &Resources) -> Option<Asset>,
     sender: std::sync::mpsc::Sender<(LoadResult, Asset::Settings, crate::Handle<Asset>)>,
     receiver: std::sync::mpsc::Receiver<(LoadResult, Asset::Settings, crate::Handle<Asset>)>,
+    currently_loading: usize,
 }
 
 impl<
@@ -38,6 +42,7 @@ impl<
             handle_result,
             sender,
             receiver,
+            currently_loading: 0,
         }
     }
 
@@ -50,17 +55,20 @@ impl<
             if let Some(asset) = (self.handle_result)(load_result, settings, resources) {
                 asset_store.replace(&handle, asset)
             }
+            self.currently_loading -= 1;
         }
     }
 
     pub fn begin_load(
-        &self,
+        &mut self,
         path: String,
         settings: Asset::Settings,
         handle: crate::Handle<Asset>,
     ) {
         let load_task = self.load_task;
         let sender = self.sender.clone();
+        self.currently_loading += 1;
+
         ktasks::spawn(async move {
             let settings0 = settings.clone();
             if let Some(result) = (load_task)(path, settings0).await {
@@ -84,8 +92,11 @@ impl<
     ) {
         self.load_on_main_thread(resources, asset_store_inner);
     }
-    fn load(&self, path: String, settings: Asset::Settings, handle: crate::Handle<Asset>) {
+    fn load(&mut self, path: String, settings: Asset::Settings, handle: crate::Handle<Asset>) {
         self.begin_load(path, settings, handle)
+    }
+    fn currently_loading(&self) -> usize {
+        self.currently_loading
     }
 }
 

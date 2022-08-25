@@ -140,11 +140,13 @@ fn main() {
                 {
                     if !cloned {
                         let mut prefabs = resources.get::<AssetStore<Prefab>>();
-                        let prefab = prefabs.get_mut(&prefab_handle);
-                        // println!("PREFAB LEN: {:?}", prefab.0.len());
-                        let spacing = 4.0;
-                        if prefab.0.len() > 0 {
+
+                        if prefabs.currently_loading() == 0 {
+                            let prefab = prefabs.get_mut(&prefab_handle);
+
                             let size = 40;
+                            let spacing = 4.0;
+
                             for i in 0..size {
                                 for j in 0..size {
                                     let mut world_cloner = resources.get::<WorldCloner>();
