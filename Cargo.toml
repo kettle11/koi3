@@ -23,6 +23,7 @@ koi_events = {path = "crates/koi_events"}
 koi_time = {path = "crates/koi_time"}
 koi_assets = {path = "crates/koi_assets"}
 koi_prefabs = {path = "crates/koi_prefabs"}
+koi_animation = {path = "crates/koi_animation"}
 
 kapp = {path = "../koi2/crates/kapp", default-features=false, optional = true}
 koi_renderer =  {path = "crates/koi_renderer", optional = true}

@@ -6,18 +6,11 @@ fn main() {
             Transform::new().with_position(Vec3::Z * 2.0),
             Camera {
                 clear_color: Some(Color::ORANGE),
-                exposure: Exposure::EV100(6.0),
                 ..Default::default()
             },
         ));
 
-        world.spawn((Transform::new(), DirectionalLight::OFFICE_LIGHTING));
-
-        world.spawn((
-            Transform::new(),
-            Mesh::VERTICAL_QUAD,
-            Material::PHYSICALLY_BASED,
-        ));
+        world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, Material::UNLIT));
 
         // This function will run for major events liked a FixedUpdate occuring
         // and for any input events from the application.

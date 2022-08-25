@@ -8,6 +8,7 @@ pub fn smooth_step(amount: f32) -> f32 {
 
 pub struct Animation<T: InterpolateTrait> {
     pub key_frames: Vec<KeyFrame<T>>,
+    pub animation_curve: fn(f32) -> f32,
 }
 
 impl<T: InterpolateTrait + 'static> koi_assets::AssetTrait for Animation<T> {
@@ -18,6 +19,7 @@ impl<T: InterpolateTrait> Default for Animation<T> {
     fn default() -> Self {
         Animation {
             key_frames: Vec::new(),
+            animation_curve: smooth_step,
         }
     }
 }
@@ -43,20 +45,27 @@ impl<T: InterpolateTrait + 'static> AnimationPlayer<T> {
         if animation.key_frames.len() < 2 {
             return;
         }
+
         let time = time % animation.key_frames.last().map_or(0.0, |k| k.timestamp);
-        let index = match animation
+
+        let mut index = match animation
             .key_frames
             .binary_search_by(|v| v.timestamp.partial_cmp(&time).unwrap())
         {
             Ok(i) => i,
-            Err(i) => i,
+            Err(i) => i - 1,
         };
-        let next_index = index + 1 % animation.key_frames.len();
+        if index == animation.key_frames.len() - 1 {
+            index = 0;
+        }
+        let next_index = index + 1;
         let k0 = &animation.key_frames[index];
         let k1 = &animation.key_frames[next_index];
 
-        let amount = (k1.timestamp - k0.timestamp) / (time - k0.timestamp);
+        let amount = (time - k0.timestamp) / (k1.timestamp - k0.timestamp);
+        let amount = (animation.animation_curve)(amount);
         *t = k0.value.interpolate(&k1.value, amount);
+
         self.time = time;
     }
 }
@@ -66,7 +75,8 @@ pub fn run_animations<T: InterpolateTrait + 'static + Sync + Send>(
     animations: &koi_assets::AssetStore<Animation<T>>,
     time: &koi_time::Time,
 ) {
-    let amount_seconds = time.delta_seconds_f64 as f32;
+    let amount_seconds = time.draw_delta_seconds as f32;
+    println!("AMOUNT SECONDS: {:?}", amount_seconds);
     for (_, (t, animation_player)) in world.query::<(&mut T, &mut AnimationPlayer<T>)>().iter() {
         let animation = animations.get(&animation_player.animation);
         animation_player.advance(animation, t, amount_seconds);

@@ -81,7 +81,7 @@ pub fn initialize_plugin(resources: &mut Resources) {
 
     resources
         .get_mut::<koi_events::EventHandlers>()
-        .add_handler(koi_events::Event::Draw, draw);
+        .add_handler(koi_events::Event::PostDraw, draw);
 }
 
 pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {

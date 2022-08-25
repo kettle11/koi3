@@ -18,9 +18,9 @@ pub use koi_transform::*;
 
 pub use kapp_platform_common::Event as KappEvent;
 pub use kapp_platform_common::{Cursor, Key, PointerButton, PointerSource};
+pub use koi_animation::*;
 pub use koi_assets::*;
 pub use koi_events::Event;
-
 pub use koi_prefabs::*;
 
 #[cfg(feature = "koi_renderer")]

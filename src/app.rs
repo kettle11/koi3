@@ -86,6 +86,7 @@ impl App {
                     kapp_app.quit()
                 }
                 kapp_platform_common::Event::Draw { .. } => {
+                    self.resources.get_mut::<Time>().update_draw();
                     self.handle_event(Event::Draw);
                     self.handle_event(Event::PostDraw);
                 }
