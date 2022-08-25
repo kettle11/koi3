@@ -3,8 +3,7 @@ name = "koi_input"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+ 
 [dependencies]
 kapp = {path = "../../../koi2/crates/kapp", default-features=false}
 koi_ecs = {path = "../koi_ecs"}
