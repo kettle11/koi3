@@ -17,7 +17,7 @@ fn main() {
                     .looking_at(Vec3::ZERO, Vec3::Y),
                 Camera {
                     clear_color: Some(Color::BLACK),
-                    exposure: Exposure::EV100(16.0),
+                    exposure: Exposure::EV100(20.0),
                     ..Default::default()
                 },
                 CameraControls::default(),
@@ -59,7 +59,7 @@ fn main() {
                 .load("assets/skybox_sh.glsl", ShaderSettings::default());
 
             let cube_map = resources.get::<AssetStore<CubeMap>>().load(
-                "assets/hilly_terrain_01_1k.hdr",
+                "assets/venice_sunset_1k.hdr",
                 CubeMapSettings {
                     luminance_of_brightest_pixel: Some(luminance::SUN_AT_NOON),
                 },
@@ -111,16 +111,8 @@ fn main() {
                 }
             }
 
-            let mut world_cloner = WorldCloner::new();
-            world_cloner.register_clone_type::<Handle<Material>>();
-            world_cloner.register_clone_type::<Handle<Mesh>>();
-            world_cloner.register_clone_type::<Transform>();
-            world_cloner.register_clone_type::<GlobalTransform>();
-            world_cloner.register_clone_type::<Child>();
-            world_cloner.register_clone_type::<Parent>();
-
             let mut prefabs = resources.get::<AssetStore<Prefab>>();
-            let prefab_handle = prefabs.load("assets/porsche/scene.gltf", ());
+            let prefab_handle = prefabs.load("assets/cat_statue/scene.gltf", ());
             /*
             struct Rotator;
 
@@ -150,8 +142,23 @@ fn main() {
                         let mut prefabs = resources.get::<AssetStore<Prefab>>();
                         let prefab = prefabs.get_mut(&prefab_handle);
                         // println!("PREFAB LEN: {:?}", prefab.0.len());
+                        let spacing = 4.0;
                         if prefab.0.len() > 0 {
-                            world_cloner.clone_world(&mut prefab.0, world);
+                            let size = 40;
+                            for i in 0..size {
+                                for j in 0..size {
+                                    let mut world_cloner = resources.get::<WorldCloner>();
+                                    prefab.spawn_with_transform(
+                                        world,
+                                        &mut world_cloner,
+                                        Transform::new().with_position(
+                                            Vec3::new(i as f32, 0.0, j as f32) * spacing,
+                                        ),
+                                    );
+                                }
+                            }
+
+                            //  world_cloner.clone_world(&mut prefab.0, world);
                             cloned = true;
                         }
                     }

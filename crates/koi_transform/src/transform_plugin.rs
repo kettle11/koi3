@@ -50,6 +50,10 @@ fn add_global_transform(
 }
 
 pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
+    let world_cloner = resources.get_mut::<WorldCloner>();
+    world_cloner.register_clone_type::<crate::Transform>();
+    world_cloner.register_clone_type::<crate::GlobalTransform>();
+
     resources.add(TransformHelper {
         command_buffer: koi_ecs::CommandBuffer::new(),
     });

@@ -4,7 +4,7 @@ pub mod world_cloner;
 
 pub use hecs::*;
 pub use koi_ecs_derive::*;
-pub use world_cloner::{EntityMigrator, WorldClonableTrait};
+pub use world_cloner::*;
 
 mod hierarchy;
 pub use hierarchy::*;

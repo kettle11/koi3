@@ -8,6 +8,7 @@ pub trait WorldClonableTrait: Sized + Sync + Send + 'static {
 
 pub struct WorldCloner {
     cloners: std::collections::HashMap<TypeId, RegisteredComponent>,
+    old_to_new_entities: Vec<Option<Entity>>,
 }
 
 struct RegisteredComponent {
@@ -32,6 +33,7 @@ impl WorldCloner {
     pub fn new() -> Self {
         Self {
             cloners: std::collections::HashMap::new(),
+            old_to_new_entities: Vec::new(),
         }
     }
 
@@ -53,22 +55,30 @@ impl WorldCloner {
         );
     }
 
-    pub fn clone_world(&self, source_world: &mut World, destination_world: &mut World) {
+    pub fn clone_world(
+        &mut self,
+        source_world: &mut World,
+        destination_world: &mut World,
+    ) -> EntityMigrator {
         let mut reserved_entities = destination_world.reserve_entities(source_world.len());
 
-        let mut old_to_new_entity = vec![None; source_world.len() as usize];
+        self.old_to_new_entities.clear();
+        self.old_to_new_entities
+            .resize(source_world.len() as usize, None);
+
         let mut old_to_new_temp = Vec::new();
 
         for entity in source_world.iter() {
             let index = entity.entity().id() as usize;
-            old_to_new_entity.resize(index.max(old_to_new_entity.len()), None);
-            old_to_new_entity[index] = Some(reserved_entities.next().unwrap());
+            self.old_to_new_entities
+                .resize(index.max(self.old_to_new_entities.len()), None);
+            self.old_to_new_entities[index] = Some(reserved_entities.next().unwrap());
         }
 
         destination_world.flush();
 
         let entity_migrator = EntityMigrator {
-            old_to_new_entities: &old_to_new_entity,
+            old_to_new_entities: &self.old_to_new_entities,
         };
 
         for archetype in source_world.archetypes() {
@@ -84,7 +94,7 @@ impl WorldCloner {
             old_to_new_temp.clear();
             old_to_new_temp.reserve(archetype.len() as usize);
             for entity in archetype.ids() {
-                old_to_new_temp.push(old_to_new_entity[*entity as usize].unwrap());
+                old_to_new_temp.push(self.old_to_new_entities[*entity as usize].unwrap());
             }
 
             let mut column_batch_builder =
@@ -102,6 +112,7 @@ impl WorldCloner {
             let column_batch = column_batch_builder.build().unwrap();
             destination_world.spawn_column_batch_at(&old_to_new_temp, column_batch);
         }
+        entity_migrator
     }
 }
 

@@ -13,14 +13,23 @@ impl Default for App {
         resources.add(EventHandlers::new());
         resources.add(Time::new());
 
-        Self {
+        let mut s = Self {
             world: crate::World::new(),
             resources,
-        }
+        };
+        s.setup_world_cloner();
+        s
     }
 }
 
 impl App {
+    pub fn setup_world_cloner(&mut self) {
+        let mut world_cloner = WorldCloner::new();
+        world_cloner.register_clone_type::<Child>();
+        world_cloner.register_clone_type::<Parent>();
+        self.resources.add(world_cloner);
+    }
+
     #[inline]
     pub fn with_resource<Resource: 'static>(mut self, resource: Resource) -> Self {
         self.resources.add(resource);

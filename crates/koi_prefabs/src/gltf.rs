@@ -256,6 +256,7 @@ fn get_texture(
         let buffer_view = &gltf.buffer_views[image.buffer_view.unwrap()];
         let byte_offset = buffer_view.byte_offset;
         let byte_length = buffer_view.byte_length;
+        
         let bytes = &data.unwrap()[byte_offset..byte_offset + byte_length];
         let extension = match image.mime_type.as_ref().unwrap() {
             kgltf::ImageMimeType::ImageJpeg => "jpeg",

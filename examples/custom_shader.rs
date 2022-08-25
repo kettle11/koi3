@@ -75,9 +75,10 @@ fn main() {
                 ShaderSettings::default(),
             );
 
-            let cube_map = resources
-                .get::<AssetStore<CubeMap>>()
-                .load("examples/assets/venice_sunset_small.hdr", ());
+            let cube_map = resources.get::<AssetStore<CubeMap>>().load(
+                "examples/assets/venice_sunset_small.hdr",
+                CubeMapSettings::default(),
+            );
 
             // Create a material that uses the custom shader
             let custom_material = resources.get::<AssetStore<Material>>().add(Material {

@@ -27,6 +27,10 @@ impl Default for InitialSettings {
 }
 
 pub fn initialize_plugin(resources: &mut Resources) {
+    let world_cloner = resources.get_mut::<koi_ecs::WorldCloner>();
+    world_cloner.register_clone_type::<Handle<Material>>();
+    world_cloner.register_clone_type::<Handle<Mesh>>();
+
     let initial_settings = resources.remove::<InitialSettings>().unwrap_or_default();
 
     // Initialize the graphics context.
