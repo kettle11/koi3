@@ -1,7 +1,7 @@
 use koi3::*;
 
 fn main() {
-    App::default().setup_and_run(|world, _resources| {
+    App::default().setup_and_run(|world, resources| {
         world.spawn((
             Transform::new().with_position(Vec3::Z * 2.0),
             Camera {
