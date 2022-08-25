@@ -112,7 +112,7 @@ fn main() {
             }
 
             let mut prefabs = resources.get::<AssetStore<Prefab>>();
-            let prefab_handle = prefabs.load("assets/cat_statue/scene.gltf", ());
+            let prefab_handle = prefabs.load("assets/AnimatedCube/glTF/AnimatedCube.gltf", ());
             /*
             struct Rotator;
 

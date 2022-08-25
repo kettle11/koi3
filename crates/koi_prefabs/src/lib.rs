@@ -1,3 +1,4 @@
+use koi_ecs::HierachyExtension;
 use koi_resources::*;
 
 #[cfg(feature = "gltf")]
@@ -6,7 +7,7 @@ mod gltf;
 pub struct Prefab(pub koi_ecs::World);
 
 impl Prefab {
-    // Transforms all the top level [koi_ecs::Entity]s by `transform`.
+    // Spawns all the top level entities in the prefab parented to a parent.
     pub fn spawn_with_transform(
         &mut self,
         destination: &mut koi_ecs::World,
@@ -15,7 +16,6 @@ impl Prefab {
     ) {
         // TODO: Avoid this allocation
         let mut top_level_entities = Vec::new();
-        // This modifies the prefab, that's probably bad.
         for (e, _) in self
             .0
             .query::<koi_ecs::Without<&mut koi_transform::Transform, &koi_ecs::Child>>()
@@ -24,14 +24,13 @@ impl Prefab {
             top_level_entities.push(e);
         }
 
+        let root_node = destination.spawn((parent_transform,));
+
         let migrator = cloner.clone_world(&mut self.0, destination);
-        let parent_transform = parent_transform.local_to_world();
 
         for e in top_level_entities {
             let e = migrator.migrate(e).unwrap();
-            let mut transform = destination.get::<&mut koi_transform::Transform>(e).unwrap();
-            let mat = transform.local_to_world();
-            *transform = koi_transform::Transform::from_mat4(parent_transform * mat);
+            destination.set_parent(root_node, e).unwrap();
         }
     }
 }

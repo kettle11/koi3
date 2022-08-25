@@ -1,9 +1,21 @@
+use koi_ecs::Component;
+
 pub trait InterpolateTrait {
     fn interpolate(&self, other: &Self, amount: f32) -> Self;
 }
 
-pub fn smooth_step(amount: f32) -> f32 {
-    amount * amount * (3.0 - 2.0 * amount)
+pub mod animation_curves {
+    pub fn smooth_step(amount: f32) -> f32 {
+        amount * amount * (3.0 - 2.0 * amount)
+    }
+
+    pub fn linear(amount: f32) -> f32 {
+        amount
+    }
+
+    pub fn step(_amount: f32) -> f32 {
+        0.0
+    }
 }
 
 pub struct Animation<T: InterpolateTrait> {
@@ -19,7 +31,7 @@ impl<T: InterpolateTrait> Default for Animation<T> {
     fn default() -> Self {
         Animation {
             key_frames: Vec::new(),
-            animation_curve: smooth_step,
+            animation_curve: animation_curves::linear,
         }
     }
 }
@@ -29,9 +41,20 @@ pub struct KeyFrame<T: InterpolateTrait> {
     pub value: T,
 }
 
+// Why can't Clone be dervied on this?
+#[derive(Component)]
 pub struct AnimationPlayer<T: InterpolateTrait + 'static> {
     pub time: f32,
     pub animation: koi_assets::Handle<Animation<T>>,
+}
+
+impl<T: InterpolateTrait + 'static> Clone for AnimationPlayer<T> {
+    fn clone(&self) -> Self {
+        Self {
+            time: self.time,
+            animation: self.animation.clone(),
+        }
+    }
 }
 
 impl<T: InterpolateTrait + 'static> AnimationPlayer<T> {
@@ -76,7 +99,6 @@ pub fn run_animations<T: InterpolateTrait + 'static + Sync + Send>(
     time: &koi_time::Time,
 ) {
     let amount_seconds = time.draw_delta_seconds as f32;
-    println!("AMOUNT SECONDS: {:?}", amount_seconds);
     for (_, (t, animation_player)) in world.query::<(&mut T, &mut AnimationPlayer<T>)>().iter() {
         let animation = animations.get(&animation_player.animation);
         animation_player.advance(animation, t, amount_seconds);
@@ -94,5 +116,8 @@ pub fn initialize_animation_plugin<T: InterpolateTrait + 'static + Sync + Send>(
         let mut animations = resources.get::<koi_assets::AssetStore<Animation<T>>>();
         let mut time = resources.get::<koi_time::Time>();
         run_animations(world, &mut animations, &mut time)
-    })
+    });
+    resources
+        .get::<koi_ecs::WorldCloner>()
+        .register_clone_type::<AnimationPlayer<T>>();
 }

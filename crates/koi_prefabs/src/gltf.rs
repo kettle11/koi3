@@ -12,6 +12,7 @@ pub(crate) struct GlTfLoadResult {
     gltf: kgltf::GlTf,
     data: Option<Vec<u8>>,
     mesh_primitive_data: Vec<MeshPrimitiveData>,
+    buffers: Vec<Option<Vec<u8>>>,
 }
 pub(super) struct MeshPrimitiveData {
     /// The data for this mesh and its material attributes
@@ -34,12 +35,28 @@ pub(crate) async fn load_gltf(path: String) -> Option<PrefabLoadResult> {
     let s = std::str::from_utf8(&bytes).ok()?;
     let gltf = <kgltf::GlTf as kgltf::FromJson>::from_json(s)?;
 
-    let mesh_primitive_data = load_mesh_primitive_data(&path, &gltf, None).await;
+    let mut buffers = Vec::with_capacity(gltf.buffers.len());
+    for buffer in &gltf.buffers {
+        buffers.push(if let Some(uri) = &buffer.uri {
+            let path = std::path::Path::new(&path).parent().unwrap().join(uri);
+            // klog::log!("FETCHING BUFFER!: {:?}", path);
+            Some(
+                koi_fetch::fetch_bytes(path.to_str().unwrap())
+                    .await
+                    .unwrap(),
+            )
+        } else {
+            None
+        })
+    }
+
+    let mesh_primitive_data = load_mesh_primitive_data(&gltf, None, &buffers).await;
     Some(super::PrefabLoadResult::GlTf(GlTfLoadResult {
         path,
         gltf,
         data: None,
         mesh_primitive_data,
+        buffers,
     }))
 }
 
@@ -57,12 +74,15 @@ pub(crate) fn finalize_gltf_load(
     let mut materials = resources.get::<AssetStore<koi_renderer::Material>>();
     let mut textures = resources.get::<AssetStore<koi_renderer::Texture>>();
     let mut meshes = resources.get::<AssetStore<koi_renderer::Mesh>>();
+    let mut transform_animations =
+        resources.get::<AssetStore<koi_animation::Animation<Transform>>>();
 
     let GlTfLoadResult {
         path,
         gltf,
         data,
         mesh_primitive_data,
+        buffers,
     } = gltf_load_result;
 
     let data = data.as_ref().map(|d| &d[..]);
@@ -205,9 +225,12 @@ pub(crate) fn finalize_gltf_load(
         mesh_primitives.push(primitives);
     }
 
+    let mut node_index_to_entity = Vec::new();
+    // scene.nodes only includes root nodes.
     for node in &scene.nodes {
         initialize_nodes(
             &mut new_world,
+            &mut node_index_to_entity,
             &materials,
             &gltf_materials,
             &mesh_primitives,
@@ -215,6 +238,144 @@ pub(crate) fn finalize_gltf_load(
             *node,
             None,
         )
+    }
+
+    // Initialize animations.
+    for animation in gltf.animations.iter() {
+        println!("GLTF ANIMATION");
+
+        let mut current_node = None;
+        let mut key_frame_time_stamps = Vec::new();
+        let mut transform_values = Vec::new();
+        let mut interpolation_function = None;
+
+        for channel in animation.channels.iter() {
+            if let Some(node) = channel.target.node {
+                if let Some(current_node) = current_node {
+                    assert_eq!(current_node, node)
+                }
+
+                current_node = Some(node);
+
+                let sampler = &animation.samplers[channel.sampler];
+
+                let timestamp_accessor_index = sampler.input;
+                let value_accessor_index = sampler.output;
+
+                let interpolation_function_temp = match sampler.interpolation {
+                    AnimationSamplerInterpolation::Linear => {
+                        koi_animation::animation_curves::linear
+                    }
+                    AnimationSamplerInterpolation::Step => koi_animation::animation_curves::step,
+                    AnimationSamplerInterpolation::Cubicspline => todo!(),
+                };
+
+                // For now check that the same function is used
+                if let Some(interpolation_function) = interpolation_function {
+                    assert_eq!(interpolation_function_temp, interpolation_function)
+                }
+                interpolation_function = Some(interpolation_function_temp);
+
+                let temp_key_frame_time_stamps = get_buffer::<f32, _, _>(
+                    &gltf,
+                    &data,
+                    &buffers,
+                    timestamp_accessor_index,
+                    |v| v,
+                );
+                assert!(
+                    transform_values.len() == 0
+                        || key_frame_time_stamps.len() == temp_key_frame_time_stamps.len()
+                );
+                key_frame_time_stamps = temp_key_frame_time_stamps;
+                transform_values.resize(key_frame_time_stamps.len(), Transform::new());
+
+                let accessor = gltf.accessors.get(value_accessor_index)?;
+                match channel.target.path {
+                    AnimationChannelTargetPath::Translation => {
+                        let accessor_type = accessor.type_.clone();
+
+                        if accessor_type != AccessorType::Vec3 {
+                            println!("Malformed glTF: Translation animation channel does not match accessor");
+                            return None;
+                        }
+                        let translations = get_buffer::<Vec3, _, _>(
+                            &gltf,
+                            &data,
+                            &buffers,
+                            value_accessor_index,
+                            |v| v,
+                        );
+                        for (transform, translation) in
+                            transform_values.iter_mut().zip(translations.iter())
+                        {
+                            transform.position = *translation;
+                        }
+                    }
+                    AnimationChannelTargetPath::Rotation => {
+                        let accessor_type = accessor.type_.clone();
+
+                        if accessor_type != AccessorType::Vec4 {
+                            println!("Malformed glTF: Rotation animation channel does not match accessor");
+                            return None;
+                        }
+                        let rotations = get_buffer::<Quat, _, _>(
+                            &gltf,
+                            &data,
+                            &buffers,
+                            value_accessor_index,
+                            |v| v,
+                        );
+                        for (transform, rotation) in
+                            transform_values.iter_mut().zip(rotations.iter())
+                        {
+                            transform.rotation = *rotation;
+                        }
+                    }
+                    AnimationChannelTargetPath::Scale => {
+                        let accessor_type = accessor.type_.clone();
+
+                        if accessor_type != AccessorType::Vec3 {
+                            println!(
+                                "Malformed glTF: Scale animation channel does not match accessor"
+                            );
+                            return None;
+                        }
+                        let scales = get_buffer::<Vec3, _, _>(
+                            &gltf,
+                            &data,
+                            &buffers,
+                            value_accessor_index,
+                            |v| v,
+                        );
+                        for (transform, scale) in transform_values.iter_mut().zip(scales.iter()) {
+                            transform.scale = *scale;
+                        }
+                    }
+                    AnimationChannelTargetPath::Weights => todo!(),
+                }
+            }
+        }
+
+        let animation = koi_animation::Animation::<Transform> {
+            key_frames: key_frame_time_stamps
+                .iter()
+                .zip(transform_values.iter())
+                .map(|(t, v)| koi_animation::KeyFrame {
+                    timestamp: *t,
+                    value: *v,
+                })
+                .collect(),
+            animation_curve: interpolation_function.unwrap(),
+        };
+        let animation_handle = transform_animations.add(animation);
+        let _ = new_world.insert_one(
+            node_index_to_entity[current_node.unwrap()].unwrap(),
+            koi_animation::AnimationPlayer {
+                time: 0.0,
+                animation: animation_handle,
+            },
+        );
     }
 
     Some(Prefab(new_world))
@@ -287,14 +448,15 @@ fn get_texture(
 
 fn initialize_nodes(
     gltf_world: &mut World,
+    node_index_to_entity: &mut Vec<Option<Entity>>,
     materials: &AssetStore<koi_renderer::Material>,
     gltf_materials: &[Handle<koi_renderer::Material>],
     mesh_primitives: &[Vec<(Handle<koi_renderer::Mesh>, Option<usize>)>],
     nodes: &[kgltf::Node],
-    node: usize,
+    node_index: usize,
     parent: Option<Entity>,
 ) {
-    let node = &nodes[node];
+    let node = &nodes[node_index];
     let transform: Transform = if let Some(matrix) = &node.matrix {
         Transform::from_mat4(matrix.try_into().unwrap())
     } else {
@@ -350,9 +512,13 @@ fn initialize_nodes(
         gltf_world.set_parent(parent, entity).unwrap();
     }
 
+    node_index_to_entity.resize(node_index_to_entity.len().max(node_index), None);
+    node_index_to_entity.push(Some(entity));
+
     for child in &node.children {
         initialize_nodes(
             gltf_world,
+            node_index_to_entity,
             materials,
             gltf_materials,
             mesh_primitives,
@@ -364,25 +530,10 @@ fn initialize_nodes(
 }
 
 pub(super) async fn load_mesh_primitive_data(
-    path: &str,
     gltf: &kgltf::GlTf,
     data: Option<&[u8]>,
+    buffers: &[Option<Vec<u8>>],
 ) -> Vec<MeshPrimitiveData> {
-    let mut buffers = Vec::with_capacity(gltf.buffers.len());
-    for buffer in &gltf.buffers {
-        buffers.push(if let Some(uri) = &buffer.uri {
-            let path = std::path::Path::new(path).parent().unwrap().join(uri);
-            // klog::log!("FETCHING BUFFER!: {:?}", path);
-            Some(
-                koi_fetch::fetch_bytes(path.to_str().unwrap())
-                    .await
-                    .unwrap(),
-            )
-        } else {
-            None
-        })
-    }
-
     let mut meshes = Vec::with_capacity(gltf.meshes.len());
     for mesh in &gltf.meshes {
         let mut primitives = Vec::with_capacity(mesh.primitives.len());
@@ -403,10 +554,13 @@ pub(super) async fn load_mesh_primitive_data(
                 // https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#meshes-overview
                 match attribute.as_str() {
                     "POSITION" => {
-                        positions = Some(
-                            get_buffer::<Vec3, _, _>(gltf, &data, &buffers, *accessor_index, |v| v)
-                                .await,
-                        );
+                        positions = Some(get_buffer::<Vec3, _, _>(
+                            gltf,
+                            &data,
+                            &buffers,
+                            *accessor_index,
+                            |v| v,
+                        ));
                     }
                     "TEXCOORD_0" => {
                         texture_coordinates = Some(match accessor_component_type {
@@ -418,7 +572,6 @@ pub(super) async fn load_mesh_primitive_data(
                                     *accessor_index,
                                     |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
                                 )
-                                .await
                             }
                             AccessorComponentType::UnsignedShort => {
                                 get_buffer::<Vector<u16, 2>, _, _>(
@@ -428,26 +581,25 @@ pub(super) async fn load_mesh_primitive_data(
                                     *accessor_index,
                                     |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
                                 )
-                                .await
                             }
-                            AccessorComponentType::Float => {
-                                get_buffer::<Vec2, _, _>(
-                                    gltf,
-                                    &data,
-                                    &buffers,
-                                    *accessor_index,
-                                    |v| v,
-                                )
-                                .await
-                            }
+                            AccessorComponentType::Float => get_buffer::<Vec2, _, _>(
+                                gltf,
+                                &data,
+                                &buffers,
+                                *accessor_index,
+                                |v| v,
+                            ),
                             _ => unimplemented!(),
                         });
                     }
                     "NORMAL" => {
-                        normals = Some(
-                            get_buffer::<Vec3, _, _>(gltf, &data, &buffers, *accessor_index, |v| v)
-                                .await,
-                        );
+                        normals = Some(get_buffer::<Vec3, _, _>(
+                            gltf,
+                            &data,
+                            &buffers,
+                            *accessor_index,
+                            |v| v,
+                        ));
                     }
                     "COLOR_0" => {
                         // COLOR_0 can be different accessor types according to the spec.
@@ -455,16 +607,13 @@ pub(super) async fn load_mesh_primitive_data(
                         match accessor_type {
                             kgltf::AccessorType::Vec4 => {
                                 colors = Some(match accessor_component_type {
-                                    AccessorComponentType::Float => {
-                                        get_buffer::<Vec4, _, _>(
-                                            gltf,
-                                            &data,
-                                            &buffers,
-                                            *accessor_index,
-                                            |v| v,
-                                        )
-                                        .await
-                                    }
+                                    AccessorComponentType::Float => get_buffer::<Vec4, _, _>(
+                                        gltf,
+                                        &data,
+                                        &buffers,
+                                        *accessor_index,
+                                        |v| v,
+                                    ),
                                     AccessorComponentType::UnsignedByte => {
                                         get_buffer::<Vector<u8, 4>, _, _>(
                                             gltf,
@@ -473,7 +622,6 @@ pub(super) async fn load_mesh_primitive_data(
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
                                         )
-                                        .await
                                     }
                                     AccessorComponentType::UnsignedShort => {
                                         get_buffer::<Vector<u16, 4>, _, _>(
@@ -483,23 +631,19 @@ pub(super) async fn load_mesh_primitive_data(
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
                                         )
-                                        .await
                                     }
                                     _ => unimplemented!(),
                                 });
                             }
                             kgltf::AccessorType::Vec3 => {
                                 let colors_vec3 = match accessor_component_type {
-                                    AccessorComponentType::Float => {
-                                        get_buffer::<Vec3, _, _>(
-                                            gltf,
-                                            &data,
-                                            &buffers,
-                                            *accessor_index,
-                                            |v| v,
-                                        )
-                                        .await
-                                    }
+                                    AccessorComponentType::Float => get_buffer::<Vec3, _, _>(
+                                        gltf,
+                                        &data,
+                                        &buffers,
+                                        *accessor_index,
+                                        |v| v,
+                                    ),
                                     AccessorComponentType::UnsignedByte => {
                                         get_buffer::<Vector<u8, 3>, _, _>(
                                             gltf,
@@ -508,7 +652,6 @@ pub(super) async fn load_mesh_primitive_data(
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
                                         )
-                                        .await
                                     }
                                     AccessorComponentType::UnsignedShort => {
                                         get_buffer::<Vector<u16, 3>, _, _>(
@@ -518,7 +661,6 @@ pub(super) async fn load_mesh_primitive_data(
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
                                         )
-                                        .await
                                     }
                                     _ => unimplemented!(),
                                 };
@@ -609,7 +751,7 @@ async fn get_indices(
     }
 }
 
-async fn get_buffer<T: Copy, TOut, F: FnMut(T) -> TOut>(
+fn get_buffer<T: Copy, TOut, F: FnMut(T) -> TOut>(
     gltf: &kgltf::GlTf,
     data: &Option<&[u8]>,
     buffers: &[Option<Vec<u8>>],

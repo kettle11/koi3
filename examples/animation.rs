@@ -32,7 +32,7 @@ fn main() {
                     value: Transform::new().with_position(Vec3::X * -2.0),
                 },
             ],
-            animation_curve: koi_animation::smooth_step,
+            animation_curve: animation_curves::smooth_step,
         });
 
         world.spawn((
