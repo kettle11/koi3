@@ -10,4 +10,3 @@ kmath = {path = "../../../koi2/crates/kmath"}
 koi_ecs = {path = "../koi_ecs"}
 koi_resources = {path = "../koi_resources"}
 koi_events = {path = "../koi_events"}
-koi_hierarchy = {path = "../koi_hierarchy"}

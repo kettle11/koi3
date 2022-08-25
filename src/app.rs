@@ -114,6 +114,8 @@ impl App {
     }
 
     fn add_standard_plugins(&mut self) {
+        koi_prefabs::initialize_plugin(&mut self.resources);
+
         #[cfg(feature = "koi_renderer")]
         koi_renderer::initialize_plugin(&mut self.resources);
         #[cfg(feature = "koi_input")]

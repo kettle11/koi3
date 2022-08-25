@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+koi_ecs = {path = "../koi_ecs"}
 koi_resources = {path = "../koi_resources"}
 ktasks = {path = "../../../koi2/crates/ktasks", default-features=false}

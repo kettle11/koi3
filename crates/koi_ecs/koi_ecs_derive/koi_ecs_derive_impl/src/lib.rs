@@ -8,8 +8,8 @@ pub fn kecs_component_impl(value: &Value) -> String {
 
     format!(
         r#"
-        impl{} WorldClonableTrait for {}{} {{
-            fn clone_with_context(&self, entity_migrator: &EntityMigrator) -> Option<Vec<Self>> {{
+        impl{} koi_ecs::WorldClonableTrait for {}{} {{
+            fn clone_with_context(&self, entity_migrator: &koi_ecs::EntityMigrator) -> Self {{
                 self.clone()
             }}
         }}

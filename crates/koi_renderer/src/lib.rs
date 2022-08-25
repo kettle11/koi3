@@ -42,3 +42,5 @@ pub use renderer::*;
 
 mod shader_parser;
 mod spherical_harmonics;
+
+// mod specular_precompute;

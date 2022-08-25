@@ -1,4 +1,4 @@
-use koi_hierarchy::HierachyExtension;
+use koi_ecs::*;
 
 pub struct TransformHelper {
     command_buffer: koi_ecs::CommandBuffer,
@@ -36,7 +36,7 @@ fn add_global_transform(
     transform_helper.command_buffer.clear();
 
     {
-        let mut query = world.query::<koi_ecs::Without<&crate::Transform, &koi_hierarchy::Child>>();
+        let mut query = world.query::<koi_ecs::Without<&crate::Transform, &Child>>();
         for (entity, _transform) in query.iter() {
             add_global_transform_recursive(
                 world,

@@ -1,8 +1,9 @@
 use kmath::*;
+use koi_ecs::Component;
 
 pub mod transform_plugin;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Component)]
 pub struct GlobalTransform(Transform);
 
 impl core::ops::Deref for GlobalTransform {
@@ -12,7 +13,7 @@ impl core::ops::Deref for GlobalTransform {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Component)]
 pub struct Transform {
     /// Position relative to parent
     pub position: Vec3,

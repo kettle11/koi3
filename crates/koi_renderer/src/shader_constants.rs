@@ -7,6 +7,7 @@ impl Shader {
     pub const PHYSICALLY_BASED: Handle<Self> = Handle::from_index(1);
     pub(crate) const EQUIRECTANGULAR_TO_CUBE_MAP: Handle<Self> = Handle::from_index(2);
     pub const SKYBOX: Handle<Self> = Handle::from_index(3);
+    pub const PHYSICALLY_BASED_DOUBLE_SIDED: Handle<Self> = Handle::from_index(4);
 }
 
 pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resources) {
@@ -64,7 +65,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/physically_based.glsl"),
             crate::ShaderSettings {
-                faces_to_render: kgraphics::FacesToRender::FrontAndBack,
+                faces_to_render: kgraphics::FacesToRender::Front,
                 blending: None,
                 ..Default::default()
             },
@@ -91,12 +92,25 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/skybox.glsl"),
             crate::ShaderSettings {
-                faces_to_render: kgraphics::FacesToRender::FrontAndBack,
+                faces_to_render: kgraphics::FacesToRender::Front,
                 ..Default::default()
             },
         )
         .unwrap();
     asset_store.add_and_leak(shader, &Shader::SKYBOX);
+
+    let shader = renderer
+        .new_shader(
+            include_str!("shaders_glsl/physically_based.glsl"),
+            crate::ShaderSettings {
+                faces_to_render: kgraphics::FacesToRender::FrontAndBack,
+                blending: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED_DOUBLE_SIDED);
 
     resources.add(asset_store);
 }

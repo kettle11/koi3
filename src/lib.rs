@@ -12,7 +12,6 @@ pub use app::*;
 
 pub use kmath::*;
 pub use koi_ecs::*;
-pub use koi_hierarchy::*;
 pub use koi_resources::*;
 pub use koi_time::*;
 pub use koi_transform::*;
@@ -22,6 +21,8 @@ pub use kapp_platform_common::{Cursor, Key, PointerButton, PointerSource};
 pub use koi_assets::*;
 pub use koi_events::Event;
 
+pub use koi_prefabs::*;
+
 #[cfg(feature = "koi_renderer")]
 pub use koi_renderer::*;
 
@@ -30,5 +31,3 @@ pub use koi_input::*;
 
 #[cfg(feature = "koi_random")]
 pub use koi_random::*;
-
-

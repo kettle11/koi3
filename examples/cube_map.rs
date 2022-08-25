@@ -1,4 +1,4 @@
-use koi3::*;
+use koi3::{world_cloner::WorldCloner, *};
 use koi_camera_controls::CameraControls;
 
 fn main() {
@@ -17,12 +17,13 @@ fn main() {
                     .looking_at(Vec3::ZERO, Vec3::Y),
                 Camera {
                     clear_color: Some(Color::BLACK),
-                    exposure: Exposure::EV100(1.0),
+                    exposure: Exposure::EV100(16.0),
                     ..Default::default()
                 },
                 CameraControls::default(),
             ));
 
+            /*
             world.spawn((
                 Transform::new()
                     .with_position(Vec3::new(2.5, 5.0, 0.1))
@@ -35,6 +36,7 @@ fn main() {
                 Mesh::SPHERE,
                 Material::UNLIT,
             ));
+            */
 
             println!("LUMINANCE HERE: {:?}", 2.0f32.powf(15.0) * (12.5 / 100.0));
 
@@ -57,9 +59,9 @@ fn main() {
                 .load("assets/skybox_sh.glsl", ShaderSettings::default());
 
             let cube_map = resources.get::<AssetStore<CubeMap>>().load(
-                "assets/venice_sunset_1k.hdr",
+                "assets/hilly_terrain_01_1k.hdr",
                 CubeMapSettings {
-                    luminance_of_brightest_pixel: None,
+                    luminance_of_brightest_pixel: Some(luminance::SUN_AT_NOON),
                 },
             );
 
@@ -109,11 +111,55 @@ fn main() {
                 }
             }
 
+            let mut world_cloner = WorldCloner::new();
+            world_cloner.register_clone_type::<Handle<Material>>();
+            world_cloner.register_clone_type::<Handle<Mesh>>();
+            world_cloner.register_clone_type::<Transform>();
+            world_cloner.register_clone_type::<GlobalTransform>();
+            world_cloner.register_clone_type::<Child>();
+            world_cloner.register_clone_type::<Parent>();
+
+            let mut prefabs = resources.get::<AssetStore<Prefab>>();
+            let prefab_handle = prefabs.load("assets/porsche/scene.gltf", ());
+            /*
+            struct Rotator;
+
+            let mut parent_cube = world.spawn((
+                Rotator,
+                Mesh::CUBE,
+                Material::PHYSICALLY_BASED,
+                Transform::new(),
+            ));
+
+            for _ in 0..10 {
+                let child_cube = world.spawn((
+                    Mesh::CUBE,
+                    Material::PHYSICALLY_BASED,
+                    Transform::new().with_position(Vec3::Y * 6.0),
+                ));
+
+                let _ = world.set_parent(parent_cube, child_cube);
+                parent_cube = child_cube;
+            }
+            */
+
+            let mut cloned = false;
             move |event, world, resources| {
+                {
+                    if !cloned {
+                        let mut prefabs = resources.get::<AssetStore<Prefab>>();
+                        let prefab = prefabs.get_mut(&prefab_handle);
+                        // println!("PREFAB LEN: {:?}", prefab.0.len());
+                        if prefab.0.len() > 0 {
+                            world_cloner.clone_world(&mut prefab.0, world);
+                            cloned = true;
+                        }
+                    }
+                }
                 match event {
                     Event::FixedUpdate => {
                         // When a key is pressed reload all shaders that were loaded from a path.
-                        if resources.get_mut::<Input>().key_down(Key::Space) {
+                        if resources.get::<Input>().key_down(Key::Space) {
                             resources.get::<AssetStore<Shader>>().reload();
 
                             let mut skybox_material =
@@ -124,6 +170,15 @@ fn main() {
                                 *skybox_material = custom_material.clone();
                             }
                         }
+
+                        /*
+                        for (_rotator, (_, transform)) in
+                            world.query::<(&mut Rotator, &mut Transform)>().iter()
+                        {
+                            transform.rotation =
+                                Quat::from_angle_axis(0.05, Vec3::X) * transform.rotation
+                        }
+                        */
                     }
                     _ => {}
                 }

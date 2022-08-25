@@ -4,15 +4,17 @@ use crate::*;
 // https://google.github.io/filament/images/material_chart.jpg
 
 pub struct Material {
+    pub shader: koi_assets::Handle<Shader>,
+
     pub base_color: Color,
     pub base_color_texture: Option<koi_assets::Handle<crate::Texture>>,
-    pub shader: koi_assets::Handle<Shader>,
     pub metallicness: f32,
     pub perceptual_roughness: f32,
     pub metallic_roughness_texture: Option<koi_assets::Handle<crate::Texture>>,
     pub ambient_scale: f32,
     pub emissiveness: f32,
     pub reflectance: f32,
+    pub normal_texture: Option<koi_assets::Handle<crate::Texture>>,
     //
     pub cube_map: Option<koi_assets::Handle<crate::CubeMap>>,
 }
@@ -29,6 +31,7 @@ impl Default for Material {
             ambient_scale: 1.0,
             emissiveness: 0.0,
             reflectance: 0.5,
+            normal_texture: None,
             //
             cube_map: None,
         }

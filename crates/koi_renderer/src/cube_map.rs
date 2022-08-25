@@ -16,7 +16,7 @@ pub struct CubeMapSettings {
     pub luminance_of_brightest_pixel: Option<f32>,
 }
 
-pub mod illuminance {
+pub mod luminance {
     pub const SUNRISE_OR_SUNSET_PHOTO: f32 = 25.0;
     pub const CLOUDY_DAY: f32 = 2_000.0;
     pub const TYPICAL_SUNLIT_SCENE: f32 = 5_000.0;
@@ -234,7 +234,6 @@ pub fn get_brightest_value_and_direction(data: &[&[Vec4]]) -> (f32, Vec3) {
             let magnitude = pixel.xyz().length_squared();
             if magnitude > brightest_value {
                 brightest_value = magnitude;
-                println!("V: {:?}", magnitude.sqrt());
 
                 // Get a direction for this cube map pixel
                 let direction = get_direction_for(face_index, x as f32, y as f32, dim as f32);

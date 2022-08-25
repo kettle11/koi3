@@ -1,0 +1,23 @@
+[package]
+name = "koi_prefabs"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["gltf"]
+gltf = ["koi_renderer", "kgltf"]
+
+[dependencies]
+koi_events = {path = "../koi_events"}
+koi_resources = {path = "../koi_resources"}
+koi_assets = {path = "../koi_assets"}
+koi_ecs = {path = "../koi_ecs"}
+koi_fetch = {path = "../koi_fetch"}
+koi_transform = {path = "../koi_transform"}
+
+kmath = {path = "../../../koi2/crates/kmath"}
+klog = {path = "../../../koi2/crates/klog"}
+
+koi_renderer = {path = "../koi_renderer", optional = true}
+kgltf = {path = "../../../koi2/crates/kgltf", optional = true}
+

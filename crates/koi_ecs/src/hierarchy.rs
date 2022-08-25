@@ -5,9 +5,29 @@ pub struct Child {
     previous_sibling: hecs::Entity,
 }
 
+impl crate::WorldClonableTrait for Child {
+    fn clone_with_context(&self, entity_migrator: &crate::EntityMigrator) -> Self {
+        Self {
+            parent: entity_migrator.migrate(self.parent).unwrap(),
+            next_sibling: entity_migrator.migrate(self.next_sibling).unwrap(),
+            previous_sibling: entity_migrator.migrate(self.previous_sibling).unwrap(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Parent {
     arbitrary_child: Option<hecs::Entity>,
+}
+
+impl crate::WorldClonableTrait for Parent {
+    fn clone_with_context(&self, entity_migrator: &crate::EntityMigrator) -> Self {
+        Self {
+            arbitrary_child: self
+                .arbitrary_child
+                .map(|c| entity_migrator.migrate(c).unwrap()),
+        }
+    }
 }
 
 pub trait HierachyExtension {

@@ -1,5 +1,6 @@
 /// TODO: Paths aren't handled correctly yet.
 mod slotmap;
+use koi_ecs::Component;
 use koi_resources::Resources;
 use loader::AssetLoaderTrait;
 use slotmap::*;
@@ -212,7 +213,8 @@ impl<Asset: AssetTrait> AssetStore<Asset> {
     }
 }
 
-pub struct Handle<Asset> {
+#[derive(Component)]
+pub struct Handle<Asset: 'static> {
     slot_map_handle: SlotMapHandle<Asset>,
     drop_handle: Option<std::sync::Arc<DropHandle>>,
     phantom: std::marker::PhantomData<fn() -> Asset>,
@@ -316,7 +318,7 @@ impl<T> SyncGuard<T> {
 /// Nobody in the Rust Gamedev Discord yelled at me about this.
 unsafe impl<T> Sync for SyncGuard<T> {}
 
-struct WeakHandle<Asset> {
+struct WeakHandle<Asset: 'static> {
     inner_handle: Handle<Asset>,
     drop_handle: std::sync::Weak<DropHandle>,
 }
