@@ -243,8 +243,6 @@ pub(crate) fn finalize_gltf_load(
 
     // Initialize animations.
     for animation in gltf.animations.iter() {
-        println!("GLTF ANIMATION");
-
         let mut current_node = None;
         let mut key_frame_time_stamps = Vec::new();
         let mut transform_values = Vec::new();
@@ -556,7 +554,6 @@ pub(super) async fn load_mesh_primitive_data(
                 // https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#meshes-overview
                 match attribute.as_str() {
                     "POSITION" => {
-                        println!("GETTING POSITIONS");
                         positions = Some(get_buffer::<Vec3, _, _>(
                             gltf,
                             &data,
@@ -683,6 +680,13 @@ pub(super) async fn load_mesh_primitive_data(
             if let Some(indices) = primitive.indices {
                 let indices = get_indices(gltf, &data, &buffers, indices).await?;
 
+                for index in indices.iter() {
+                    for i in index {
+                        if *i >= positions.as_ref().unwrap().len() as u32 {
+                            panic!();
+                        }
+                    }
+                }
                 let mesh_data = koi_renderer::MeshData {
                     positions: positions.unwrap(),
                     normals: normals.unwrap_or_else(Vec::new),
@@ -719,18 +723,21 @@ fn read_accessor_bytes<'a>(
         AccessorComponentType::Float => std::mem::size_of::<f32>(),
     };
 
-    let stride = buffer_view.byte_stride.unwrap_or(member_size);
-    println!("ACCESSOR TYPE: {:?}", accessor);
+    let items_per_member = match accessor.type_ {
+        kgltf::AccessorType::Scalar => 1,
+        kgltf::AccessorType::Vec2 => 2,
+        kgltf::AccessorType::Vec3 => 3,
+        kgltf::AccessorType::Vec4 => 4,
+        kgltf::AccessorType::Mat2 => 4,
+        kgltf::AccessorType::Mat3 => 9,
+        kgltf::AccessorType::Mat4 => 16,
+    };
 
-    let len_bytes = accessor.count * stride;
+    let len_bytes = accessor.count * member_size * items_per_member;
 
-    println!("STRIDE: {:?}", stride);
-    println!("LEN: {:?}", len_bytes);
     let start = buffer_view.byte_offset + accessor.byte_offset;
     let end = start + len_bytes;
 
-    println!("RANGE: {:?}", start..end);
-    println!("BUFFER LEN: {:?}", gltf.buffers.get(buffer_view.buffer));
     let buffer = gltf.buffers.get(buffer_view.buffer)?;
     Some((
         if buffer.uri.is_some() {
@@ -750,7 +757,6 @@ async fn get_indices(
 ) -> Option<Vec<[u32; 3]>> {
     let (bytes, accessor) = read_accessor_bytes(gltf, data, buffers, accessor)?;
 
-    println!("INDICES TYPE: {:?}", accessor.component_type);
     unsafe {
         Some(match accessor.component_type {
             kgltf::AccessorComponentType::UnsignedByte => {
@@ -787,7 +793,6 @@ fn get_buffer<T: Copy, TOut, F: FnMut(T) -> TOut>(
     convert_value: F,
 ) -> Option<Vec<TOut>> {
     let (bytes, _) = read_accessor_bytes(gltf, data, buffers, accessor).unwrap();
-    println!("BYTES LEN: {:?}", bytes.len());
     unsafe { Some(bytes_to_buffer(bytes, convert_value)) }
 }
 

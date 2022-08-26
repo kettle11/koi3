@@ -66,9 +66,10 @@ pub fn new_gpu_mesh(
     for i in mesh_data.indices.iter() {
         assert!(
             !(i[0] as usize >= len || i[1] as usize >= len || i[2] as usize >= len),
-            "Mesh indices refer to out of bound vertices: {:?}. Vertex count: {:?}",
+            "Mesh indices refer to out of bound vertices: {:?}. Vertex count: {:?} {:#?}",
             i,
             mesh_data.positions.len(),
+            mesh_data.indices
         );
     }
 
