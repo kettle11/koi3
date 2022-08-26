@@ -30,6 +30,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
             .new_texture(
                 1,
                 1,
+                1,
                 Some(&[255, 255, 255, 255]),
                 kgraphics::PixelFormat::RGBA8Unorm,
                 kgraphics::TextureSettings {
@@ -164,6 +165,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                 .new_texture(
                     1,
                     1,
+                    1,
                     Some(&[0, 0, 0, 255]),
                     kgraphics::PixelFormat::RGBA8Unorm,
                     kgraphics::TextureSettings {
@@ -181,6 +183,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
             renderer
                 .raw_graphics_context
                 .new_texture(
+                    1,
                     1,
                     1,
                     Some(&[128, 128, 255, 255]),
@@ -207,6 +210,7 @@ fn new_texture_from_texture_load_data(
             .new_texture(
                 texture_load_data.width,
                 texture_load_data.height,
+                1,
                 Some(data.as_u8_array()),
                 texture_load_data.pixel_format,
                 texture_settings,

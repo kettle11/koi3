@@ -10,6 +10,8 @@ jpeg = ["jpeg-decoder"]
 hdri = ["hdrldr"]
 
 [dependencies]
+half = {version = "2.1.0", features=["bytemuck"], no-default-features = true}
+
 kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
 kmath = {path = "../../../koi2/crates/kmath"}
 kgraphics = {path = "../../../koi2/crates/kgraphics"}

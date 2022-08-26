@@ -43,4 +43,7 @@ pub use renderer::*;
 mod shader_parser;
 mod spherical_harmonics;
 
+mod morphable_mesh;
+pub use morphable_mesh::*;
+
 // mod specular_precompute;

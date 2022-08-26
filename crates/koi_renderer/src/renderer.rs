@@ -168,10 +168,6 @@ impl RenderPass {
             graphics.delete_data_buffer(data_buffer);
         }
 
-        // Sort meshes by material, then mesh.
-        // TODO: This could be made more efficient by sorting by pipeline as well.
-        // As-is small material variants will incur a cost.
-
         let mut command_buffer = graphics.new_command_buffer();
 
         let mut render_pass = command_buffer.begin_render_pass_with_framebuffer(
@@ -190,7 +186,6 @@ impl RenderPass {
             textures,
             cube_maps,
             render_pass,
-            local_to_world_matrices: &mut self.local_to_world_matrices,
             current_material_and_shader: None,
             current_gpu_mesh: None,
             camera_position: self.camera_transform.position,
@@ -198,15 +193,10 @@ impl RenderPass {
             camera_to_screen: self
                 .camera
                 .projection_matrix(self.view_width, self.view_height),
-            data_buffers_to_cleanup: &mut self.data_buffers_to_cleanup,
-            data_buffers_to_cleanup1: &mut self.data_buffers_to_cleanup1,
-            color_space: &self.color_space,
-            lights_bound: self.lights_bound,
-            light_info: &mut self.light_info,
-            exposure_scale_factor: self.exposure_scale_factor,
+            this_render_pass: self,
         };
 
-        render_pass_executor.execute(&mut self.meshes_to_draw);
+        render_pass_executor.execute();
         command_buffer.present();
         graphics.commit_command_buffer(command_buffer);
     }
@@ -220,23 +210,17 @@ struct RenderPassExecutor<'a> {
     textures: &'a AssetStore<Texture>,
     cube_maps: &'a AssetStore<CubeMap>,
     render_pass: kgraphics::RenderPass<'a>,
-    local_to_world_matrices: &'a mut Vec<kmath::Mat4>,
     current_material_and_shader: Option<(&'a Material, &'a Shader)>,
     current_gpu_mesh: Option<&'a GPUMesh>,
     camera_position: kmath::Vec3,
     world_to_camera: kmath::Mat4,
     camera_to_screen: kmath::Mat4,
-    data_buffers_to_cleanup: &'a mut Vec<DataBuffer<kmath::Mat4>>,
-    data_buffers_to_cleanup1: &'a mut Vec<DataBuffer<SceneInfoUniformBlock>>,
-    color_space: &'a ColorSpace,
-    light_info: &'a mut [LightInfo; MAX_BOUND_LIGHTS],
-    lights_bound: usize,
-    exposure_scale_factor: f32,
+    this_render_pass: &'a mut RenderPass,
 }
 
 impl<'a> RenderPassExecutor<'a> {
     fn render_group(&mut self) {
-        if self.local_to_world_matrices.is_empty() {
+        if self.this_render_pass.local_to_world_matrices.is_empty() {
             return;
         }
 
@@ -262,7 +246,10 @@ impl<'a> RenderPassExecutor<'a> {
 
                     self.render_pass.set_vec4_property(
                         &sp.p_base_color,
-                        material.base_color.to_rgb_color(*self.color_space).into(),
+                        material
+                            .base_color
+                            .to_rgb_color(self.this_render_pass.color_space)
+                            .into(),
                     );
                     let mut texture_unit = 0;
 
@@ -344,7 +331,7 @@ impl<'a> RenderPassExecutor<'a> {
                 // TODO: Investigate if this is inefficient for single objects.
                 let local_to_world_data = self
                     .graphics
-                    .new_data_buffer(self.local_to_world_matrices)
+                    .new_data_buffer(&self.this_render_pass.local_to_world_matrices)
                     .unwrap();
 
                 self.render_pass.set_instance_attribute(
@@ -355,17 +342,18 @@ impl<'a> RenderPassExecutor<'a> {
                 self.render_pass.draw_triangles_instanced(
                     gpu_mesh.index_end - gpu_mesh.index_start,
                     &gpu_mesh.index_buffer,
-                    self.local_to_world_matrices.len() as u32,
+                    self.this_render_pass.local_to_world_matrices.len() as u32,
                 );
-                self.local_to_world_matrices.clear();
+                self.this_render_pass.local_to_world_matrices.clear();
                 // This data buffer is deleted later after the commands are submitted.
-
-                self.data_buffers_to_cleanup.push(local_to_world_data);
+                self.this_render_pass
+                    .data_buffers_to_cleanup
+                    .push(local_to_world_data);
             }
         }
     }
 
-    fn execute(&mut self, meshes_to_draw: &mut [(Handle<Material>, Handle<Mesh>, kmath::Mat4)]) {
+    fn execute(&mut self) {
         // Bind global data.
         {
             let data_buffer = self
@@ -377,17 +365,17 @@ impl<'a> RenderPassExecutor<'a> {
                     p_dither_scale: 1.0,
                     p_fog_start: 0.0,
                     p_fog_end: 100.0,
-                    p_exposure: self.exposure_scale_factor,
-                    light_count: self.lights_bound as _,
+                    p_exposure: self.this_render_pass.exposure_scale_factor,
+                    light_count: self.this_render_pass.lights_bound as _,
                     spherical_harmonic_weights: self
                         .cube_maps
-                        .get(&Handle::from_index(1))
+                        .get(&Handle::from_index(0))
                         .spherical_harmonics
                         .convolve_with_cos_irradiance_and_premultiply_constants(
-                            self.exposure_scale_factor,
+                            self.this_render_pass.exposure_scale_factor,
                         ),
                     // TODO: Don't do a clone here
-                    lights: self.light_info.clone(),
+                    lights: self.this_render_pass.light_info.clone(),
                 }])
                 .unwrap();
             self.render_pass.set_uniform_block(
@@ -396,13 +384,27 @@ impl<'a> RenderPassExecutor<'a> {
             );
 
             // TODO: Come up with a more elegant way to cleanup allocation buffers.
-            self.data_buffers_to_cleanup1.push(data_buffer);
+            self.this_render_pass
+                .data_buffers_to_cleanup1
+                .push(data_buffer);
         }
 
-        meshes_to_draw.sort_by_key(|v| (v.0.clone(), v.1.clone()));
+        // Sort meshes by material, then mesh.
+        // TODO: This could be made more efficient by sorting by pipeline as well.
+        // As-is small material variants will incur a cost.
+
+        self.this_render_pass
+            .meshes_to_draw
+            .sort_by_key(|v| (v.0.clone(), v.1.clone()));
 
         let mut current_mesh = None;
         let mut current_material = None;
+
+        let mut meshes_to_draw = Vec::new();
+        std::mem::swap(
+            &mut meshes_to_draw,
+            &mut self.this_render_pass.meshes_to_draw,
+        );
 
         // Renders batches of meshes that share the same material.
         for (material_handle, mesh_handle, local_to_world_matrix) in meshes_to_draw.iter() {
@@ -436,9 +438,15 @@ impl<'a> RenderPassExecutor<'a> {
                 current_mesh = Some(mesh_handle);
             }
 
-            self.local_to_world_matrices.push(*local_to_world_matrix);
+            self.this_render_pass
+                .local_to_world_matrices
+                .push(*local_to_world_matrix);
         }
 
         self.render_group();
+        std::mem::swap(
+            &mut meshes_to_draw,
+            &mut self.this_render_pass.meshes_to_draw,
+        );
     }
 }
