@@ -289,7 +289,9 @@ pub(crate) fn finalize_gltf_load(
                         || key_frame_time_stamps.len() == temp_key_frame_time_stamps.len()
                 );
                 key_frame_time_stamps = temp_key_frame_time_stamps;
-                transform_values.resize(key_frame_time_stamps.len(), Transform::new());
+
+                let default_transform = node_index_to_entity[node].unwrap().1;
+                transform_values.resize(key_frame_time_stamps.len(), default_transform);
 
                 let accessor = gltf.accessors.get(value_accessor_index)?;
                 match channel.target.path {
@@ -369,9 +371,14 @@ pub(crate) fn finalize_gltf_load(
                 .collect(),
             animation_curve: interpolation_function.unwrap(),
         };
+        println!("---------");
+        for keyframe in animation.key_frames.iter() {
+            println!("KEY FRAME: {:#?}", keyframe.timestamp);
+            println!("transform: {:#?}", keyframe.value);
+        }
         let animation_handle = transform_animations.add(animation);
         let _ = new_world.insert_one(
-            node_index_to_entity[current_node.unwrap()].unwrap(),
+            node_index_to_entity[current_node.unwrap()].unwrap().0,
             koi_animation::AnimationPlayer {
                 time: 0.0,
                 animation: animation_handle,
@@ -448,7 +455,7 @@ fn get_texture(
 
 fn initialize_nodes(
     gltf_world: &mut World,
-    node_index_to_entity: &mut Vec<Option<Entity>>,
+    node_index_to_entity: &mut Vec<Option<(Entity, Transform)>>,
     materials: &AssetStore<koi_renderer::Material>,
     gltf_materials: &[Handle<koi_renderer::Material>],
     mesh_primitives: &[Vec<(Handle<koi_renderer::Mesh>, Option<usize>)>],
@@ -497,7 +504,7 @@ fn initialize_nodes(
             entity_root
         }
     } else {
-        gltf_world.spawn((transform,))
+        gltf_world.spawn((transform.clone(),))
     };
 
     /*
@@ -513,7 +520,7 @@ fn initialize_nodes(
     }
 
     node_index_to_entity.resize(node_index_to_entity.len().max(node_index), None);
-    node_index_to_entity.push(Some(entity));
+    node_index_to_entity.push(Some((entity, transform)));
 
     for child in &node.children {
         initialize_nodes(

@@ -19,19 +19,17 @@ fn add_global_transform_recursive(
     let new_transform = crate::Transform::from_mat4(new_matrix);
     commands.insert_one(entity, crate::GlobalTransform(new_transform));
     for child in world.iterate_children(entity) {
-        add_global_transform_recursive(world, commands, new_matrix, child);
+        add_global_transform_recursive(world, commands, new_matrix, child).unwrap();
     }
 
     Some(())
 }
 
-fn add_global_transform(
+fn update_global_transforms(
     _event: &koi_events::Event,
     world: &mut koi_ecs::World,
     resources: &mut koi_resources::Resources,
 ) {
-    // TODO: Only add these initial global transforms to root nodes.
-    // TODO: Update all descendent transforms
     let transform_helper = resources.get_mut::<TransformHelper>();
     transform_helper.command_buffer.clear();
 
@@ -58,6 +56,6 @@ pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
         command_buffer: koi_ecs::CommandBuffer::new(),
     });
     let event_handlers = resources.get_mut::<koi_events::EventHandlers>();
-    event_handlers.add_handler(koi_events::Event::PostFixedUpdate, add_global_transform);
+    event_handlers.add_handler(koi_events::Event::PostFixedUpdate, update_global_transforms);
     koi_animation::initialize_animation_plugin::<crate::Transform>(resources);
 }
