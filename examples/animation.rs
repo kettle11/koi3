@@ -12,8 +12,8 @@ fn main() {
             CameraControls::new(),
         ));
 
-        let mut transform_animations = resources.get::<AssetStore<Animation<Transform>>>();
-        let animation = transform_animations.add(Animation {
+        let mut transform_animations = resources.get::<AssetStore<AnimationClip<Transform>>>();
+        let animation = transform_animations.add(AnimationClip {
             key_frames: vec![
                 KeyFrame {
                     timestamp: 0.0,

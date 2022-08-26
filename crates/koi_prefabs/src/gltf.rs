@@ -2,6 +2,7 @@ use crate::{Prefab, PrefabLoadResult};
 
 use kgltf::*;
 use kmath::*;
+use koi_animation::{PlayingAnimation, TypedAnimationClip};
 use koi_assets::*;
 use koi_ecs::*;
 use koi_resources::*;
@@ -75,8 +76,7 @@ pub(crate) fn finalize_gltf_load(
     let mut materials = resources.get::<AssetStore<koi_renderer::Material>>();
     let mut textures = resources.get::<AssetStore<koi_renderer::Texture>>();
     let mut meshes = resources.get::<AssetStore<koi_renderer::Mesh>>();
-    let mut transform_animations =
-        resources.get::<AssetStore<koi_animation::Animation<Transform>>>();
+    let mut animations = resources.get::<AssetStore<koi_animation::Animation>>();
 
     let GlTfLoadResult {
         path,
@@ -243,55 +243,33 @@ pub(crate) fn finalize_gltf_load(
 
     // Initialize animations.
     for animation in gltf.animations.iter() {
-        let mut current_node = None;
-        let mut key_frame_time_stamps = Vec::new();
-        let mut transform_values = Vec::new();
-        let mut interpolation_function = None;
+        let mut animation_clips = Vec::new();
+        let mut associated_entities = Vec::new();
 
         for channel in animation.channels.iter() {
             if let Some(node) = channel.target.node {
-                if let Some(current_node) = current_node {
-                    assert_eq!(current_node, node)
-                }
-
-                current_node = Some(node);
-
                 let sampler = &animation.samplers[channel.sampler];
 
                 let timestamp_accessor_index = sampler.input;
                 let value_accessor_index = sampler.output;
 
-                let interpolation_function_temp = match sampler.interpolation {
+                let animation_curve = match sampler.interpolation {
                     AnimationSamplerInterpolation::Linear => {
                         koi_animation::animation_curves::linear
                     }
                     AnimationSamplerInterpolation::Step => koi_animation::animation_curves::step,
                     AnimationSamplerInterpolation::Cubicspline => {
-                        koi_animation::animation_curves::linear
+                        todo!()
                     }
                 };
 
-                // For now check that the same function is used
-                if let Some(interpolation_function) = interpolation_function {
-                    assert_eq!(interpolation_function_temp, interpolation_function)
-                }
-                interpolation_function = Some(interpolation_function_temp);
-
-                let temp_key_frame_time_stamps = get_buffer::<f32, _, _>(
+                let key_frames = get_buffer::<f32, _, _>(
                     &gltf,
                     &data,
                     &buffers,
                     timestamp_accessor_index,
                     |v| v,
                 )?;
-                assert!(
-                    transform_values.len() == 0
-                        || key_frame_time_stamps.len() == temp_key_frame_time_stamps.len()
-                );
-                key_frame_time_stamps = temp_key_frame_time_stamps;
-
-                let default_transform = node_index_to_entity[node].unwrap().1;
-                transform_values.resize(key_frame_time_stamps.len(), default_transform);
 
                 let accessor = gltf.accessors.get(value_accessor_index)?;
                 match channel.target.path {
@@ -309,11 +287,17 @@ pub(crate) fn finalize_gltf_load(
                             value_accessor_index,
                             |v| v,
                         )?;
-                        for (transform, translation) in
-                            transform_values.iter_mut().zip(translations.iter())
-                        {
-                            transform.position = *translation;
-                        }
+                        animation_clips.push(koi_animation::AnimationClip {
+                            animation_curve,
+                            entity_mapping_index: associated_entities.len(),
+                            typed_animation_clip: Box::new(TypedAnimationClip {
+                                set_property: |e, v0: &Vec3, v1, t| {
+                                    e.get::<&mut Transform>().unwrap().position = v0.lerp(*v1, t)
+                                },
+                                key_frames,
+                                values: translations,
+                            }),
+                        })
                     }
                     AnimationChannelTargetPath::Rotation => {
                         let accessor_type = accessor.type_.clone();
@@ -329,11 +313,17 @@ pub(crate) fn finalize_gltf_load(
                             value_accessor_index,
                             |v| v,
                         )?;
-                        for (transform, rotation) in
-                            transform_values.iter_mut().zip(rotations.iter())
-                        {
-                            transform.rotation = *rotation;
-                        }
+                        animation_clips.push(koi_animation::AnimationClip {
+                            animation_curve,
+                            entity_mapping_index: associated_entities.len(),
+                            typed_animation_clip: Box::new(TypedAnimationClip {
+                                set_property: |e, v0: &Quat, v1, t| {
+                                    e.get::<&mut Transform>().unwrap().rotation = v0.slerp(*v1, t)
+                                },
+                                key_frames,
+                                values: rotations,
+                            }),
+                        })
                     }
                     AnimationChannelTargetPath::Scale => {
                         let accessor_type = accessor.type_.clone();
@@ -351,39 +341,34 @@ pub(crate) fn finalize_gltf_load(
                             value_accessor_index,
                             |v| v,
                         )?;
-                        for (transform, scale) in transform_values.iter_mut().zip(scales.iter()) {
-                            transform.scale = *scale;
-                        }
+                        animation_clips.push(koi_animation::AnimationClip {
+                            animation_curve,
+                            entity_mapping_index: associated_entities.len(),
+                            typed_animation_clip: Box::new(TypedAnimationClip {
+                                set_property: |e, v0: &Vec3, v1, t| {
+                                    e.get::<&mut Transform>().unwrap().scale = v0.lerp(*v1, t)
+                                },
+                                key_frames,
+                                values: scales,
+                            }),
+                        });
                     }
                     AnimationChannelTargetPath::Weights => todo!(),
                 }
+                associated_entities.push(node_index_to_entity[node].map(|e| e.0));
             }
         }
 
-        let animation = koi_animation::Animation::<Transform> {
-            key_frames: key_frame_time_stamps
-                .iter()
-                .zip(transform_values.iter())
-                .map(|(t, v)| koi_animation::KeyFrame {
-                    timestamp: *t,
-                    value: *v,
-                })
-                .collect(),
-            animation_curve: interpolation_function.unwrap(),
-        };
-        println!("---------");
-        for keyframe in animation.key_frames.iter() {
-            println!("KEY FRAME: {:#?}", keyframe.timestamp);
-            println!("transform: {:#?}", keyframe.value);
-        }
-        let animation_handle = transform_animations.add(animation);
-        let _ = new_world.insert_one(
-            node_index_to_entity[current_node.unwrap()].unwrap().0,
-            koi_animation::AnimationPlayer {
+        let animation = koi_animation::Animation::new(animation_clips);
+
+        let animation_handle = animations.add(animation);
+        let _ = new_world.spawn((koi_animation::AnimationPlayer {
+            playing_animations: vec![PlayingAnimation {
                 time: 0.0,
                 animation: animation_handle,
-            },
-        );
+                entity_mapping: associated_entities,
+            }],
+        },));
     }
 
     Some(Prefab(new_world))
@@ -476,33 +461,18 @@ fn initialize_nodes(
 
     let entity = if let Some(mesh) = node.mesh {
         let mesh_primitives = &mesh_primitives[mesh];
-        // This commented out condition flattened the hierarchy slightly if an Entity only had
-        // one mesh primitive. This might be useful in some cases, but for now for simplicity and clarity
-        // we're going to ignore that case.
-        /*  if mesh_primitives.len() == 1 {
-            let (mesh, material_index) = &mesh_primitives[0];
+
+        let entity_root = gltf_world.spawn((transform,));
+        for (mesh, material_index) in mesh_primitives {
             let material_handle =
-                material_index.map_or_else(Handle::default, |i| gltf_materials[i].clone());
-            gltf_world.spawn((
-                mesh.clone(),
-                material_handle,
-                RenderFlags::DEFAULT,
-                transform,
-            ))
-        } else */
-        {
-            let entity_root = gltf_world.spawn((transform,));
-            for (mesh, material_index) in mesh_primitives {
-                let material_handle = material_index
-                    .map_or_else(|| Handle::PLACEHOLDER, |i| gltf_materials[i].clone());
-                let primitive_entity =
-                    gltf_world.spawn((mesh.clone(), material_handle, Transform::new()));
-                gltf_world
-                    .set_parent(entity_root, primitive_entity)
-                    .unwrap();
-            }
-            entity_root
+                material_index.map_or_else(|| Handle::PLACEHOLDER, |i| gltf_materials[i].clone());
+            let primitive_entity =
+                gltf_world.spawn((mesh.clone(), material_handle, Transform::new()));
+            gltf_world
+                .set_parent(entity_root, primitive_entity)
+                .unwrap();
         }
+        entity_root
     } else {
         gltf_world.spawn((transform.clone(),))
     };
@@ -519,8 +489,8 @@ fn initialize_nodes(
         gltf_world.set_parent(parent, entity).unwrap();
     }
 
-    node_index_to_entity.resize(node_index_to_entity.len().max(node_index), None);
-    node_index_to_entity.push(Some((entity, transform)));
+    node_index_to_entity.resize(node_index_to_entity.len().max(node_index + 1), None);
+    node_index_to_entity[node_index] = Some((entity, transform));
 
     for child in &node.children {
         initialize_nodes(
