@@ -54,6 +54,12 @@ impl<
         while let Ok((load_result, settings, handle)) = self.receiver.try_recv() {
             if let Some(asset) = (self.handle_result)(load_result, settings, resources) {
                 asset_store.replace(&handle, asset)
+            } else {
+                // TODO: Better diagnostic messages
+                println!(
+                    "Failed to load asset of type: {:?}",
+                    std::any::type_name::<Asset>()
+                );
             }
             self.currently_loading -= 1;
         }

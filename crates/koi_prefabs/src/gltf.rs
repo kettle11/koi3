@@ -50,7 +50,8 @@ pub(crate) async fn load_gltf(path: String) -> Option<PrefabLoadResult> {
         })
     }
 
-    let mesh_primitive_data = load_mesh_primitive_data(&gltf, None, &buffers).await;
+    let mesh_primitive_data = load_mesh_primitive_data(&gltf, None, &buffers).await?;
+
     Some(super::PrefabLoadResult::GlTf(GlTfLoadResult {
         path,
         gltf,
@@ -267,7 +268,9 @@ pub(crate) fn finalize_gltf_load(
                         koi_animation::animation_curves::linear
                     }
                     AnimationSamplerInterpolation::Step => koi_animation::animation_curves::step,
-                    AnimationSamplerInterpolation::Cubicspline => todo!(),
+                    AnimationSamplerInterpolation::Cubicspline => {
+                        koi_animation::animation_curves::linear
+                    }
                 };
 
                 // For now check that the same function is used
@@ -282,7 +285,7 @@ pub(crate) fn finalize_gltf_load(
                     &buffers,
                     timestamp_accessor_index,
                     |v| v,
-                );
+                )?;
                 assert!(
                     transform_values.len() == 0
                         || key_frame_time_stamps.len() == temp_key_frame_time_stamps.len()
@@ -305,7 +308,7 @@ pub(crate) fn finalize_gltf_load(
                             &buffers,
                             value_accessor_index,
                             |v| v,
-                        );
+                        )?;
                         for (transform, translation) in
                             transform_values.iter_mut().zip(translations.iter())
                         {
@@ -325,7 +328,7 @@ pub(crate) fn finalize_gltf_load(
                             &buffers,
                             value_accessor_index,
                             |v| v,
-                        );
+                        )?;
                         for (transform, rotation) in
                             transform_values.iter_mut().zip(rotations.iter())
                         {
@@ -347,7 +350,7 @@ pub(crate) fn finalize_gltf_load(
                             &buffers,
                             value_accessor_index,
                             |v| v,
-                        );
+                        )?;
                         for (transform, scale) in transform_values.iter_mut().zip(scales.iter()) {
                             transform.scale = *scale;
                         }
@@ -415,10 +418,9 @@ fn get_texture(
         )
     } else {
         let buffer_view = &gltf.buffer_views[image.buffer_view.unwrap()];
-        let byte_offset = buffer_view.byte_offset;
-        let byte_length = buffer_view.byte_length;
 
-        let _bytes = &data.unwrap()[byte_offset..byte_offset + byte_length];
+        let _bytes = &data.unwrap()
+            [buffer_view.byte_offset..buffer_view.byte_offset + buffer_view.byte_length];
         let _extension = match image.mime_type.as_ref().unwrap() {
             kgltf::ImageMimeType::ImageJpeg => "jpeg",
             kgltf::ImageMimeType::ImagePng => "png",
@@ -533,7 +535,7 @@ pub(super) async fn load_mesh_primitive_data(
     gltf: &kgltf::GlTf,
     data: Option<&[u8]>,
     buffers: &[Option<Vec<u8>>],
-) -> Vec<MeshPrimitiveData> {
+) -> Option<Vec<MeshPrimitiveData>> {
     let mut meshes = Vec::with_capacity(gltf.meshes.len());
     for mesh in &gltf.meshes {
         let mut primitives = Vec::with_capacity(mesh.primitives.len());
@@ -554,13 +556,14 @@ pub(super) async fn load_mesh_primitive_data(
                 // https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#meshes-overview
                 match attribute.as_str() {
                     "POSITION" => {
+                        println!("GETTING POSITIONS");
                         positions = Some(get_buffer::<Vec3, _, _>(
                             gltf,
                             &data,
                             &buffers,
                             *accessor_index,
                             |v| v,
-                        ));
+                        )?);
                     }
                     "TEXCOORD_0" => {
                         texture_coordinates = Some(match accessor_component_type {
@@ -571,7 +574,7 @@ pub(super) async fn load_mesh_primitive_data(
                                     &buffers,
                                     *accessor_index,
                                     |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
-                                )
+                                )?
                             }
                             AccessorComponentType::UnsignedShort => {
                                 get_buffer::<Vector<u16, 2>, _, _>(
@@ -580,7 +583,7 @@ pub(super) async fn load_mesh_primitive_data(
                                     &buffers,
                                     *accessor_index,
                                     |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
-                                )
+                                )?
                             }
                             AccessorComponentType::Float => get_buffer::<Vec2, _, _>(
                                 gltf,
@@ -588,7 +591,7 @@ pub(super) async fn load_mesh_primitive_data(
                                 &buffers,
                                 *accessor_index,
                                 |v| v,
-                            ),
+                            )?,
                             _ => unimplemented!(),
                         });
                     }
@@ -599,7 +602,7 @@ pub(super) async fn load_mesh_primitive_data(
                             &buffers,
                             *accessor_index,
                             |v| v,
-                        ));
+                        ))?;
                     }
                     "COLOR_0" => {
                         // COLOR_0 can be different accessor types according to the spec.
@@ -613,7 +616,7 @@ pub(super) async fn load_mesh_primitive_data(
                                         &buffers,
                                         *accessor_index,
                                         |v| v,
-                                    ),
+                                    )?,
                                     AccessorComponentType::UnsignedByte => {
                                         get_buffer::<Vector<u8, 4>, _, _>(
                                             gltf,
@@ -621,7 +624,7 @@ pub(super) async fn load_mesh_primitive_data(
                                             &buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
-                                        )
+                                        )?
                                     }
                                     AccessorComponentType::UnsignedShort => {
                                         get_buffer::<Vector<u16, 4>, _, _>(
@@ -630,7 +633,7 @@ pub(super) async fn load_mesh_primitive_data(
                                             &buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
-                                        )
+                                        )?
                                     }
                                     _ => unimplemented!(),
                                 });
@@ -643,7 +646,7 @@ pub(super) async fn load_mesh_primitive_data(
                                         &buffers,
                                         *accessor_index,
                                         |v| v,
-                                    ),
+                                    )?,
                                     AccessorComponentType::UnsignedByte => {
                                         get_buffer::<Vector<u8, 3>, _, _>(
                                             gltf,
@@ -651,7 +654,7 @@ pub(super) async fn load_mesh_primitive_data(
                                             &buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
-                                        )
+                                        )?
                                     }
                                     AccessorComponentType::UnsignedShort => {
                                         get_buffer::<Vector<u16, 3>, _, _>(
@@ -660,7 +663,7 @@ pub(super) async fn load_mesh_primitive_data(
                                             &buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
-                                        )
+                                        )?
                                     }
                                     _ => unimplemented!(),
                                 };
@@ -678,7 +681,7 @@ pub(super) async fn load_mesh_primitive_data(
             }
 
             if let Some(indices) = primitive.indices {
-                let indices = get_indices(gltf, &data, &buffers, indices).await;
+                let indices = get_indices(gltf, &data, &buffers, indices).await?;
 
                 let mesh_data = koi_renderer::MeshData {
                     positions: positions.unwrap(),
@@ -695,7 +698,48 @@ pub(super) async fn load_mesh_primitive_data(
         }
         meshes.push(MeshPrimitiveData { primitives });
     }
-    meshes
+    Some(meshes)
+}
+
+fn read_accessor_bytes<'a>(
+    gltf: &'a kgltf::GlTf,
+    data: &'a Option<&[u8]>,
+    buffers: &'a [Option<Vec<u8>>],
+    accessor_index: usize,
+) -> Option<(&'a [u8], &'a Accessor)> {
+    let accessor = &gltf.accessors.get(accessor_index)?;
+    let buffer_view = &gltf.buffer_views.get(accessor.buffer_view.unwrap())?;
+
+    let member_size = match accessor.component_type {
+        AccessorComponentType::Byte => std::mem::size_of::<u8>(),
+        AccessorComponentType::UnsignedByte => std::mem::size_of::<u8>(),
+        AccessorComponentType::Short => std::mem::size_of::<i16>(),
+        AccessorComponentType::UnsignedShort => std::mem::size_of::<u16>(),
+        AccessorComponentType::UnsignedInt => std::mem::size_of::<u32>(),
+        AccessorComponentType::Float => std::mem::size_of::<f32>(),
+    };
+
+    let stride = buffer_view.byte_stride.unwrap_or(member_size);
+    println!("ACCESSOR TYPE: {:?}", accessor);
+
+    let len_bytes = accessor.count * stride;
+
+    println!("STRIDE: {:?}", stride);
+    println!("LEN: {:?}", len_bytes);
+    let start = buffer_view.byte_offset + accessor.byte_offset;
+    let end = start + len_bytes;
+
+    println!("RANGE: {:?}", start..end);
+    println!("BUFFER LEN: {:?}", gltf.buffers.get(buffer_view.buffer));
+    let buffer = gltf.buffers.get(buffer_view.buffer)?;
+    Some((
+        if buffer.uri.is_some() {
+            &buffers.get(buffer_view.buffer)?.as_ref()?.get(start..end)?
+        } else {
+            &data.as_ref().unwrap().get(start..end)?
+        },
+        accessor,
+    ))
 }
 
 async fn get_indices(
@@ -703,27 +747,13 @@ async fn get_indices(
     data: &Option<&[u8]>,
     buffers: &[Option<Vec<u8>>],
     accessor: usize,
-) -> Vec<[u32; 3]> {
-    let accessor = &gltf.accessors[accessor];
-    let count = accessor.count;
+) -> Option<Vec<[u32; 3]>> {
+    let (bytes, accessor) = read_accessor_bytes(gltf, data, buffers, accessor)?;
 
-    let buffer_view = accessor.buffer_view.unwrap();
-    let buffer_view = &gltf.buffer_views[buffer_view];
-    let buffer = &gltf.buffers[buffer_view.buffer];
-
-    let byte_offset = accessor.byte_offset + buffer_view.byte_offset;
-    let byte_length = buffer_view.byte_length;
-
-    let bytes = if buffer.uri.is_some() {
-        &buffers[buffer_view.buffer].as_ref().unwrap()[byte_offset..byte_offset + byte_length]
-    } else {
-        &data.as_ref().unwrap()[byte_offset..byte_offset + byte_length]
-    };
-
+    println!("INDICES TYPE: {:?}", accessor.component_type);
     unsafe {
-        match accessor.component_type {
+        Some(match accessor.component_type {
             kgltf::AccessorComponentType::UnsignedByte => {
-                let bytes = &bytes[0..count * std::mem::size_of::<u8>()];
                 let (_prefix, shorts, _suffix) = bytes.align_to::<u8>();
                 shorts
                     .chunks_exact(3)
@@ -731,7 +761,6 @@ async fn get_indices(
                     .collect()
             }
             kgltf::AccessorComponentType::UnsignedShort => {
-                let bytes = &bytes[0..count * std::mem::size_of::<u16>()];
                 let (_prefix, shorts, _suffix) = bytes.align_to::<u16>();
                 shorts
                     .chunks_exact(3)
@@ -739,7 +768,6 @@ async fn get_indices(
                     .collect()
             }
             kgltf::AccessorComponentType::UnsignedInt => {
-                let bytes = &bytes[0..count * std::mem::size_of::<u32>()];
                 let (_prefix, shorts, _suffix) = bytes.align_to::<u32>();
                 shorts
                     .chunks_exact(3)
@@ -747,7 +775,7 @@ async fn get_indices(
                     .collect()
             }
             _ => unreachable!(), // Should error instead
-        }
+        })
     }
 }
 
@@ -757,43 +785,10 @@ fn get_buffer<T: Copy, TOut, F: FnMut(T) -> TOut>(
     buffers: &[Option<Vec<u8>>],
     accessor: usize,
     convert_value: F,
-) -> Vec<TOut> {
-    let accessor = &gltf.accessors[accessor];
-    let count = accessor.count;
-
-    let buffer_view = accessor.buffer_view.unwrap();
-    let buffer_view = &gltf.buffer_views[buffer_view];
-    let buffer = &gltf.buffers[buffer_view.buffer];
-
-    let byte_offset = accessor.byte_offset + buffer_view.byte_offset;
-    // let byte_length = buffer_view.byte_length;
-
-    /*
-    let bytes = if let Some(uri) = &buffer.uri {
-        buffers[buffer_view.buffer].as_ref().unwrap()[byte_offset..byte_offset + byte_length];
-    } else {
-        &data.as_ref().unwrap()[byte_offset..byte_offset + byte_length]
-    };
-    */
-
-    if buffer.uri.is_some() {
-        let bytes = buffers[buffer_view.buffer].as_ref().unwrap();
-        unsafe {
-            bytes_to_buffer(
-                &bytes[byte_offset..byte_offset + count * std::mem::size_of::<T>()],
-                convert_value,
-            )
-        }
-    } else {
-        // Use the built in data buffer
-        unsafe {
-            bytes_to_buffer(
-                &data.as_ref().unwrap()
-                    [byte_offset..byte_offset + count * std::mem::size_of::<T>()],
-                convert_value,
-            )
-        }
-    }
+) -> Option<Vec<TOut>> {
+    let (bytes, _) = read_accessor_bytes(gltf, data, buffers, accessor).unwrap();
+    println!("BYTES LEN: {:?}", bytes.len());
+    unsafe { Some(bytes_to_buffer(bytes, convert_value)) }
 }
 
 unsafe fn bytes_to_buffer<T: Copy, TOut, F: FnMut(T) -> TOut>(
