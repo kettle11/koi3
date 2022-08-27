@@ -8,6 +8,7 @@ impl Shader {
     pub(crate) const EQUIRECTANGULAR_TO_CUBE_MAP: Handle<Self> = Handle::from_index(2);
     pub const SKYBOX: Handle<Self> = Handle::from_index(3);
     pub const PHYSICALLY_BASED_DOUBLE_SIDED: Handle<Self> = Handle::from_index(4);
+    pub const PHYSICALLY_BASED_WITH_MORPH: Handle<Self> = Handle::from_index(5);
 }
 
 pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resources) {
@@ -111,6 +112,19 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .unwrap();
 
     asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED_DOUBLE_SIDED);
+
+    let shader = renderer
+        .new_shader(
+            include_str!("shaders_glsl/physically_based_with_morph.glsl"),
+            crate::ShaderSettings {
+                faces_to_render: kgraphics::FacesToRender::Front,
+                blending: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED_WITH_MORPH);
 
     resources.add(asset_store);
 }

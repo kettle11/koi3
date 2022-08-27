@@ -71,11 +71,16 @@ pub fn initialize_plugin(resources: &mut Resources) {
     let materials = initialize_materials();
     let meshes = initialize_meshes(&mut renderer.raw_graphics_context);
     let textures = initialize_textures(&mut renderer);
+    let morphable_meshes = AssetStore::<MorphableMeshData>::new(MorphableMeshData {
+        mesh: Handle::PLACEHOLDER,
+        morph_targets_texture: Handle::PLACEHOLDER,
+    });
 
     resources.add(renderer);
     resources.add(materials);
     resources.add(meshes);
     resources.add(textures);
+    resources.add(morphable_meshes);
 
     initialize_cube_maps(resources);
 
@@ -93,6 +98,7 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     let mut materials = resources.get::<AssetStore<Material>>();
     let mut shaders = resources.get::<AssetStore<Shader>>();
     let mut textures = resources.get::<AssetStore<Texture>>();
+    let morphable_mesh_data = resources.get::<AssetStore<MorphableMeshData>>();
 
     meshes.finalize_asset_loads(resources);
     materials.finalize_asset_loads(resources);
@@ -127,8 +133,16 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
         .raw_graphics_context
         .resize(&*window, window_width, window_height);
 
-    let mut cameras = world.query::<(&GlobalTransform, &Camera)>();
-    for (_, (camera_transform, camera)) in cameras.iter() {
+    let mut camera_query = world.query::<(&GlobalTransform, &Camera)>();
+
+    // TODO: Avoid this allocation
+    let mut cameras = Vec::new();
+
+    for (t, c) in camera_query.iter() {
+        cameras.push((t.clone(), c.clone()));
+    }
+
+    for (_, (camera_transform, camera)) in cameras {
         let mut render_pass = renderer.begin_render_pass(
             camera,
             camera_transform,
@@ -150,11 +164,9 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             render_pass.add_point_light(light_transform, light)
         }
 
-        let mut renderables = world
-            .query::<koi_ecs::Without<(&Handle<Mesh>, &Handle<Material>, &GlobalTransform), &Camera>>();
+        let mut renderables = world.query::<(&Handle<Mesh>, &Handle<Material>, &GlobalTransform)>();
 
         for (_, (gpu_mesh, material, transform)) in renderables.iter() {
-            //todo
             render_pass.draw_mesh(gpu_mesh, material, transform);
         }
         renderer.submit_render_pass(
@@ -164,6 +176,7 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             &shaders,
             &textures,
             &cube_maps,
+            &morphable_mesh_data,
         );
     }
 

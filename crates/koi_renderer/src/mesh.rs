@@ -45,6 +45,19 @@ pub struct MeshData {
     pub colors: Vec<Vec4>,
 }
 
+impl MeshData {
+    pub fn apply_transform(&mut self, transform: koi_transform::Transform) {
+        let transform_matrix = transform.local_to_world();
+        for position in self.positions.iter_mut() {
+            *position = transform_matrix.transform_point(*position);
+        }
+
+        for normal in self.normals.iter_mut() {
+            *normal = transform_matrix.transform_vector(*normal);
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct GPUMesh {
     pub positions: kgraphics::DataBuffer<kmath::Vec3>,

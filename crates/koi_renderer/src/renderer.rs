@@ -1,5 +1,7 @@
 use crate::*;
-use kgraphics::{CommandBufferTrait, DataBuffer, GraphicsContextTrait, RenderPassTrait};
+use kgraphics::{
+    CommandBufferTrait, DataBuffer, GraphicsContextTrait, PipelineTrait, RenderPassTrait,
+};
 use koi_assets::*;
 use koi_transform::Transform;
 
@@ -72,6 +74,7 @@ impl Renderer {
         shaders: &AssetStore<Shader>,
         textures: &AssetStore<Texture>,
         cube_maps: &AssetStore<CubeMap>,
+        morphable_mesh_data: &AssetStore<MorphableMeshData>,
     ) {
         render_pass.execute(
             &mut self.raw_graphics_context,
@@ -80,6 +83,7 @@ impl Renderer {
             shaders,
             textures,
             cube_maps,
+            morphable_mesh_data,
         );
         self.render_pass_pool.push(render_pass);
     }
@@ -156,6 +160,7 @@ impl RenderPass {
         shaders: &AssetStore<Shader>,
         textures: &AssetStore<Texture>,
         cube_maps: &AssetStore<CubeMap>,
+        morphable_mesh_data: &AssetStore<MorphableMeshData>,
     ) {
         // Cleanup last frame's data buffers.
         // These are cleaned up here for now because if a buffer is deleted it can
@@ -185,6 +190,7 @@ impl RenderPass {
             shaders,
             textures,
             cube_maps,
+            morphable_mesh_data,
             render_pass,
             current_material_and_shader: None,
             current_gpu_mesh: None,
@@ -209,6 +215,7 @@ struct RenderPassExecutor<'a> {
     shaders: &'a AssetStore<Shader>,
     textures: &'a AssetStore<Texture>,
     cube_maps: &'a AssetStore<CubeMap>,
+    morphable_mesh_data: &'a AssetStore<MorphableMeshData>,
     render_pass: kgraphics::RenderPass<'a>,
     current_material_and_shader: Option<(&'a Material, &'a Shader)>,
     current_gpu_mesh: Option<&'a GPUMesh>,
@@ -297,7 +304,35 @@ impl<'a> RenderPassExecutor<'a> {
                         )),
                         texture_unit,
                     );
-                    // texture_unit += 1;
+                    texture_unit += 1;
+
+                    if let Some(morphable_mesh_data) = material.morphable_mesh_data.as_ref() {
+                        let morphable_mesh_data = self.morphable_mesh_data.get(morphable_mesh_data);
+                        let texture = self
+                            .textures
+                            .get(&morphable_mesh_data.morph_targets_texture);
+                        self.render_pass.set_texture_property(
+                            &shader
+                                .pipeline
+                                .get_texture_property("u_morph_targets")
+                                .unwrap(),
+                            Some(&texture.0),
+                            texture_unit,
+                        );
+
+                        // TODO: Replace this with an array of values.
+                        self.render_pass.set_vec3_property(
+                            &shader
+                                .pipeline
+                                .get_vec3_property("u_morph_target_influences")
+                                .unwrap(),
+                            (
+                                material.morph_weights.get(0).copied().unwrap_or(0.0),
+                                material.morph_weights.get(0).copied().unwrap_or(0.0),
+                                material.morph_weights.get(0).copied().unwrap_or(0.0),
+                            ),
+                        )
+                    }
                 }
 
                 // Bind the mesh for this group.
@@ -392,7 +427,6 @@ impl<'a> RenderPassExecutor<'a> {
         // Sort meshes by material, then mesh.
         // TODO: This could be made more efficient by sorting by pipeline as well.
         // As-is small material variants will incur a cost.
-
         self.this_render_pass
             .meshes_to_draw
             .sort_by_key(|v| (v.0.clone(), v.1.clone()));
@@ -429,7 +463,6 @@ impl<'a> RenderPassExecutor<'a> {
                 let material = self.materials.get(material_handle);
                 let shader = self.shaders.get(&material.shader);
                 self.current_material_and_shader = Some((material, shader));
-
                 current_material = Some(material_handle);
             }
 

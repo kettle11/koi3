@@ -17,6 +17,10 @@ pub struct Material {
     pub normal_texture: Option<koi_assets::Handle<crate::Texture>>,
     //
     pub cube_map: Option<koi_assets::Handle<crate::CubeMap>>,
+    //
+    // TODO: This isn't the sort of thing that should be on a [Material], but for now it goes here.
+    pub morph_weights: Vec<f32>,
+    pub morphable_mesh_data: Option<koi_assets::Handle<MorphableMeshData>>,
 }
 
 impl Default for Material {
@@ -34,6 +38,9 @@ impl Default for Material {
             normal_texture: None,
             //
             cube_map: None,
+            //
+            morph_weights: Vec::new(),
+            morphable_mesh_data: None,
         }
     }
 }

@@ -3,10 +3,32 @@ use kgraphics::GraphicsContextTrait;
 use koi_assets::*;
 use koi_resources::Resources;
 
-pub struct MorphableMesh {}
+/*
+pub struct MeshMorph {
+    pub morphable_mesh_data: Handle<MorphableMeshData>,
+    pub(crate) weights: Vec<f32>,
+}
+
+impl MeshMorph {
+    pub fn new(morphable_mesh_data: Handle<MorphableMeshData>, weights: &[f32]) -> Self {
+        Self {
+            morphable_mesh_data,
+            weights: weights.into(),
+        }
+    }
+    pub fn set_weights(&mut self, weights: &[f32]) {
+        self.weights.clear();
+        self.weights.extend_from_slice(weights);
+    }
+*/
+
 pub struct MorphableMeshData {
     pub mesh: Handle<Mesh>,
     pub morph_targets_texture: Handle<Texture>,
+}
+
+impl AssetTrait for MorphableMeshData {
+    type Settings = ();
 }
 
 impl MorphableMeshData {
@@ -24,22 +46,30 @@ impl MorphableMeshData {
             assert_eq!(mesh_data.positions.len(), morph_target.positions.len());
             assert_eq!(mesh_data.normals.len(), morph_target.normals.len());
 
-            for (position, normal) in mesh_data.positions.iter().zip(mesh_data.normals.iter()) {
+            let i0 = mesh_data.positions.iter().zip(mesh_data.normals.iter());
+            let i1 = morph_target
+                .positions
+                .iter()
+                .zip(morph_target.normals.iter());
+            for ((p0, n0), (p1, n1)) in i0.zip(i1) {
+                let delta_p = *p1 - *p0;
+                let delta_n = *n1 - *n0;
                 data.push([
-                    half::f16::from_f32(position.x),
-                    half::f16::from_f32(position.y),
-                    half::f16::from_f32(position.z),
+                    half::f16::from_f32(delta_p.x),
+                    half::f16::from_f32(delta_p.y),
+                    half::f16::from_f32(delta_p.z),
                     half::f16::from_f32(0.0),
                 ]);
                 data.push([
-                    half::f16::from_f32(normal.x),
-                    half::f16::from_f32(normal.y),
-                    half::f16::from_f32(normal.z),
+                    half::f16::from_f32(delta_n.x),
+                    half::f16::from_f32(delta_n.y),
+                    half::f16::from_f32(delta_n.z),
                     half::f16::from_f32(0.0),
                 ]);
             }
         }
 
+        println!("HERE HERE HERE");
         let morph_targets_texture = textures.add(Texture(
             graphics
                 .new_texture(
@@ -50,15 +80,14 @@ impl MorphableMeshData {
                     kgraphics::PixelFormat::RGBA16F,
                     kgraphics::TextureSettings {
                         srgb: false,
-                        minification_filter: kgraphics::FilterMode::Nearest,
-                        magnification_filter: kgraphics::FilterMode::Nearest,
-                        mipmap_filter: kgraphics::FilterMode::Nearest,
+                       
                         generate_mipmaps: false,
                         ..Default::default()
                     },
                 )
                 .unwrap(),
         ));
+        println!("HERE HERE HERE: {:?}", dimension_needed);
 
         let mesh = meshes.add(Mesh::new(graphics, mesh_data));
 
