@@ -34,16 +34,19 @@ pub const GL_ONE_MINUS_SRC_ALPHA: GLenum = 0x0303;
 pub const GL_SRC_ALPHA: GLenum = 0x0302;
 pub const GL_BLEND: GLenum = 0x0BE2;
 pub const GL_ELEMENT_ARRAY_BUFFER: GLenum = 0x8893;
+pub const GL_ARRAY_BUFFER: GLenum = 0x8892;
 
 pub const GL_TRIANGLES: GLenum = 0x0004;
 pub const GL_UNSIGNED_INT: GLenum = 0x1405;
+pub const GL_STATIC_DRAW: GLenum = 0x88E4;
 
-type GLint = c_int;
-type GLsizei = c_int;
-type GLenum = c_uint;
-type GLuint = c_uint;
-type GLchar = u8;
-type GLdouble = c_double;
+pub(crate) type GLint = c_int;
+pub(crate) type GLsizei = c_int;
+pub(crate) type GLenum = c_uint;
+pub(crate) type GLuint = c_uint;
+pub(crate) type GLchar = u8;
+pub(crate) type GLdouble = c_double;
+pub(crate) type GLsizeiptr = isize;
 
 pub struct GLBackend {
     pub gl_context: GLContext,
@@ -130,6 +133,16 @@ pub struct GLBackend {
         type_: GLenum,
         indices: *const core::ffi::c_void,
     ),
+    pub gen_buffers: unsafe extern "system" fn(n: GLsizei, buffers: *mut GLuint),
+    pub buffer_data: unsafe extern "system" fn(
+        target: GLenum,
+        size: GLsizeiptr,
+        data: *const core::ffi::c_void,
+        usage: GLenum,
+    ),
+    pub delete_buffers: unsafe extern "system" fn(n: GLsizei, buffers: *const GLuint),
+    pub viewport: unsafe extern "system" fn(x: GLint, y: GLint, width: GLsizei, height: GLsizei),
+    pub draw_arrays: unsafe extern "system" fn(mode: GLenum, first: GLint, count: GLsizei),
 }
 
 impl GLBackend {
@@ -195,6 +208,11 @@ impl GLBackend {
             clear_depth: std::mem::transmute(get_f(&gl_context, "glClearDepth")),
             bind_buffer: std::mem::transmute(get_f(&gl_context, "glBindBuffer")),
             draw_elements: std::mem::transmute(get_f(&gl_context, "glDrawElements")),
+            gen_buffers: std::mem::transmute(get_f(&gl_context, "glGenBuffers")),
+            buffer_data: std::mem::transmute(get_f(&gl_context, "glBufferData")),
+            delete_buffers: std::mem::transmute(get_f(&gl_context, "glDeleteBuffers")),
+            viewport: std::mem::transmute(get_f(&gl_context, "glViewport")),
+            draw_arrays: std::mem::transmute(get_f(&gl_context, "glDrawArrays")),
             gl_context,
         };
 
@@ -286,24 +304,28 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 }
                 Command::Draw {
                     triangle_buffer,
-                    start_triangle,
-                    end_triangle,
+                    triangle_range,
                     instances,
                 } => {
-                    (self.bind_buffer)(
-                        GL_ELEMENT_ARRAY_BUFFER,
-                        triangle_buffer.as_ref().map_or(0, |t| t.0.inner().index),
-                    );
                     if *instances > 1 {
                         todo!()
                     } else {
-                        let count = end_triangle - start_triangle;
-                        (self.draw_elements)(
-                            GL_TRIANGLES,
-                            (count * 3) as i32,
-                            GL_UNSIGNED_INT,
-                            (start_triangle * 3 * std::mem::size_of::<u32>() as u32) as _,
-                        );
+                        let count = triangle_range.end - triangle_range.start;
+
+                        if let Some(triangle_buffer) = triangle_buffer {
+                            (self.bind_buffer)(
+                                GL_ELEMENT_ARRAY_BUFFER,
+                                triangle_buffer.0.inner().index,
+                            );
+                            (self.draw_elements)(
+                                GL_TRIANGLES,
+                                (count * 3) as i32,
+                                GL_UNSIGNED_INT,
+                                (triangle_range.start * 3 * std::mem::size_of::<u32>() as u32) as _,
+                            );
+                        } else {
+                            (self.draw_arrays)(GL_TRIANGLES, 0, (count * 3) as i32);
+                        }
                     }
                 }
                 Command::Clear(color) => {
@@ -509,11 +531,29 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         }
     }
 
-    unsafe fn new_triangle_buffer(&mut self, indices: &[[u32; 3]]) -> TriangleBufferInner {
-        todo!()
+    unsafe fn new_buffer(&mut self, buffer_usage: BufferUsage, bytes: &[u8]) -> BufferInner {
+        unsafe {
+            let mut buffer = 0;
+            (self.gen_textures)(1, &mut buffer);
+            (self.bind_buffer)(GL_ELEMENT_ARRAY_BUFFER, buffer);
+
+            (self.buffer_data)(
+                match buffer_usage {
+                    BufferUsage::Data => GL_ARRAY_BUFFER,
+                    BufferUsage::Index => GL_ELEMENT_ARRAY_BUFFER,
+                },
+                bytes.len() as _,
+                bytes.as_ptr() as _,
+                GL_STATIC_DRAW,
+            );
+            BufferInner {
+                buffer_usage,
+                index: buffer,
+            }
+        }
     }
 
-    unsafe fn delete_triangle_buffer(&mut self, triangle_buffer_inner: TriangleBufferInner) {
-        todo!()
+    unsafe fn delete_buffer(&mut self, buffer_inner: BufferInner) {
+        (self.delete_buffers)(1, &buffer_inner.index)
     }
 }

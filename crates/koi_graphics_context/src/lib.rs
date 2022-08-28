@@ -174,11 +174,24 @@ pub struct DataBuffer<D: GraphicsDataTrait> {
     phantom: std::marker::PhantomData<fn() -> D>,
 }
 
-pub struct TriangleBuffer(Handle<TriangleBufferInner>);
+pub struct Buffer(Handle<BufferInner>);
 
 #[derive(Clone)]
-pub struct TriangleBufferInner {
+pub struct BufferInner {
+    buffer_usage: BufferUsage,
     index: u32,
+}
+
+impl BufferInner {
+    pub fn buffer_usage(&self) -> BufferUsage {
+        self.buffer_usage
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum BufferUsage {
+    Data,
+    Index,
 }
 
 pub trait GraphicsDataTrait {}
@@ -188,7 +201,7 @@ pub struct GraphicsContext {
     backend: Box<dyn backend_trait::BackendTrait>,
     texture_assets: Assets<TextureInner>,
     pipeline_assets: Assets<PipelineInner>,
-    triangle_buffer_assets: Assets<TriangleBufferInner>,
+    buffer_assets: Assets<BufferInner>,
 }
 
 impl GraphicsContext {
@@ -200,7 +213,7 @@ impl GraphicsContext {
                 command_buffer_pool: Vec::new(),
                 texture_assets: Assets::new(),
                 pipeline_assets: Assets::new(),
-                triangle_buffer_assets: Assets::new(),
+                buffer_assets: Assets::new(),
             }
         }
     }
@@ -215,8 +228,8 @@ impl GraphicsContext {
                 self.backend.delete_pipeline(dropped_pipeline);
             }
 
-            for dropped_triangle_buffer in self.triangle_buffer_assets.get_dropped_assets() {
-                self.backend.delete_triangle_buffer(dropped_triangle_buffer);
+            for dropped_buffer in self.buffer_assets.get_dropped_assets() {
+                self.backend.delete_buffer(dropped_buffer);
             }
         }
     }
@@ -282,11 +295,7 @@ impl GraphicsContext {
         todo!()
     }
 
-    pub fn new_data_buffer<D: GraphicsDataTrait>(&mut self, data: D) -> DataBuffer<D> {
-        todo!()
-    }
-
-    pub fn new_triangle_buffer(&mut self, data: &[[u32; 3]]) -> TriangleBuffer {
+    pub fn new_buffer(&mut self, data: &[[u32; 3]]) -> Buffer {
         todo!()
     }
 

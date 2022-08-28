@@ -20,6 +20,6 @@ pub trait BackendTrait {
     ) -> Result<PipelineInner, String>;
     unsafe fn delete_pipeline(&mut self, pipeline_inner: PipelineInner);
 
-    unsafe fn new_triangle_buffer(&mut self, indices: &[[u32; 3]]) -> TriangleBufferInner;
-    unsafe fn delete_triangle_buffer(&mut self, triangle_buffer_inner: TriangleBufferInner);
+    unsafe fn new_buffer(&mut self, buffer_usage: BufferUsage, data: &[u8]) -> BufferInner;
+    unsafe fn delete_buffer(&mut self, buffer_inner: BufferInner);
 }

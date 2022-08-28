@@ -32,23 +32,24 @@ async fn run_async(app: Application, events: Events) {
 
     let pipeline = g
         .new_pipeline(
-            r#"layout(location = 0) in vec3 a_position;
-
-    void main()
-    {
-        gl_Position = vec4(a_position, 1.0);
-    }"#,
             r#"
-    precision mediump float;
-
-    layout(location = 0) out vec4 color_out;
-
-    uniform vec4 p_custom_color;
-
-    void main()
-    {
-        color_out = p_custom_color;
-    }"#,
+            out vec2 TexCoords;
+ 
+            void main()
+            {
+                float x = -1.0 + float((gl_VertexID & 1) << 2);
+                float y = -1.0 + float((gl_VertexID & 2) << 1);
+                TexCoords.x = (x+1.0)*0.5;
+                TexCoords.y = (y+1.0)*0.5;
+                gl_Position = vec4(x, y, 0, 1);
+            }
+            "#,
+            r#"
+            out vec4 color_out;
+            void main()
+            {
+                color_out = vec4(0.0, 0.0, 1.0, 1.0);
+            }"#,
             PipelineSettings::default(),
         )
         .unwrap();
@@ -59,14 +60,14 @@ async fn run_async(app: Application, events: Events) {
             Event::Draw { .. } => {
                 let mut command_buffer = g.new_command_buffer();
                 command_buffer.push(Command::Clear(kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)));
-                command_buffer.push(Command::Present);
                 command_buffer.push(Command::SetPipeline(pipeline.clone()));
                 command_buffer.push(Command::Draw {
                     triangle_buffer: None,
-                    start_triangle: 0,
-                    end_triangle: 4,
+                    triangle_range: 0..1,
                     instances: 1,
                 });
+                command_buffer.push(Command::Present);
+
                 g.execute_command_buffer(command_buffer);
                 window.request_redraw();
             }

@@ -5,9 +5,8 @@ pub enum Command {
     Present,
     SetPipeline(Pipeline),
     Draw {
-        triangle_buffer: Option<TriangleBuffer>,
-        start_triangle: u32,
-        end_triangle: u32,
+        triangle_buffer: Option<Buffer>,
+        triangle_range: std::ops::Range<u32>,
         instances: u32,
     },
 }
@@ -20,6 +19,16 @@ impl CommandBuffer {
     }
 
     pub fn push(&mut self, command: Command) {
+        match &command {
+            Command::Draw {
+                triangle_buffer, ..
+            } => {
+                if let Some(triangle_buffer) = triangle_buffer {
+                    assert_eq!(triangle_buffer.0.inner().buffer_usage, BufferUsage::Index)
+                }
+            }
+            _ => {}
+        }
         self.0.push(command);
     }
 
