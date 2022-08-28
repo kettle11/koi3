@@ -1,0 +1,13 @@
+[package]
+name = "koi_graphics_context"
+version = "0.1.0"
+edition = "2021"
+
+[features] 
+default = ["gl"]
+gl = ["kapp/gl_context"]
+
+[dependencies]
+kapp = {path = "../../../koi2/crates/kapp", default-features=false}
+kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
+kmath = {path = "../../../koi2/crates/kmath", default-features=false}
