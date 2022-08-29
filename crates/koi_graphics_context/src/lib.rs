@@ -1,5 +1,4 @@
 mod assets;
-use std::collections::btree_map::Range;
 
 use assets::*;
 
@@ -166,6 +165,9 @@ pub struct Pipeline(Handle<PipelineInner>);
 pub struct PipelineInner {
     program_index: u32,
     pipeline_settings: PipelineSettings,
+    uniforms: std::collections::HashMap<String, UniformInfo>,
+    uniform_blocks: std::collections::HashMap<String, UniformBlockInfo>,
+    vertex_attributes: std::collections::HashMap<String, VertexAttributeInfo>,
 }
 
 pub struct CubeMap;
@@ -174,7 +176,10 @@ pub struct DataBuffer<D: GraphicsDataTrait> {
     phantom: std::marker::PhantomData<fn() -> D>,
 }
 
-pub struct Buffer(Handle<BufferInner>);
+pub struct Buffer<D: BufferDataTrait> {
+    phantom: std::marker::PhantomData<fn() -> D>,
+    handle: Handle<BufferInner>,
+}
 
 #[derive(Clone)]
 pub struct BufferInner {
@@ -192,6 +197,24 @@ impl BufferInner {
 pub enum BufferUsage {
     Data,
     Index,
+}
+
+#[derive(Clone)]
+struct UniformBlockInfo {
+    size_bytes: u32,
+    location: u32,
+}
+
+#[derive(Clone)]
+struct UniformInfo {
+    uniform_type: u32,
+    location: u32,
+}
+
+#[derive(Clone, Debug)]
+struct VertexAttributeInfo {
+    byte_size: u32,
+    location: u32,
 }
 
 pub trait GraphicsDataTrait {}
@@ -218,6 +241,8 @@ impl GraphicsContext {
         }
     }
 
+    /// Free memory for unused resources.
+    /// Called automatically after each CommandBuffer is executed.
     pub fn cleanup(&mut self) {
         unsafe {
             for dropped_texture in self.texture_assets.get_dropped_assets() {
@@ -234,6 +259,7 @@ impl GraphicsContext {
         }
     }
 
+    /// Creates a new [Pipeline] that can be used for rendering.
     pub fn new_pipeline(
         &mut self,
         vertex_source: &str,
@@ -272,6 +298,7 @@ impl GraphicsContext {
         }
     }
 
+    /// Update the contents of a [Texture]
     pub fn update_texture(
         &mut self,
         x: usize,
@@ -295,8 +322,17 @@ impl GraphicsContext {
         todo!()
     }
 
-    pub fn new_buffer(&mut self, data: &[[u32; 3]]) -> Buffer {
-        todo!()
+    pub fn new_buffer<D: BufferDataTrait>(
+        &mut self,
+        data: &[D],
+        buffer_usage: BufferUsage,
+    ) -> Buffer<D> {
+        Buffer {
+            handle: self
+                .buffer_assets
+                .new_handle(unsafe { self.backend.new_buffer(buffer_usage, slice_to_bytes(data)) }),
+            phantom: std::marker::PhantomData,
+        }
     }
 
     pub fn new_command_buffer(&mut self) -> CommandBuffer {
@@ -315,4 +351,16 @@ impl GraphicsContext {
         self.command_buffer_pool.push(command_buffer);
         self.cleanup();
     }
+}
+
+pub trait BufferDataTrait: 'static {}
+impl BufferDataTrait for f32 {}
+impl BufferDataTrait for u32 {}
+impl<const N: usize> BufferDataTrait for [f32; N] {}
+impl<const N: usize> BufferDataTrait for [u32; N] {}
+
+unsafe fn slice_to_bytes<T>(t: &[T]) -> &[u8] {
+    let ptr = t.as_ptr() as *const u8;
+    let size = std::mem::size_of::<T>() * t.len();
+    std::slice::from_raw_parts(ptr, size)
 }

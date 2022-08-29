@@ -5,7 +5,7 @@ pub enum Command {
     Present,
     SetPipeline(Pipeline),
     Draw {
-        triangle_buffer: Option<Buffer>,
+        triangle_buffer: Option<Buffer<[u32; 3]>>,
         triangle_range: std::ops::Range<u32>,
         instances: u32,
     },
@@ -24,7 +24,10 @@ impl CommandBuffer {
                 triangle_buffer, ..
             } => {
                 if let Some(triangle_buffer) = triangle_buffer {
-                    assert_eq!(triangle_buffer.0.inner().buffer_usage, BufferUsage::Index)
+                    assert_eq!(
+                        triangle_buffer.handle.inner().buffer_usage,
+                        BufferUsage::Index
+                    )
                 }
             }
             _ => {}

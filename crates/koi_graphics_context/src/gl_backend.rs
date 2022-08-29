@@ -40,6 +40,22 @@ pub const GL_TRIANGLES: GLenum = 0x0004;
 pub const GL_UNSIGNED_INT: GLenum = 0x1405;
 pub const GL_STATIC_DRAW: GLenum = 0x88E4;
 
+pub const GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: GLenum = 0x8A35;
+pub const GL_ACTIVE_UNIFORM_BLOCKS: GLenum = 0x8A36;
+
+pub const GL_UNIFORM_BLOCK_DATA_SIZE: GLenum = 0x8A40;
+pub const GL_ACTIVE_UNIFORMS: GLenum = 0x8B86;
+pub const GL_ACTIVE_UNIFORM_MAX_LENGTH: GLenum = 0x8B87;
+
+pub const GL_ACTIVE_ATTRIBUTES: GLenum = 0x8B89;
+pub const GL_ACTIVE_ATTRIBUTE_MAX_LENGTH: GLenum = 0x8B8A;
+
+pub const GL_FLOAT: GLenum = 0x1406;
+pub const GL_FLOAT_VEC2: GLenum = 0x8B50;
+pub const GL_FLOAT_VEC3: GLenum = 0x8B51;
+pub const GL_FLOAT_VEC4: GLenum = 0x8B52;
+pub const GL_FLOAT_MAT4: GLenum = 0x8B5C;
+
 pub(crate) type GLint = c_int;
 pub(crate) type GLsizei = c_int;
 pub(crate) type GLenum = c_uint;
@@ -143,6 +159,46 @@ pub struct GLBackend {
     pub delete_buffers: unsafe extern "system" fn(n: GLsizei, buffers: *const GLuint),
     pub viewport: unsafe extern "system" fn(x: GLint, y: GLint, width: GLsizei, height: GLsizei),
     pub draw_arrays: unsafe extern "system" fn(mode: GLenum, first: GLint, count: GLsizei),
+    pub get_active_uniform_block_name: unsafe extern "system" fn(
+        program: GLuint,
+        uniformBlockIndex: GLuint,
+        bufSize: GLsizei,
+        length: *mut GLsizei,
+        uniformBlockName: *mut GLchar,
+    ),
+    pub get_active_uniform_block_iv: unsafe extern "system" fn(
+        program: GLuint,
+        uniformBlockIndex: GLuint,
+        pname: GLenum,
+        params: *mut GLint,
+    ),
+    pub uniform_block_binding: unsafe extern "system" fn(
+        program: GLuint,
+        uniformBlockIndex: GLuint,
+        uniformBlockBinding: GLuint,
+    ),
+    pub get_active_uniform: unsafe extern "system" fn(
+        program: GLuint,
+        index: GLuint,
+        bufSize: GLsizei,
+        length: *mut GLsizei,
+        size: *mut GLint,
+        type_: *mut GLenum,
+        name: *mut GLchar,
+    ),
+    pub get_uniform_location:
+        unsafe extern "system" fn(program: GLuint, name: *const GLchar) -> GLint,
+    pub get_active_attrib: unsafe extern "system" fn(
+        program: GLuint,
+        index: GLuint,
+        bufSize: GLsizei,
+        length: *mut GLsizei,
+        size: *mut GLint,
+        type_: *mut GLenum,
+        name: *mut GLchar,
+    ),
+    pub get_attrib_location:
+        unsafe extern "system" fn(program: GLuint, name: *const GLchar) -> GLint,
 }
 
 impl GLBackend {
@@ -213,6 +269,19 @@ impl GLBackend {
             delete_buffers: std::mem::transmute(get_f(&gl_context, "glDeleteBuffers")),
             viewport: std::mem::transmute(get_f(&gl_context, "glViewport")),
             draw_arrays: std::mem::transmute(get_f(&gl_context, "glDrawArrays")),
+            get_active_uniform_block_name: std::mem::transmute(get_f(
+                &gl_context,
+                "glGetActiveUniformBlockName",
+            )),
+            get_active_uniform_block_iv: std::mem::transmute(get_f(
+                &gl_context,
+                "glGetActiveUniformBlockiv",
+            )),
+            uniform_block_binding: std::mem::transmute(get_f(&gl_context, "glUniformBlockBinding")),
+            get_active_uniform: std::mem::transmute(get_f(&gl_context, "glGetActiveUniform")),
+            get_uniform_location: std::mem::transmute(get_f(&gl_context, "glGetUniformLocation")),
+            get_active_attrib: std::mem::transmute(get_f(&gl_context, "glGetActiveAttrib")),
+            get_attrib_location: std::mem::transmute(get_f(&gl_context, "glGetAttribLocation")),
             gl_context,
         };
 
@@ -315,7 +384,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         if let Some(triangle_buffer) = triangle_buffer {
                             (self.bind_buffer)(
                                 GL_ELEMENT_ARRAY_BUFFER,
-                                triangle_buffer.0.inner().index,
+                                triangle_buffer.handle.inner().index,
                             );
                             (self.draw_elements)(
                                 GL_TRIANGLES,
@@ -372,10 +441,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             (gl.get_shader_iv)(shader, GL_COMPILE_STATUS, &mut status);
             let success = 1 == status;
 
-            if !success {
-                Err(get_shader_info_log(gl, shader))
-            } else {
+            if success {
                 Ok(shader)
+            } else {
+                Err(get_shader_info_log(gl, shader))
             }
         }
 
@@ -408,13 +477,214 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         (self.get_program_iv)(program, GL_LINK_STATUS, &mut status);
         let success = 1 == status;
 
-        if !success {
-            Err(get_program_info_log(self, program))
-        } else {
+        pub unsafe fn get_uniform_block_name_and_size(
+            gl: &GLBackend,
+            program: GLuint,
+            uniform_block_index: u32,
+        ) -> Option<(String, u32)> {
+            let mut max_name_length = 0;
+            (gl.get_program_iv)(
+                program,
+                GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
+                &mut max_name_length,
+            );
+
+            // Todo: Don't allocate a new vec here each time.
+            let mut name: Vec<u8> = vec![0; max_name_length as usize];
+            let mut length = 0;
+
+            (gl.get_active_uniform_block_name)(
+                program,
+                uniform_block_index,
+                max_name_length,
+                &mut length,
+                name.as_mut_ptr(),
+            );
+            name.truncate(length as usize);
+            let name = String::from_utf8(name).unwrap();
+
+            let mut size_bytes: i32 = 0;
+            (gl.get_active_uniform_block_iv)(
+                program,
+                uniform_block_index,
+                GL_UNIFORM_BLOCK_DATA_SIZE,
+                &mut size_bytes,
+            );
+            Some((name, size_bytes as u32))
+        }
+
+        if success {
+            let mut uniforms = std::collections::HashMap::new();
+            let mut uniform_blocks = std::collections::HashMap::new();
+            let mut vertex_attributes = std::collections::HashMap::new();
+
+            // First read all uniforms
+            {
+                unsafe fn get_uniform_info(
+                    gl: &GLBackend,
+                    program: u32,
+                    index: u32,
+                ) -> Option<(String, UniformInfo)> {
+                    let mut uniform_max_length = 0;
+                    (gl.get_program_iv)(
+                        program,
+                        GL_ACTIVE_UNIFORM_MAX_LENGTH,
+                        &mut uniform_max_length,
+                    );
+
+                    // Todo: Don't allocate a new vec here each time.
+                    let mut name: Vec<u8> = vec![0; uniform_max_length as usize];
+                    let mut length = 0;
+                    let mut size_members = 0;
+                    let mut uniform_type = 0;
+
+                    (gl.get_active_uniform)(
+                        program,
+                        index,
+                        uniform_max_length,
+                        &mut length,
+                        &mut size_members,
+                        &mut uniform_type,
+                        name.as_mut_ptr(),
+                    );
+                    name.truncate(length as usize);
+                    let name = String::from_utf8(name).unwrap();
+
+                    let uniform_location =
+                        (gl.get_uniform_location)(program, name.as_ptr() as *const u8);
+                    let location = if uniform_location < 0 {
+                        None
+                    } else {
+                        Some(uniform_location as u32)
+                    };
+
+                    Some((
+                        name,
+                        UniformInfo {
+                            uniform_type,
+                            location: location?,
+                        },
+                    ))
+                }
+
+                let mut uniform_count = 0;
+                (self.get_program_iv)(program, GL_ACTIVE_UNIFORMS, &mut uniform_count);
+                let uniform_count = uniform_count as u32;
+
+                for i in 0..uniform_count {
+                    let uniform_info = get_uniform_info(self, program, i);
+
+                    // Uniform blocks do not have a location
+                    if let Some((name, uniform_info)) = uniform_info {
+                        uniforms.insert(name, uniform_info);
+                    }
+                }
+            }
+
+            // Next read all uniform blocks.
+            {
+                let mut uniform_block_count = 0;
+                (self.get_program_iv)(program, GL_ACTIVE_UNIFORM_BLOCKS, &mut uniform_block_count);
+                let uniform_block_count = uniform_block_count as u32;
+
+                let mut max_name_length = 0;
+                (self.get_program_iv)(
+                    program,
+                    GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
+                    &mut max_name_length,
+                );
+
+                fn get_id(name: &str) -> Option<u32> {
+                    Some(name[2..name.find('_')?].parse().ok()?)
+                }
+
+                for i in 0..uniform_block_count {
+                    let (name, size_bytes) =
+                        get_uniform_block_name_and_size(self, program, i).unwrap();
+                    let binding_location = get_id(&name).ok_or_else(|| {
+                     "Uniform blocks must be formatted with ub[binding_index]_name. EX: ub0_scene_info."
+                 })?;
+                    (self.uniform_block_binding)(program, i, binding_location);
+                    uniform_blocks.insert(
+                        name,
+                        UniformBlockInfo {
+                            size_bytes,
+                            location: i,
+                        },
+                    );
+                }
+            }
+
+            {
+                unsafe fn get_attribute_info(
+                    gl: &GLBackend,
+                    program: u32,
+                    index: u32,
+                ) -> Option<(String, VertexAttributeInfo)> {
+                    let mut attribute_max_length = 0;
+                    (gl.get_program_iv)(
+                        program,
+                        GL_ACTIVE_ATTRIBUTE_MAX_LENGTH,
+                        &mut attribute_max_length,
+                    );
+                    let mut name: Vec<u8> = vec![0; attribute_max_length as usize];
+                    let mut length = 0;
+                    let mut size_members = 0;
+                    let mut attribute_type = 0;
+
+                    (gl.get_active_attrib)(
+                        program,
+                        index,
+                        attribute_max_length,
+                        &mut length,
+                        &mut size_members,
+                        &mut attribute_type,
+                        name.as_mut_ptr(),
+                    );
+
+                    name.truncate(length as usize);
+                    let name = String::from_utf8(name).unwrap();
+
+                    let byte_size = match attribute_type {
+                        GL_FLOAT => 4,
+                        GL_FLOAT_VEC2 => 8,
+                        GL_FLOAT_VEC3 => 12,
+                        GL_FLOAT_VEC4 => 16,
+                        GL_FLOAT_MAT4 => 64,
+                        _ => return None,
+                    };
+
+                    let location = (gl.get_attrib_location)(program, name.as_ptr() as *const u8);
+
+                    Some((
+                        name,
+                        VertexAttributeInfo {
+                            byte_size,
+                            location: location as u32,
+                        },
+                    ))
+                }
+                let mut count = 0;
+                (self.get_program_iv)(program, GL_ACTIVE_ATTRIBUTES, &mut count);
+                let vertex_attribute_count = count as u32;
+
+                println!("ATTRIBUTE COUNT: {:?}", vertex_attribute_count);
+                for i in 0..vertex_attribute_count {
+                    if let Some((name, attribute_info)) = get_attribute_info(self, program, i) {
+                        vertex_attributes.insert(name, attribute_info);
+                    }
+                }
+            }
+
             Ok(PipelineInner {
                 program_index: program,
                 pipeline_settings,
+                uniforms,
+                uniform_blocks,
+                vertex_attributes,
             })
+        } else {
+            Err(get_program_info_log(self, program))
         }
     }
 
