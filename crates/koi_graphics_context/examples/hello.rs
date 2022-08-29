@@ -33,7 +33,7 @@ async fn run_async(app: Application, events: Events) {
     let pipeline = g
         .new_pipeline(
             r#"
-            layout(location = 0) in vec4 a_position;
+            layout(location = 0) in vec3 a_position;
 
             void main()
             {

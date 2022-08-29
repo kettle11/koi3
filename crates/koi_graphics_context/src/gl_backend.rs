@@ -856,14 +856,15 @@ impl crate::backend_trait::BackendTrait for GLBackend {
     unsafe fn new_buffer(&mut self, buffer_usage: BufferUsage, bytes: &[u8]) -> BufferInner {
         unsafe {
             let mut buffer = 0;
-            (self.gen_textures)(1, &mut buffer);
-            (self.bind_buffer)(GL_ELEMENT_ARRAY_BUFFER, buffer);
+            (self.gen_buffers)(1, &mut buffer);
+            let gl_buffer_usage = match buffer_usage {
+                BufferUsage::Data => GL_ARRAY_BUFFER,
+                BufferUsage::Index => GL_ELEMENT_ARRAY_BUFFER,
+            };
+            (self.bind_buffer)(gl_buffer_usage, buffer);
 
             (self.buffer_data)(
-                match buffer_usage {
-                    BufferUsage::Data => GL_ARRAY_BUFFER,
-                    BufferUsage::Index => GL_ELEMENT_ARRAY_BUFFER,
-                },
+                gl_buffer_usage,
                 bytes.len() as _,
                 bytes.as_ptr() as _,
                 GL_STATIC_DRAW,
