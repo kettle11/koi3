@@ -33,15 +33,11 @@ async fn run_async(app: Application, events: Events) {
     let pipeline = g
         .new_pipeline(
             r#"
-            out vec2 TexCoords;
- 
+            layout(location = 0) in vec4 a_position;
+
             void main()
             {
-                float x = -1.0 + float((gl_VertexID & 1) << 2);
-                float y = -1.0 + float((gl_VertexID & 2) << 1);
-                TexCoords.x = (x+1.0)*0.5;
-                TexCoords.y = (y+1.0)*0.5;
-                gl_Position = vec4(x, y, 0, 1);
+                gl_Position = vec4(a_position, 1.0);
             }
             "#,
             r#"
@@ -50,23 +46,36 @@ async fn run_async(app: Application, events: Events) {
             {
                 color_out = vec4(0.0, 0.0, 1.0, 1.0);
             }"#,
-            PipelineSettings::default(),
+            PipelineSettings {
+                faces_to_render: FacesToRender::FrontAndBack,
+                depth_test: DepthTest::AlwaysPass,
+                ..Default::default()
+            },
         )
         .unwrap();
+
+    let position_attribute = pipeline
+        .get_vertex_attribute::<[f32; 3]>("a_position")
+        .unwrap();
+    let positions = g.new_buffer::<[f32; 3]>(
+        &[[0.0, 1.0, 0.0], [-1.0, -1.0, 0.0], [1.0, -1.0, 0.0]],
+        BufferUsage::Data,
+    );
+    let index_buffer = g.new_buffer(&[[0, 1, 2]], BufferUsage::Index);
 
     loop {
         let event = events.next().await;
         match event {
             Event::Draw { .. } => {
                 let mut command_buffer = g.new_command_buffer();
-                command_buffer.push(Command::Clear(kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)));
-                command_buffer.push(Command::SetPipeline(pipeline.clone()));
-                command_buffer.push(Command::Draw {
-                    triangle_buffer: None,
-                    triangle_range: 0..1,
-                    instances: 1,
-                });
-                command_buffer.push(Command::Present);
+                {
+                    let mut render_pass = command_buffer
+                        .begin_render_pass(Some(kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)));
+                    render_pass.set_pipeline(pipeline.clone());
+                    render_pass
+                        .set_vertex_attribute(position_attribute.clone(), Some(positions.clone()));
+                    render_pass.draw(Some(index_buffer.clone()), 0..1, 1);
+                }
 
                 g.execute_command_buffer(command_buffer);
                 window.request_redraw();

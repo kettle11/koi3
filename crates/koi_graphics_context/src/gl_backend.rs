@@ -1,6 +1,6 @@
 use crate::*;
 
-use core::ffi::{c_double, c_float, c_int, c_uint, c_void};
+use core::ffi::{c_double, c_float, c_int, c_uchar, c_uint, c_void};
 use kapp::*;
 
 pub const GL_COLOR_BUFFER_BIT: c_uint = 0x4000;
@@ -56,6 +56,7 @@ pub const GL_FLOAT_VEC3: GLenum = 0x8B51;
 pub const GL_FLOAT_VEC4: GLenum = 0x8B52;
 pub const GL_FLOAT_MAT4: GLenum = 0x8B5C;
 
+pub(crate) type GLboolean = c_uchar;
 pub(crate) type GLint = c_int;
 pub(crate) type GLsizei = c_int;
 pub(crate) type GLenum = c_uint;
@@ -199,6 +200,17 @@ pub struct GLBackend {
     ),
     pub get_attrib_location:
         unsafe extern "system" fn(program: GLuint, name: *const GLchar) -> GLint,
+    pub vertex_attrib_pointer: unsafe extern "system" fn(
+        index: GLuint,
+        size: GLint,
+        type_: GLenum,
+        normalized: GLboolean,
+        stride: GLsizei,
+        pointer: *const core::ffi::c_void,
+    ),
+    pub vertex_attrib_divisor: unsafe extern "system" fn(index: GLuint, divisor: GLuint),
+    pub enable_vertex_attrib_array: unsafe extern "system" fn(index: GLuint),
+    pub disable_vertex_attrib_array: unsafe extern "system" fn(index: GLuint),
 }
 
 impl GLBackend {
@@ -282,6 +294,16 @@ impl GLBackend {
             get_uniform_location: std::mem::transmute(get_f(&gl_context, "glGetUniformLocation")),
             get_active_attrib: std::mem::transmute(get_f(&gl_context, "glGetActiveAttrib")),
             get_attrib_location: std::mem::transmute(get_f(&gl_context, "glGetAttribLocation")),
+            vertex_attrib_pointer: std::mem::transmute(get_f(&gl_context, "glVertexAttribPointer")),
+            vertex_attrib_divisor: std::mem::transmute(get_f(&gl_context, "glVertexAttribDivisor")),
+            enable_vertex_attrib_array: std::mem::transmute(get_f(
+                &gl_context,
+                "glEnableVertexAttribArray",
+            )),
+            disable_vertex_attrib_array: std::mem::transmute(get_f(
+                &gl_context,
+                "glDisableVertexAttribArray",
+            )),
             gl_context,
         };
 
@@ -292,6 +314,7 @@ impl GLBackend {
 
         s.gl_context.set_window(Some(&initial_window)).unwrap();
         s.gl_context.resize();
+        (s.viewport)(0, 0, 800, 800);
 
         s
     }
@@ -371,8 +394,36 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         (self.disable)(GL_BLEND);
                     }
                 }
+                Command::SetVertexAttribute { attribute, buffer } => {
+                    if let Some(info) = &attribute.info {
+                        if let Some(buffer) = buffer {
+                            (self.bind_buffer)(GL_ARRAY_BUFFER, buffer.handle.inner().index);
+
+                            let attribute_index = info.location;
+                            let byte_size = info.byte_size;
+
+                            for i in 0..(info.byte_size / 16).max(1) {
+                                (self.vertex_attrib_pointer)(
+                                    attribute_index + i as u32,    // Index
+                                    (byte_size as i32 / 4).min(4), // Number of components. It's assumed that components are always 32 bit.
+                                    GL_FLOAT,
+                                    0,                // false
+                                    byte_size as i32, // 0 means to assume tightly packed
+                                    (i * 16) as _,    // Offset
+                                );
+
+                                // TODO: Change this to 1 for per-instance.
+                                (self.vertex_attrib_divisor)(attribute_index + i, 0);
+
+                                (self.enable_vertex_attrib_array)(attribute_index + i);
+                            }
+                        } else {
+                            (self.disable_vertex_attrib_array)(info.location);
+                        }
+                    }
+                }
                 Command::Draw {
-                    triangle_buffer,
+                    index_buffer,
                     triangle_range,
                     instances,
                 } => {
@@ -381,10 +432,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     } else {
                         let count = triangle_range.end - triangle_range.start;
 
-                        if let Some(triangle_buffer) = triangle_buffer {
+                        if let Some(index_buffer) = index_buffer {
                             (self.bind_buffer)(
                                 GL_ELEMENT_ARRAY_BUFFER,
-                                triangle_buffer.handle.inner().index,
+                                index_buffer.handle.inner().index,
                             );
                             (self.draw_elements)(
                                 GL_TRIANGLES,
@@ -425,6 +476,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 String::from("")
             }
         }
+
         unsafe fn compile_shader(
             gl: &GLBackend,
             shader_type: GLenum,
