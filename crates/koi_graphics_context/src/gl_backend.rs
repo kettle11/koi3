@@ -942,9 +942,6 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     TextureType::DefaultFramebuffer => {
                         panic!("Cannot update default framebuffer")
                     }
-                    TextureType::None => {
-                        panic!()
-                    }
                 };
                 let (pixel_format, inner_pixel_format, type_) =
                     crate::gl_shared::pixel_format_to_gl_format_and_inner_format_and_type(
@@ -1032,9 +1029,6 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             TextureType::DefaultFramebuffer => {
                 panic!("Cannot update default framebuffer")
             }
-            TextureType::None => {
-                panic!()
-            }
         };
         let (pixel_format, _inner_pixel_format, type_) =
             crate::gl_shared::pixel_format_to_gl_format_and_inner_format_and_type(
@@ -1102,7 +1096,6 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     (self.delete_renderbuffers)(1, &texture_inner.index);
                 }
                 TextureType::DefaultFramebuffer => panic!("Cannot delete default framebuffer"),
-                TextureType::None => {}
             };
         }
     }

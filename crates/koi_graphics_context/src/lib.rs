@@ -48,6 +48,7 @@ pub struct TextureInner {
     index: u32,
     texture_type: TextureType,
     pixel_format: PixelFormat,
+    #[allow(unused)]
     mip: u8,
 }
 
@@ -62,8 +63,7 @@ pub struct CubeMapInner {
 }
 
 #[derive(Debug, Clone)]
-enum TextureType {
-    None,
+pub enum TextureType {
     Texture,
     RenderBuffer,
     CubeMapFace { face: u8 },
@@ -197,6 +197,7 @@ pub struct PipelineInner {
     pub(crate) program_index: u32,
     pub(crate) pipeline_settings: PipelineSettings,
     pub(crate) uniforms: std::collections::HashMap<String, UniformInfo>,
+    #[allow(unused)]
     pub(crate) uniform_blocks: Vec<UniformBlockInfo>,
     pub(crate) vertex_attributes: std::collections::HashMap<String, VertexAttributeInfo>,
 }
@@ -242,6 +243,7 @@ pub enum BufferUsage {
 }
 
 #[derive(Clone)]
+#[allow(unused)]
 struct UniformBlockInfo {
     size_bytes: u32,
     location: u32,
@@ -284,7 +286,7 @@ impl UniformTypeTrait for (f32, f32, f32, f32) {
 
 #[derive(Clone)]
 struct UniformInfo {
-    pipeline_index: u32,
+    pub(crate) pipeline_index: u32,
     uniform_type: UniformType,
     location: Option<u32>,
 }

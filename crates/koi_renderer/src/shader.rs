@@ -56,6 +56,7 @@ pub(crate) struct ShaderRenderProperties {
     // Uniform blocks
     // pub(crate) ub_scene_info: koi_graphics_context::UniformBlock<SceneInfoUniformBlock>,
     // Per-instance attributes
+    #[allow(unused)]
     pub(crate) local_to_world_instance_attribute:
         koi_graphics_context::VertexAttribute<kmath::Mat4>,
     // Atributes

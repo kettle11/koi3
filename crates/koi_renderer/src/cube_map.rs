@@ -4,6 +4,7 @@ use koi_assets::AssetTrait;
 use koi_resources::Resources;
 
 pub struct CubeMap {
+    #[allow(unused)]
     pub(crate) texture: koi_graphics_context::CubeMap,
     /// Used for efficient irradiance.
     pub spherical_harmonics: SphericalHarmonics<4>,
@@ -317,10 +318,4 @@ pub(crate) fn get_direction_for(index: usize, x: f32, y: f32, dimensions: f32) -
         _ => unreachable!(),
     };
     dir * (1.0 / l)
-}
-
-unsafe fn slice_to_bytes<T>(t: &[T]) -> &[u8] {
-    let ptr = t.as_ptr() as *const u8;
-    let size = std::mem::size_of::<T>() * t.len();
-    std::slice::from_raw_parts(ptr, size)
 }

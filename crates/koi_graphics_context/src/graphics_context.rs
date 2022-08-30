@@ -86,6 +86,7 @@ impl GraphicsContext {
         }
     }
 
+    #[inline]
     pub fn new_texture_with_data<D: TextureDataTrait>(
         &mut self,
         width: u32,
@@ -101,6 +102,7 @@ impl GraphicsContext {
 
     /// Create a [Texture].
     /// After creating the [Texture] set its data with [Self::update_texture]
+    #[inline]
     pub fn new_texture<D: TextureDataTrait>(
         &mut self,
         width: u32,
@@ -168,6 +170,7 @@ impl GraphicsContext {
         texture
     }
     /// Update the contents of a [Texture]
+    #[inline]
     pub fn update_texture<D: TextureDataTrait>(
         &mut self,
         texture: &Texture,
@@ -219,6 +222,7 @@ impl GraphicsContext {
         }
     }
 
+    #[inline]
     pub fn new_cube_map_with_data<D: TextureDataTrait>(
         &mut self,
         width: u32,
@@ -240,6 +244,7 @@ impl GraphicsContext {
         cube_map
     }
 
+    #[inline]
     pub fn update_cube_map<D: TextureDataTrait>(
         &mut self,
         cube_map: &CubeMap,
@@ -264,6 +269,7 @@ impl GraphicsContext {
         }
     }
 
+    #[inline]
     pub fn new_buffer<D: BufferDataTrait>(
         &mut self,
         data: &[D],

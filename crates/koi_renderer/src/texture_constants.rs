@@ -1,6 +1,5 @@
 use crate::Texture;
 use koi_assets::*;
-use koi_graphics_context::{TextureDataTrait, TextureSettings};
 use koi_resources::Resources;
 
 impl Texture {

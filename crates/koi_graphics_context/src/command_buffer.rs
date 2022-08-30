@@ -92,6 +92,7 @@ impl<'a> RenderPass<'a> {
         })
     }
 
+    #[inline]
     pub fn set_vertex_attribute<D: BufferDataTrait>(
         &mut self,
         vertex_attribute: &VertexAttribute<D>,
@@ -112,7 +113,15 @@ impl<'a> RenderPass<'a> {
             })
     }
 
+    #[inline]
     pub fn set_uniform<U: UniformTypeTrait>(&mut self, uniform: &Uniform<U>, data: U) {
+        assert_eq!(
+            Some(uniform.uniform_info.pipeline_index),
+            self.current_pipeline
+                .as_ref()
+                .map(|p| p.inner().program_index),
+            "`vertex attribute` is from a pipeline that is not currently bound."
+        );
         let bump_handle = self.command_buffer.bump_allocator.push(data);
 
         self.command_buffer.commands.push(Command::SetUniform {
@@ -121,6 +130,7 @@ impl<'a> RenderPass<'a> {
         })
     }
 
+    #[inline]
     pub fn set_uniform_block<D: BufferDataTrait>(
         &mut self,
         uniform_block_index: u8,

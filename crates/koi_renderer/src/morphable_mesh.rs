@@ -92,9 +92,3 @@ impl MorphableMeshData {
         }
     }
 }
-
-unsafe fn slice_to_bytes<T>(t: &[T]) -> &[u8] {
-    let ptr = t.as_ptr() as *const u8;
-    let size = std::mem::size_of::<T>() * t.len();
-    std::slice::from_raw_parts(ptr, size)
-}

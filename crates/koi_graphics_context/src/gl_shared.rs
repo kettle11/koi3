@@ -1,38 +1,11 @@
 use crate::*;
 use core::ffi::c_uint;
 
-pub const ACTIVE_UNIFORMS: c_uint = 0x8B86;
-pub const ACTIVE_ATTRIBUTES: c_uint = 0x8B89;
-
-pub const INT: c_uint = 0x1404;
 pub const HALF_FLOAT: c_uint = 0x140B;
 pub const FLOAT: c_uint = 0x1406;
 pub const UNSIGNED_SHORT: c_uint = 0x1403;
 pub const UNSIGNED_INT: c_uint = 0x1405;
 pub const UNSIGNED_BYTE: c_uint = 0x1401;
-
-pub const FLOAT_VEC2: c_uint = 0x8B50;
-pub const FLOAT_VEC3: c_uint = 0x8B51;
-pub const FLOAT_VEC4: c_uint = 0x8B52;
-pub const FLOAT_MAT4: c_uint = 0x8B5C;
-pub const SAMPLER_2D: c_uint = 0x8B5E;
-pub const SAMPLER_CUBE: c_uint = 0x8B60;
-
-pub const LESS: c_uint = 0x0201;
-pub const EQUAL: c_uint = 0x0202;
-pub const LEQUAL: c_uint = 0x0203;
-pub const GREATER: c_uint = 0x0204;
-pub const NOTEQUAL: c_uint = 0x0205;
-pub const GEQUAL: c_uint = 0x0206;
-pub const ALWAYS: c_uint = 0x0207;
-
-pub const FRONT: c_uint = 0x0404;
-pub const BACK: c_uint = 0x0405;
-pub const FRONT_AND_BACK: c_uint = 0x0408;
-
-pub const ONE: c_uint = 0x1;
-pub const ONE_MINUS_SRC_ALPHA: c_uint = 0x0303;
-pub const SRC_ALPHA: c_uint = 0x0302;
 
 pub const DEPTH_COMPONENT16: c_uint = 0x81A5;
 pub const DEPTH_COMPONENT24: c_uint = 0x81A6;
@@ -59,22 +32,10 @@ pub const R8: c_uint = 0x8229;
 pub const RG8: c_uint = 0x822B;
 pub const RGB8: c_uint = 0x8051;
 pub const RGBA8: c_uint = 0x8058;
-pub const SRGB8: c_uint = 0x8C41;
 pub const SRGB8_ALPHA8: c_uint = 0x8C43;
 
 pub const RGBA16F: c_uint = 0x881A;
 pub const RGBA32F: c_uint = 0x8814;
-
-pub const TEXTURE0: c_uint = 0x84C0;
-
-pub const TEXTURE_2D: c_uint = 0x0DE1;
-pub const TEXTURE_CUBE_MAP: c_uint = 0x8513;
-pub const TEXTURE_CUBE_MAP_POSITIVE_X: c_uint = 0x8515;
-pub const FRAMEBUFFER: c_uint = 0x8d40;
-
-pub const COLOR_ATTACHMENT0: c_uint = 0x8CE0;
-pub const DEPTH_ATTACHMENT: c_uint = 0x8D00;
-pub const STENCIL_ATTACHMENT: c_uint = 0x8D20;
 
 // Useful reference: https://webgl2fundamentals.org/webgl/lessons/webgl-data-textures.html
 pub fn pixel_format_to_gl_format_and_inner_format_and_type(

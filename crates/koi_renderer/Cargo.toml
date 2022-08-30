@@ -12,7 +12,7 @@ hdri = ["hdrldr"]
 [dependencies]
 koi_graphics_context = {path = "../koi_graphics_context"}
 
-half = {version = "2.1.0", features=["bytemuck"], no-default-features = true}
+half = {version = "2.1.0", no-default-features = true}
 
 kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
 kmath = {path = "../../../koi2/crates/kmath"}

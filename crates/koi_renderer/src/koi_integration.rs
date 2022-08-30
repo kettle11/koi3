@@ -45,7 +45,7 @@ pub fn initialize_plugin(resources: &mut Resources) {
     };
 
     // Initialize the graphics context.
-    let mut graphics_context = koi_graphics_context::GraphicsContext::new(
+    let graphics_context = koi_graphics_context::GraphicsContext::new(
         koi_graphics_context::GraphicsContextSettings {
             high_resolution_framebuffer: true,
             /// How many MSAA samples the window framebuffer should have

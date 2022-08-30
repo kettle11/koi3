@@ -183,7 +183,7 @@ impl RenderPass {
                 shaders,
                 textures,
                 cube_maps,
-                morphable_mesh_data,
+                _morphable_mesh_data: morphable_mesh_data,
                 render_pass,
                 current_material_and_shader: None,
                 current_gpu_mesh: None,
@@ -208,7 +208,7 @@ struct RenderPassExecutor<'a> {
     shaders: &'a AssetStore<Shader>,
     textures: &'a AssetStore<Texture>,
     cube_maps: &'a AssetStore<CubeMap>,
-    morphable_mesh_data: &'a AssetStore<MorphableMeshData>,
+    _morphable_mesh_data: &'a AssetStore<MorphableMeshData>,
     render_pass: koi_graphics_context::RenderPass<'a>,
     current_material_and_shader: Option<(&'a Material, &'a Shader)>,
     current_gpu_mesh: Option<&'a GPUMesh>,
@@ -251,31 +251,22 @@ impl<'a> RenderPassExecutor<'a> {
                             .to_rgb_color(self.this_render_pass.color_space)
                             .into(),
                     );
-                    let mut texture_unit = 0;
 
-                    /*
-                    self.render_pass.set_texture_property(
-                        &sp.p_base_color_texture,
-                        Some(material.base_color_texture.as_ref().map_or_else(
+                    self.render_pass.set_texture(
+                        0,
+                        material.base_color_texture.as_ref().map_or_else(
                             || &self.textures.get(&Texture::WHITE).0,
                             |t| &self.textures.get(t).0,
-                        )),
-                        texture_unit,
+                        ),
                     );
-                    */
-                    texture_unit += 1;
 
-                    /*
-                    self.render_pass.set_texture_property(
-                        &sp.p_metallic_roughness_texture,
-                        Some(material.metallic_roughness_texture.as_ref().map_or_else(
+                    self.render_pass.set_texture(
+                        1,
+                        material.metallic_roughness_texture.as_ref().map_or_else(
                             || &self.textures.get(&Texture::WHITE).0,
                             |t| &self.textures.get(t).0,
-                        )),
-                        texture_unit,
+                        ),
                     );
-                    */
-                    texture_unit += 1;
 
                     self.render_pass
                         .set_uniform(&sp.p_metallic, material.metallicness);
@@ -303,7 +294,6 @@ impl<'a> RenderPassExecutor<'a> {
                         texture_unit,
                     );
                     */
-                    texture_unit += 1;
 
                     /*
                     if let Some(morphable_mesh_data) = material.morphable_mesh_data.as_ref() {
@@ -368,10 +358,10 @@ impl<'a> RenderPassExecutor<'a> {
 
                 // Upload a new buffer for the thing being rendered.
                 // TODO: Investigate if this is inefficient for single objects.
-                let local_to_world_data = self.graphics.new_buffer(
-                    &self.this_render_pass.local_to_world_matrices,
-                    BufferUsage::Data,
-                );
+                // let local_to_world_data = self.graphics.new_buffer(
+                //     &self.this_render_pass.local_to_world_matrices,
+                //     BufferUsage::Data,
+                // );
 
                 // self.render_pass.set_instance_attribute(
                 //     &shader_properties.local_to_world_instance_attribute,
