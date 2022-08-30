@@ -31,7 +31,7 @@ async fn run_async(app: Application, events: Events) {
         16,
         16,
         1,
-        &[[1.0, 0.0, 0.0, 1.0]; 16 * 16 * 1],
+        &[[255, 0, 0, 255]; 16 * 16 * 1],
         TextureSettings::default(),
     );
     let pipeline = g

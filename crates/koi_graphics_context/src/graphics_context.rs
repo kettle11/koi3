@@ -120,8 +120,13 @@ impl GraphicsContext {
             "Data passed in does not match the size being updated"
         );
 
+        assert_eq!(
+            D::PIXEL_FORMAT,
+            texture.0.inner().pixel_format,
+            "This texture's pixels are stored in a different PixelFormat"
+        );
         // TODO: Assert that the texture is actually this size.
-        
+
         let data = unsafe { slice_to_bytes(data) };
         unsafe {
             self.backend.update_texture(

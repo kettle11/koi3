@@ -916,7 +916,6 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         data: &[u8],
         settings: TextureSettings,
     ) {
-        let texture_index = texture.index;
         let (target, texture_index) = match texture.texture_type {
             TextureType::Texture => (GL_TEXTURE_2D, texture.index),
             TextureType::CubeMap { face } => {
@@ -932,12 +931,12 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 panic!()
             }
         };
-        let (pixel_format, inner_pixel_format, type_) =
+        let (pixel_format, _inner_pixel_format, type_) =
             crate::gl_shared::pixel_format_to_gl_format_and_inner_format_and_type(
                 texture.pixel_format,
                 settings.srgb,
             );
-        (self.bind_texture)(target, texture.index);
+        (self.bind_texture)(target, texture_index);
 
         if depth > 1 {
             (self.tex_sub_image_3d)(
