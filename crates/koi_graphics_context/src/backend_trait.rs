@@ -1,7 +1,11 @@
 use crate::*;
 
 pub trait BackendTrait {
-    unsafe fn execute_command_buffer(&mut self, command_buffer: &crate::CommandBuffer);
+    unsafe fn execute_command_buffer(
+        &mut self,
+        command_buffer: &crate::CommandBuffer,
+        buffer_sizes: &Vec<u32>,
+    );
     unsafe fn new_texture(
         &mut self,
         width: usize,
@@ -10,6 +14,19 @@ pub trait BackendTrait {
         pixel_format: PixelFormat,
         settings: TextureSettings,
     ) -> TextureInner;
+    unsafe fn update_texture(
+        &mut self,
+        texture: &Texture,
+        x: usize,
+        y: usize,
+        z: usize,
+        width: usize,
+        height: usize,
+        depth: usize,
+        data: &[u8],
+        pixel_format: PixelFormat,
+        settings: TextureSettings,
+    );
     unsafe fn delete_texture(&mut self, texture_inner: TextureInner);
 
     unsafe fn new_pipeline(

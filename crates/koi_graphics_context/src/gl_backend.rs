@@ -1,3 +1,4 @@
+use crate::gl_shared::*;
 use crate::*;
 
 use core::ffi::{c_double, c_float, c_int, c_uchar, c_uint, c_void};
@@ -56,6 +57,13 @@ pub const GL_FLOAT_VEC3: GLenum = 0x8B51;
 pub const GL_FLOAT_VEC4: GLenum = 0x8B52;
 pub const GL_FLOAT_MAT4: GLenum = 0x8B5C;
 
+pub const GL_UNIFORM_BUFFER: GLenum = 0x8A11;
+
+pub const GL_TEXTURE_MIN_FILTER: GLenum = 0x2801;
+pub const GL_TEXTURE_MAG_FILTER: GLenum = 0x2800;
+pub const GL_TEXTURE_WRAP_S: GLenum = 0x2802;
+pub const GL_TEXTURE_WRAP_T: GLenum = 0x2803;
+
 pub(crate) type GLboolean = c_uchar;
 pub(crate) type GLint = c_int;
 pub(crate) type GLsizei = c_int;
@@ -64,6 +72,7 @@ pub(crate) type GLuint = c_uint;
 pub(crate) type GLchar = u8;
 pub(crate) type GLdouble = c_double;
 pub(crate) type GLsizeiptr = isize;
+pub(crate) type GLintptr = isize;
 
 pub struct GLBackend {
     pub gl_context: GLContext,
@@ -211,6 +220,39 @@ pub struct GLBackend {
     pub vertex_attrib_divisor: unsafe extern "system" fn(index: GLuint, divisor: GLuint),
     pub enable_vertex_attrib_array: unsafe extern "system" fn(index: GLuint),
     pub disable_vertex_attrib_array: unsafe extern "system" fn(index: GLuint),
+    pub bind_buffer_range: unsafe extern "system" fn(
+        target: GLenum,
+        index: GLuint,
+        buffer: GLuint,
+        offset: GLintptr,
+        size: GLsizeiptr,
+    ),
+    pub tex_sub_image_2d: unsafe extern "system" fn(
+        target: GLenum,
+        level: GLint,
+        xoffset: GLint,
+        yoffset: GLint,
+        width: GLsizei,
+        height: GLsizei,
+        format: GLenum,
+        type_: GLenum,
+        pixels: *const std::ffi::c_void,
+    ),
+    pub tex_sub_image_3d: unsafe extern "system" fn(
+        target: GLenum,
+        level: GLint,
+        xoffset: GLint,
+        yoffset: GLint,
+        zoffset: GLint,
+        width: GLsizei,
+        height: GLsizei,
+        depth: GLsizei,
+        format: GLenum,
+        type_: GLenum,
+        pixels: *const std::ffi::c_void,
+    ),
+    pub tex_parameter_i32: unsafe extern "system" fn(target: GLenum, pname: GLenum, param: GLint),
+    pub generate_mipmap: unsafe extern "system" fn(target: GLenum),
 }
 
 impl GLBackend {
@@ -304,6 +346,11 @@ impl GLBackend {
                 &gl_context,
                 "glDisableVertexAttribArray",
             )),
+            bind_buffer_range: std::mem::transmute(get_f(&gl_context, "glBindBufferRange")),
+            tex_sub_image_2d: std::mem::transmute(get_f(&gl_context, "glTexSubImage2D")),
+            tex_sub_image_3d: std::mem::transmute(get_f(&gl_context, "glTexSubImage3D")),
+            tex_parameter_i32: std::mem::transmute(get_f(&gl_context, "glTexParameteri")),
+            generate_mipmap: std::mem::transmute(get_f(&gl_context, "glGenerateMipmap")),
             gl_context,
         };
 
@@ -321,7 +368,11 @@ impl GLBackend {
 }
 
 impl crate::backend_trait::BackendTrait for GLBackend {
-    unsafe fn execute_command_buffer(&mut self, command_buffer: &crate::CommandBuffer) {
+    unsafe fn execute_command_buffer(
+        &mut self,
+        command_buffer: &crate::CommandBuffer,
+        buffer_sizes: &Vec<u32>,
+    ) {
         // These are constant across all pipelines.
         (self.enable)(GL_DEPTH_TEST);
         (self.clear_depth)(1.0);
@@ -420,6 +471,21 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         } else {
                             (self.disable_vertex_attrib_array)(info.location);
                         }
+                    }
+                }
+                Command::SetUniformBlock {
+                    uniform_block_index,
+                    buffer,
+                } => {
+                    if let Some(buffer) = buffer {
+                        let size_bytes = buffer_sizes[buffer.handle.inner().index as usize];
+                        (self.bind_buffer_range)(
+                            GL_UNIFORM_BUFFER,
+                            *uniform_block_index as _, // Index
+                            buffer.handle.inner().index,
+                            0 as isize,
+                            size_bytes as _,
+                        );
                     }
                 }
                 Command::Draw {
@@ -567,7 +633,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
 
         if success {
             let mut uniforms = std::collections::HashMap::new();
-            let mut uniform_blocks = std::collections::HashMap::new();
+            let mut uniform_blocks = Vec::new();
             let mut vertex_attributes = std::collections::HashMap::new();
 
             // First read all uniforms
@@ -657,13 +723,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                      "Uniform blocks must be formatted with ub[binding_index]_name. EX: ub0_scene_info."
                  })?;
                     (self.uniform_block_binding)(program, i, binding_location);
-                    uniform_blocks.insert(
-                        name,
-                        UniformBlockInfo {
-                            size_bytes,
-                            location: i,
-                        },
-                    );
+                    uniform_blocks.push(UniformBlockInfo {
+                        size_bytes,
+                        location: i,
+                    });
                 }
             }
 
@@ -836,6 +899,92 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 texture_type: TextureType::RenderBuffer,
                 mip: 0,
             }
+        }
+    }
+
+    unsafe fn update_texture(
+        &mut self,
+        texture: &Texture,
+        x: usize,
+        y: usize,
+        z: usize,
+        width: usize,
+        height: usize,
+        depth: usize,
+        data: &[u8],
+        pixel_format: PixelFormat,
+        settings: TextureSettings,
+    ) {
+        let texture_index = texture.0.inner().index;
+        let (target, texture_index) = match texture.0.inner().texture_type {
+            TextureType::Texture => (GL_TEXTURE_2D, texture_index),
+            TextureType::CubeMap { face } => {
+                (GL_TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture_index)
+            }
+            TextureType::RenderBuffer { .. } => {
+                panic!("For now textures with MSAA cannot be updated by a call to `update_texture`")
+            }
+            TextureType::DefaultFramebuffer => {
+                panic!("Cannot update default framebuffer")
+            }
+            TextureType::None => {
+                panic!()
+            }
+        };
+        let (pixel_format, inner_pixel_format, type_) =
+            crate::gl_shared::pixel_format_to_gl_format_and_inner_format_and_type(
+                pixel_format,
+                settings.srgb,
+            );
+        (self.bind_texture)(target, texture_index);
+
+        if depth > 1 {
+            (self.tex_sub_image_3d)(
+                target,
+                0, /* mip level */
+                x as i32,
+                y as i32,
+                z as i32,
+                width as i32,
+                height as i32,
+                depth as i32,
+                pixel_format, // This doesn't necessarily need to match the internal_format
+                type_,
+                data.as_ptr() as _,
+            );
+        } else {
+            (self.tex_sub_image_2d)(
+                target,
+                0, /* mip level */
+                x as i32,
+                y as i32,
+                width as i32,
+                height as i32,
+                pixel_format, // This doesn't necessarily need to match the internal_format
+                type_,
+                data.as_ptr() as _,
+            );
+        }
+
+        let minification_filter = minification_filter_to_gl_enum(
+            settings.minification_filter,
+            settings.mipmap_filter,
+            settings.generate_mipmaps,
+        );
+        let magnification_filter = magnification_filter_to_gl_enum(settings.magnification_filter);
+
+        (self.tex_parameter_i32)(target, GL_TEXTURE_MIN_FILTER, minification_filter as i32);
+
+        (self.tex_parameter_i32)(target, GL_TEXTURE_MAG_FILTER, magnification_filter as i32);
+
+        let wrapping_horizontal = wrapping_to_gl_enum(settings.wrapping_horizontal);
+        let wrapping_vertical = wrapping_to_gl_enum(settings.wrapping_vertical);
+
+        (self.tex_parameter_i32)(target, GL_TEXTURE_WRAP_S, wrapping_horizontal as i32);
+        (self.tex_parameter_i32)(target, GL_TEXTURE_WRAP_T, wrapping_vertical as i32);
+
+        if settings.generate_mipmaps {
+            (self.generate_mipmap)(target);
         }
     }
 

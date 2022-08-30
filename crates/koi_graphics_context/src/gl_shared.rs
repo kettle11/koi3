@@ -120,3 +120,38 @@ pub fn pixel_format_to_gl_format_and_inner_format_and_type(
 
     (format, inner_format, type_)
 }
+
+pub fn minification_filter_to_gl_enum(
+    minification_filter_mode: FilterMode,
+    mipmap_filter_mode: FilterMode,
+    has_mipmaps: bool,
+) -> c_uint {
+    if has_mipmaps {
+        match (minification_filter_mode, mipmap_filter_mode) {
+            (FilterMode::Nearest, FilterMode::Nearest) => NEAREST_MIPMAP_NEAREST,
+            (FilterMode::Nearest, FilterMode::Linear) => NEAREST_MIPMAP_LINEAR,
+            (FilterMode::Linear, FilterMode::Nearest) => LINEAR_MIPMAP_NEAREST,
+            (FilterMode::Linear, FilterMode::Linear) => LINEAR_MIPMAP_LINEAR,
+        }
+    } else {
+        match minification_filter_mode {
+            FilterMode::Nearest => NEAREST,
+            FilterMode::Linear => LINEAR,
+        }
+    }
+}
+
+pub fn magnification_filter_to_gl_enum(filter_mode: FilterMode) -> c_uint {
+    match filter_mode {
+        FilterMode::Nearest => NEAREST,
+        FilterMode::Linear => LINEAR,
+    }
+}
+
+pub fn wrapping_to_gl_enum(wrapping_mode: WrappingMode) -> c_uint {
+    match wrapping_mode {
+        WrappingMode::ClampToEdge => CLAMP_TO_EDGE,
+        WrappingMode::MirrorRepeat => MIRRORED_REPEAT,
+        WrappingMode::Repeat => REPEAT,
+    }
+}

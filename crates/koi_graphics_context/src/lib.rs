@@ -148,11 +148,11 @@ pub struct Pipeline(Handle<PipelineInner>);
 
 #[derive(Clone)]
 pub struct PipelineInner {
-    program_index: u32,
-    pipeline_settings: PipelineSettings,
-    uniforms: std::collections::HashMap<String, UniformInfo>,
-    uniform_blocks: std::collections::HashMap<String, UniformBlockInfo>,
-    vertex_attributes: std::collections::HashMap<String, VertexAttributeInfo>,
+    pub(crate) program_index: u32,
+    pub(crate) pipeline_settings: PipelineSettings,
+    pub(crate) uniforms: std::collections::HashMap<String, UniformInfo>,
+    pub(crate) uniform_blocks: Vec<UniformBlockInfo>,
+    pub(crate) vertex_attributes: std::collections::HashMap<String, VertexAttributeInfo>,
 }
 
 pub struct CubeMap;
@@ -225,14 +225,14 @@ pub struct VertexAttribute<D: BufferDataTrait> {
 impl<D: BufferDataTrait> VertexAttribute<D> {
     pub fn untyped(&self) -> VertexAttributeUntyped {
         VertexAttributeUntyped {
-            pipeline_index: self.pipeline_index,
+            // pipeline_index: self.pipeline_index,
             info: self.info.clone(),
         }
     }
 }
 
 pub struct VertexAttributeUntyped {
-    pipeline_index: u32,
+    // pipeline_index: u32,
     info: Option<VertexAttributeInfo>,
 }
 

@@ -24,6 +24,7 @@ pub struct GraphicsContext {
     texture_assets: Assets<TextureInner>,
     pipeline_assets: Assets<PipelineInner>,
     buffer_assets: Assets<BufferInner>,
+    buffer_sizes_bytes: Vec<u32>,
 }
 
 impl GraphicsContext {
@@ -36,6 +37,7 @@ impl GraphicsContext {
                 texture_assets: Assets::new(),
                 pipeline_assets: Assets::new(),
                 buffer_assets: Assets::new(),
+                buffer_sizes_bytes: Vec::new(),
             }
         }
     }
@@ -126,10 +128,17 @@ impl GraphicsContext {
         data: &[D],
         buffer_usage: BufferUsage,
     ) -> Buffer<D> {
+        let data_bytes = unsafe { slice_to_bytes(data) };
+        let handle = self
+            .buffer_assets
+            .new_handle(unsafe { self.backend.new_buffer(buffer_usage, data_bytes) });
+        self.buffer_sizes_bytes.resize(
+            (handle.inner().index as usize + 1).max(self.buffer_sizes_bytes.len()),
+            0,
+        );
+        self.buffer_sizes_bytes[handle.inner().index as usize] = data_bytes.len() as u32;
         Buffer {
-            handle: self
-                .buffer_assets
-                .new_handle(unsafe { self.backend.new_buffer(buffer_usage, slice_to_bytes(data)) }),
+            handle,
             phantom: std::marker::PhantomData,
         }
     }
@@ -145,7 +154,8 @@ impl GraphicsContext {
 
     pub fn execute_command_buffer(&mut self, command_buffer: CommandBuffer) {
         unsafe {
-            self.backend.execute_command_buffer(&command_buffer);
+            self.backend
+                .execute_command_buffer(&command_buffer, &self.buffer_sizes_bytes);
         }
         self.command_buffer_pool.push(command_buffer);
         self.cleanup();

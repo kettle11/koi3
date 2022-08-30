@@ -13,6 +13,10 @@ pub enum Command {
         attribute: VertexAttributeUntyped,
         buffer: Option<BufferUntyped>,
     },
+    SetUniformBlock {
+        uniform_block_index: u8,
+        buffer: Option<BufferUntyped>,
+    },
 }
 
 pub struct CommandBuffer(pub(crate) Vec<Command>);
@@ -38,13 +42,13 @@ impl CommandBuffer {
 }
 
 pub struct RenderPass<'a> {
-    current_pipeline: Option<u32>,
+    current_pipeline: Option<Handle<PipelineInner>>,
     command_buffer: &'a mut CommandBuffer,
 }
 
 impl<'a> RenderPass<'a> {
     pub fn set_pipeline(&mut self, pipeline: Pipeline) {
-        self.current_pipeline = Some(pipeline.0.inner().program_index);
+        self.current_pipeline = Some(pipeline.0.clone());
         self.command_buffer.0.push(Command::SetPipeline(pipeline))
     }
 
@@ -53,10 +57,44 @@ impl<'a> RenderPass<'a> {
         vertex_attribute: VertexAttribute<D>,
         buffer: Option<Buffer<D>>,
     ) {
+        assert_eq!(
+            Some(vertex_attribute.pipeline_index),
+            self.current_pipeline
+                .as_ref()
+                .map(|p| p.inner().program_index),
+            "`vertex attribute` is from a pipeline that is not currently bound."
+        );
         self.command_buffer.0.push(Command::SetVertexAttribute {
             attribute: vertex_attribute.untyped(),
             buffer: buffer.map(|b| b.untyped()),
         })
+    }
+    pub fn set_uniform_block<D: BufferDataTrait>(
+        &mut self,
+        uniform_block_index: u8,
+        buffer: Option<&Buffer<D>>,
+    ) {
+        if let Some(buffer) = buffer {
+            assert_eq!(buffer.handle.inner().buffer_usage, BufferUsage::Data);
+        }
+
+        let pipeline_inner = self.current_pipeline.as_ref().unwrap();
+        if let Some(uniform_buffer) = pipeline_inner
+            .inner()
+            .uniform_blocks
+            .get(uniform_block_index as usize)
+        {
+            assert_eq!(
+                uniform_buffer.size_bytes as usize,
+                std::mem::size_of::<D>(),
+                "Incorrectly sized block passed to uniform block"
+            );
+
+            self.command_buffer.0.push(Command::SetUniformBlock {
+                uniform_block_index,
+                buffer: buffer.map(|b| b.untyped()),
+            })
+        }
     }
     pub fn draw(
         &mut self,
@@ -65,7 +103,11 @@ impl<'a> RenderPass<'a> {
         instances: u32,
     ) {
         if let Some(index_buffer) = index_buffer.as_ref() {
-            assert_eq!(index_buffer.handle.inner().buffer_usage, BufferUsage::Index)
+            assert_eq!(
+                index_buffer.handle.inner().buffer_usage,
+                BufferUsage::Index,
+                "`index_buffer` was not declared with `BufferUsage::Index`"
+            )
         }
         self.command_buffer.0.push(Command::Draw {
             index_buffer,
