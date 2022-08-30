@@ -7,6 +7,7 @@ use kapp::*;
 pub const GL_COLOR_BUFFER_BIT: c_uint = 0x4000;
 pub const GL_DEPTH_BUFFER_BIT: c_uint = 0x100;
 pub const GL_TEXTURE_2D: c_uint = 0x0DE1;
+pub const GL_TEXTURE_3D: GLenum = 0x806F;
 pub const GL_TEXTURE_CUBE_MAP_POSITIVE_X: c_uint = 0x8515;
 pub const GL_RENDERBUFFER: c_uint = 0x8D41;
 pub const GL_COMPILE_STATUS: c_uint = 0x8B81;
@@ -63,6 +64,8 @@ pub const GL_TEXTURE_MIN_FILTER: GLenum = 0x2801;
 pub const GL_TEXTURE_MAG_FILTER: GLenum = 0x2800;
 pub const GL_TEXTURE_WRAP_S: GLenum = 0x2802;
 pub const GL_TEXTURE_WRAP_T: GLenum = 0x2803;
+
+pub const GL_TEXTURE0: GLenum = 0x84C0;
 
 pub(crate) type GLboolean = c_uchar;
 pub(crate) type GLint = c_int;
@@ -253,6 +256,7 @@ pub struct GLBackend {
     ),
     pub tex_parameter_i32: unsafe extern "system" fn(target: GLenum, pname: GLenum, param: GLint),
     pub generate_mipmap: unsafe extern "system" fn(target: GLenum),
+    pub active_texture: unsafe extern "system" fn(texture: GLenum),
 }
 
 impl GLBackend {
@@ -351,6 +355,7 @@ impl GLBackend {
             tex_sub_image_3d: std::mem::transmute(get_f(&gl_context, "glTexSubImage3D")),
             tex_parameter_i32: std::mem::transmute(get_f(&gl_context, "glTexParameteri")),
             generate_mipmap: std::mem::transmute(get_f(&gl_context, "glGenerateMipmap")),
+            active_texture: std::mem::transmute(get_f(&gl_context, "glActiveTexture")),
             gl_context,
         };
 
@@ -372,6 +377,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         &mut self,
         command_buffer: &crate::CommandBuffer,
         buffer_sizes: &Vec<u32>,
+        texture_sizes: &Vec<(u32, u32, u32)>,
     ) {
         // These are constant across all pipelines.
         (self.enable)(GL_DEPTH_TEST);
@@ -487,6 +493,18 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                             size_bytes as _,
                         );
                     }
+                }
+                Command::SetTexture {
+                    texture_unit,
+                    texture,
+                } => {
+                    let is_3d = texture_sizes[texture.0.inner().index as usize].2 > 1;
+                    // self.gl.uniform_1_i32(Some(uniform_location), unit as i32);
+                    (self.active_texture)(GL_TEXTURE0 + *texture_unit as u32);
+                    (self.bind_texture)(
+                        if is_3d { GL_TEXTURE_3D } else { GL_TEXTURE_2D },
+                        texture.0.inner().index,
+                    );
                 }
                 Command::Draw {
                     index_buffer,
@@ -809,9 +827,9 @@ impl crate::backend_trait::BackendTrait for GLBackend {
 
     unsafe fn new_texture(
         &mut self,
-        width: usize,
-        height: usize,
-        depth: usize,
+        width: u32,
+        height: u32,
+        depth: u32,
         pixel_format_in: PixelFormat,
         settings: TextureSettings,
     ) -> TextureInner {
@@ -907,12 +925,12 @@ impl crate::backend_trait::BackendTrait for GLBackend {
     unsafe fn update_texture(
         &mut self,
         texture: &TextureInner,
-        x: usize,
-        y: usize,
-        z: usize,
-        width: usize,
-        height: usize,
-        depth: usize,
+        x: u32,
+        y: u32,
+        z: u32,
+        width: u32,
+        height: u32,
+        depth: u32,
         data: &[u8],
         settings: TextureSettings,
     ) {

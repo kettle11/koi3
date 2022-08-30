@@ -31,6 +31,8 @@ impl Default for PipelineSettings {
         }
     }
 }
+#[derive(Clone)]
+pub struct Texture(Handle<TextureInner>);
 
 #[derive(Clone)]
 pub struct TextureInner {
@@ -48,8 +50,6 @@ enum TextureType {
     CubeMap { face: u8 },
     DefaultFramebuffer,
 }
-
-pub struct Texture(Handle<TextureInner>);
 
 pub trait TextureDataTrait {
     const PIXEL_FORMAT: PixelFormat;

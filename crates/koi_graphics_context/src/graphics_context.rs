@@ -27,6 +27,7 @@ pub struct GraphicsContext {
     pipeline_assets: Assets<PipelineInner>,
     buffer_assets: Assets<BufferInner>,
     buffer_sizes_bytes: Vec<u32>,
+    texture_size_pixels: Vec<(u32, u32, u32)>,
 }
 
 impl GraphicsContext {
@@ -40,6 +41,7 @@ impl GraphicsContext {
                 pipeline_assets: Assets::new(),
                 buffer_assets: Assets::new(),
                 buffer_sizes_bytes: Vec::new(),
+                texture_size_pixels: Vec::new(),
             }
         }
     }
@@ -84,38 +86,46 @@ impl GraphicsContext {
     /// After creating the [Texture] set its data with [Self::update_texture]
     pub fn new_texture<D: TextureDataTrait>(
         &mut self,
-        width: usize,
-        height: usize,
-        depth: usize,
+        width: u32,
+        height: u32,
+        depth: u32,
         settings: TextureSettings,
     ) -> Texture {
         let pixel_format = D::PIXEL_FORMAT;
-        unsafe {
-            Texture(self.texture_assets.new_handle(self.backend.new_texture(
+        let handle = unsafe {
+            self.texture_assets.new_handle(self.backend.new_texture(
                 width,
                 height,
                 depth,
                 pixel_format,
                 settings,
-            )))
-        }
+            ))
+        };
+        self.texture_size_pixels.resize(
+            self.texture_size_pixels
+                .len()
+                .max(handle.inner().index as usize + 1),
+            (0, 0, 0),
+        );
+        self.texture_size_pixels[handle.inner().index as usize] = (width, height, depth);
+        Texture(handle)
     }
 
     /// Update the contents of a [Texture]
     pub fn update_texture<D: TextureDataTrait>(
         &mut self,
         texture: &Texture,
-        x: usize,
-        y: usize,
-        z: usize,
-        width: usize,
-        height: usize,
-        depth: usize,
+        x: u32,
+        y: u32,
+        z: u32,
+        width: u32,
+        height: u32,
+        depth: u32,
         data: &[D],
         settings: TextureSettings,
     ) {
         assert_eq!(
-            data.len(),
+            data.len() as u32,
             width * height * depth,
             "Data passed in does not match the size being updated"
         );
@@ -125,7 +135,17 @@ impl GraphicsContext {
             texture.0.inner().pixel_format,
             "This texture's pixels are stored in a different PixelFormat"
         );
-        // TODO: Assert that the texture is actually this size.
+
+        // Assert that the data passed in isn't larger than the texture.
+        {
+            let (w, h, d) = self.texture_size_pixels[texture.0.inner().index as usize];
+            assert!(x < w);
+            assert!(y < h);
+            assert!(z < d);
+            assert!(x + width <= w);
+            assert!(y + height <= h);
+            assert!(z + depth <= d);
+        }
 
         let data = unsafe { slice_to_bytes(data) };
         unsafe {
@@ -184,8 +204,11 @@ impl GraphicsContext {
 
     pub fn execute_command_buffer(&mut self, command_buffer: CommandBuffer) {
         unsafe {
-            self.backend
-                .execute_command_buffer(&command_buffer, &self.buffer_sizes_bytes);
+            self.backend.execute_command_buffer(
+                &command_buffer,
+                &self.buffer_sizes_bytes,
+                &self.texture_size_pixels,
+            );
         }
         self.command_buffer_pool.push(command_buffer);
         self.cleanup();

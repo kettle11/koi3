@@ -17,6 +17,10 @@ pub enum Command {
         uniform_block_index: u8,
         buffer: Option<BufferUntyped>,
     },
+    SetTexture {
+        texture_unit: u8,
+        texture: Texture,
+    },
 }
 
 pub struct CommandBuffer(pub(crate) Vec<Command>);
@@ -69,6 +73,7 @@ impl<'a> RenderPass<'a> {
             buffer: buffer.map(|b| b.untyped()),
         })
     }
+
     pub fn set_uniform_block<D: BufferDataTrait>(
         &mut self,
         uniform_block_index: u8,
@@ -96,6 +101,15 @@ impl<'a> RenderPass<'a> {
             })
         }
     }
+
+    pub fn set_texture(&mut self, texture_unit: u8, texture: &Texture) {
+        assert!(texture_unit < 16);
+        self.command_buffer.0.push(Command::SetTexture {
+            texture_unit,
+            texture: texture.clone(),
+        });
+    }
+
     pub fn draw(
         &mut self,
         index_buffer: Option<Buffer<[u32; 3]>>,
