@@ -24,6 +24,7 @@ pub struct GraphicsContext {
     texture_assets: Assets<TextureInner>,
     pipeline_assets: Assets<PipelineInner>,
     buffer_assets: Assets<BufferInner>,
+    cube_map_assets: Assets<CubeMapInner>,
     buffer_sizes_bytes: Vec<u32>,
     texture_size_pixels: Vec<(u32, u32, u32)>,
 }
@@ -38,6 +39,7 @@ impl GraphicsContext {
                 texture_assets: Assets::new(),
                 pipeline_assets: Assets::new(),
                 buffer_assets: Assets::new(),
+                cube_map_assets: Assets::new(),
                 buffer_sizes_bytes: Vec::new(),
                 texture_size_pixels: Vec::new(),
             }
@@ -58,6 +60,10 @@ impl GraphicsContext {
 
             for dropped_buffer in self.buffer_assets.get_dropped_assets() {
                 self.backend.delete_buffer(dropped_buffer);
+            }
+
+            for dropped_cube_map in self.cube_map_assets.get_dropped_assets() {
+                self.backend.delete_cube_map(dropped_cube_map);
             }
         }
     }
@@ -213,22 +219,49 @@ impl GraphicsContext {
         }
     }
 
-    pub fn new_cube_map<D: TextureDataTrait>(
+    pub fn new_cube_map_with_data<D: TextureDataTrait>(
         &mut self,
-        width: usize,
-        height: usize,
+        width: u32,
+        height: u32,
+        data: &[&[D]; 6],
         settings: TextureSettings,
     ) -> CubeMap {
-        todo!()
+        let pixel_format = D::PIXEL_FORMAT;
+        let cube_map = unsafe {
+            self.cube_map_assets.new_handle(self.backend.new_cube_map(
+                width,
+                height,
+                pixel_format,
+                settings,
+            ))
+        };
+        let cube_map = CubeMap(cube_map);
+        self.update_cube_map(&cube_map, width, height, data, settings);
+        cube_map
     }
 
     pub fn update_cube_map<D: TextureDataTrait>(
         &mut self,
         cube_map: &CubeMap,
+        width: u32,
+        height: u32,
         data: &[&[D]; 6],
         settings: TextureSettings,
     ) {
-        todo!()
+        let data = unsafe {
+            [
+                slice_to_bytes(data[0]),
+                slice_to_bytes(data[1]),
+                slice_to_bytes(data[2]),
+                slice_to_bytes(data[3]),
+                slice_to_bytes(data[4]),
+                slice_to_bytes(data[5]),
+            ]
+        };
+        unsafe {
+            self.backend
+                .update_cube_map(&cube_map.0.inner(), width, height, &data, settings)
+        }
     }
 
     pub fn new_buffer<D: BufferDataTrait>(

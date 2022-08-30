@@ -130,23 +130,12 @@ impl<'a> RenderPass<'a> {
             assert_eq!(buffer.handle.inner().buffer_usage, BufferUsage::Data);
         }
 
-        let pipeline_inner = self.current_pipeline.as_ref().unwrap();
-        if let Some(uniform_buffer) = pipeline_inner
-            .inner()
-            .uniform_blocks
-            .get(uniform_block_index as usize)
-        {
-            assert_eq!(
-                uniform_buffer.size_bytes as usize,
-                std::mem::size_of::<D>(),
-                "Incorrectly sized block passed to uniform block"
-            );
+        // TODO: Check the uniform block sizes when Draw is called
 
-            self.command_buffer.commands.push(Command::SetUniformBlock {
-                uniform_block_index,
-                buffer: buffer.map(|b| b.untyped()),
-            })
-        }
+        self.command_buffer.commands.push(Command::SetUniformBlock {
+            uniform_block_index,
+            buffer: buffer.map(|b| b.untyped()),
+        })
     }
 
     pub fn set_texture(&mut self, texture_unit: u8, texture: &Texture) {

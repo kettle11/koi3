@@ -51,12 +51,22 @@ pub struct TextureInner {
     mip: u8,
 }
 
+#[derive(Clone)]
+
+pub struct CubeMap(Handle<CubeMapInner>);
+
+#[derive(Clone)]
+pub struct CubeMapInner {
+    index: u32,
+    pixel_format: PixelFormat,
+}
+
 #[derive(Debug, Clone)]
 enum TextureType {
     None,
     Texture,
     RenderBuffer,
-    CubeMap { face: u8 },
+    CubeMapFace { face: u8 },
     DefaultFramebuffer,
 }
 
@@ -191,8 +201,6 @@ pub struct PipelineInner {
     pub(crate) vertex_attributes: std::collections::HashMap<String, VertexAttributeInfo>,
 }
 
-pub struct CubeMap;
-
 pub struct DataBuffer<D: GraphicsDataTrait> {
     phantom: std::marker::PhantomData<fn() -> D>,
 }
@@ -283,6 +291,7 @@ struct UniformInfo {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UniformType {
+    UInt(u8),
     Int(u8),
     Float(u8),
     Vec2(u8),

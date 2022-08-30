@@ -67,6 +67,7 @@ pub const GL_TEXTURE_WRAP_S: GLenum = 0x2802;
 pub const GL_TEXTURE_WRAP_T: GLenum = 0x2803;
 
 pub const GL_TEXTURE0: GLenum = 0x84C0;
+pub const GL_TEXTURE_CUBE_MAP: GLenum = 0x8513;
 
 pub(crate) type GLboolean = c_uchar;
 pub(crate) type GLint = c_int;
@@ -275,6 +276,8 @@ pub struct GLBackend {
     ),
     pub uniform_1iv:
         unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLint),
+    pub uniform_1uiv:
+        unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLuint),
 }
 
 impl GLBackend {
@@ -380,6 +383,7 @@ impl GLBackend {
             uniform_4fv: std::mem::transmute(get_f(&gl_context, "glUniform4fv")),
             uniform_matrix_4fv: std::mem::transmute(get_f(&gl_context, "glUniformMatrix4fv")),
             uniform_1iv: std::mem::transmute(get_f(&gl_context, "glUniform1iv")),
+            uniform_1uiv: std::mem::transmute(get_f(&gl_context, "glUniform1uiv")),
             gl_context,
         };
 
@@ -496,6 +500,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     // TODO: It may be faster to use the non array types when the value is 1.
                     match uniform_info.uniform_type {
                         UniformType::Int(n) => (self.uniform_1iv)(location, n as _, data as _),
+                        UniformType::UInt(n) => (self.uniform_1uiv)(location, n as _, data as _),
                         UniformType::Float(n) => (self.uniform_1fv)(location, n as _, data as _),
                         UniformType::Vec2(n) => (self.uniform_2fv)(location, n as _, data as _),
                         UniformType::Vec3(n) => (self.uniform_3fv)(location, n as _, data as _),
@@ -754,13 +759,15 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     } else {
                         Some(uniform_location as u32)
                     };
+                    let size_members = size_members as u8;
                     let uniform_type = match uniform_type {
-                        GL_FLOAT => UniformType::Float(size_members as u8),
-                        GL_FLOAT_VEC2 => UniformType::Vec2(size_members as u8),
-                        GL_FLOAT_VEC3 => UniformType::Vec3(size_members as u8),
-                        GL_FLOAT_VEC4 => UniformType::Vec4(size_members as u8),
-                        GL_FLOAT_MAT4 => UniformType::Mat4(size_members as u8),
-                        GL_INT => UniformType::Int(size_members as u8),
+                        GL_FLOAT => UniformType::Float(size_members),
+                        GL_FLOAT_VEC2 => UniformType::Vec2(size_members),
+                        GL_FLOAT_VEC3 => UniformType::Vec3(size_members),
+                        GL_FLOAT_VEC4 => UniformType::Vec4(size_members),
+                        GL_FLOAT_MAT4 => UniformType::Mat4(size_members),
+                        GL_INT => UniformType::Int(size_members),
+                        GL_UNSIGNED_INT => UniformType::UInt(size_members),
                         _ => {
                             println!("UNIMPLEMENTED UNIFORM TYPE: {:?}", uniform_type);
                             return None;
@@ -926,7 +933,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             {
                 let (target, texture_index) = match texture.texture_type {
                     TextureType::Texture => (GL_TEXTURE_2D, texture_index),
-                    TextureType::CubeMap { face } => {
+                    TextureType::CubeMapFace { face } => {
                         (GL_TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture_index)
                     }
                     TextureType::RenderBuffer { .. } => {
@@ -1016,7 +1023,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
     ) {
         let (target, texture_index) = match texture.texture_type {
             TextureType::Texture => (GL_TEXTURE_2D, texture.index),
-            TextureType::CubeMap { face } => {
+            TextureType::CubeMapFace { face } => {
                 (GL_TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture.index)
             }
             TextureType::RenderBuffer { .. } => {
@@ -1090,7 +1097,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         unsafe {
             match texture_inner.texture_type {
                 TextureType::Texture => (self.delete_textures)(1, &texture_inner.index),
-                TextureType::CubeMap { .. } => {}
+                TextureType::CubeMapFace { .. } => {}
                 TextureType::RenderBuffer => {
                     (self.delete_renderbuffers)(1, &texture_inner.index);
                 }
@@ -1098,6 +1105,98 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 TextureType::None => {}
             };
         }
+    }
+
+    unsafe fn new_cube_map(
+        &mut self,
+        _width: u32,
+        _height: u32,
+        pixel_format: PixelFormat,
+        _texture_settings: TextureSettings,
+    ) -> CubeMapInner {
+        unsafe {
+            let mut texture_index = 0;
+            (self.gen_textures)(1, &mut texture_index);
+
+            let cube_map = CubeMapInner {
+                index: texture_index,
+                pixel_format,
+            };
+            cube_map
+        }
+    }
+
+    unsafe fn update_cube_map(
+        &mut self,
+        cube_map: &CubeMapInner,
+        width: u32,
+        height: u32,
+        data: &[&[u8]; 6],
+        texture_settings: TextureSettings,
+    ) {
+        let pixel_format = cube_map.pixel_format;
+        let (pixel_format, inner_pixel_format, type_) =
+            crate::gl_shared::pixel_format_to_gl_format_and_inner_format_and_type(
+                pixel_format,
+                texture_settings.srgb,
+            );
+        unsafe {
+            (self.bind_texture)(GL_TEXTURE_CUBE_MAP, cube_map.index);
+            for i in 0..6 {
+                (self.tex_image_2d)(
+                    GL_TEXTURE_CUBE_MAP_POSITIVE_X + i as u32,
+                    0,                         /* mip level */
+                    inner_pixel_format as i32, // Internal format, how the GPU stores these pixels.
+                    width as i32,
+                    height as i32,
+                    0,            /* border: must be 0 */
+                    pixel_format, // This doesn't necessarily need to match the internal_format
+                    type_,
+                    data[i].as_ptr() as _,
+                );
+            }
+
+            let minification_filter = minification_filter_to_gl_enum(
+                texture_settings.minification_filter,
+                texture_settings.mipmap_filter,
+                texture_settings.generate_mipmaps,
+            );
+            let magnification_filter =
+                magnification_filter_to_gl_enum(texture_settings.magnification_filter);
+
+            (self.tex_parameter_i32)(
+                GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_MIN_FILTER,
+                minification_filter as i32,
+            );
+            (self.tex_parameter_i32)(
+                GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_MAG_FILTER,
+                magnification_filter as i32,
+            );
+
+            let wrapping_horizontal = wrapping_to_gl_enum(texture_settings.wrapping_horizontal);
+            let wrapping_vertical = wrapping_to_gl_enum(texture_settings.wrapping_vertical);
+
+            (self.tex_parameter_i32)(
+                GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_WRAP_S,
+                wrapping_horizontal as i32,
+            );
+            (self.tex_parameter_i32)(
+                GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_WRAP_T,
+                wrapping_vertical as i32,
+            );
+
+            if texture_settings.generate_mipmaps {
+                (self.generate_mipmap)(GL_TEXTURE_CUBE_MAP);
+            }
+        }
+    }
+
+    unsafe fn delete_cube_map(&mut self, cube_map_inner: CubeMapInner) {
+        unsafe { (self.delete_textures)(1, &cube_map_inner.index) }
     }
 
     unsafe fn new_buffer(&mut self, buffer_usage: BufferUsage, bytes: &[u8]) -> BufferInner {

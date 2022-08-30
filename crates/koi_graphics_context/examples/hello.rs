@@ -82,11 +82,10 @@ async fn run_async(app: Application, events: Events) {
                 {
                     let mut render_pass = command_buffer
                         .begin_render_pass(Some(kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)));
-                    render_pass.set_pipeline(pipeline.clone());
-                    render_pass
-                        .set_vertex_attribute(position_attribute.clone(), Some(positions.clone()));
+                    render_pass.set_pipeline(&pipeline);
+                    render_pass.set_vertex_attribute(&position_attribute, Some(&positions));
                     render_pass.set_uniform(&p_custom_color, (0.0, 1.0, 0.0, 1.0));
-                    render_pass.draw(Some(index_buffer.clone()), 0..1, 1);
+                    render_pass.draw(Some(&index_buffer), 0..1, 1);
                 }
 
                 g.execute_command_buffer(command_buffer);

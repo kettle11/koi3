@@ -172,14 +172,15 @@ pub fn prepare_cubemap(
         srgb: false,
         ..Default::default()
     };
-    let cube_map = graphics.new_cube_map::<kmath::Vec4>(
+    let cube_map = graphics.new_cube_map_with_data::<kmath::Vec4>(
         face_size as _,
         face_size as _,
         //Some(output_faces),
+        &output_faces,
         settings,
     );
     // TODO: Make this use f16 instead.
-    graphics.update_cube_map::<kmath::Vec4>(&cube_map, &output_faces, settings);
+    // graphics.update_cube_map::<kmath::Vec4>(&cube_map, &output_faces, settings);
 
     CubeMap {
         texture: cube_map,

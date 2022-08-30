@@ -27,7 +27,26 @@ pub trait BackendTrait {
         data: &[u8],
         settings: TextureSettings,
     );
+
     unsafe fn delete_texture(&mut self, texture_inner: TextureInner);
+
+    unsafe fn new_cube_map(
+        &mut self,
+        width: u32,
+        height: u32,
+        pixel_format: PixelFormat,
+        texture_settings: TextureSettings,
+    ) -> CubeMapInner;
+
+    unsafe fn update_cube_map(
+        &mut self,
+        cube_map: &CubeMapInner,
+        width: u32,
+        height: u32,
+        data: &[&[u8]; 6],
+        texture_settings: TextureSettings,
+    );
+    unsafe fn delete_cube_map(&mut self, cube_map_inner: CubeMapInner);
 
     unsafe fn new_pipeline(
         &mut self,
