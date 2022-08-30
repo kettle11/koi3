@@ -230,6 +230,9 @@ impl GraphicsContext {
         data: &[&[D]; 6],
         settings: TextureSettings,
     ) -> CubeMap {
+        for face in data {
+            assert!(face.len() as u32 == width * height);
+        }
         let pixel_format = D::PIXEL_FORMAT;
         let cube_map = unsafe {
             self.cube_map_assets.new_handle(self.backend.new_cube_map(

@@ -164,6 +164,15 @@ pub fn prepare_cubemap(
         output_faces0[5].as_slice(),
     ];
 
+    let output_faces = [
+        &[kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)] as _,
+        &[kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)] as _,
+        &[kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)] as _,
+        &[kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)] as _,
+        &[kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)] as _,
+        &[kmath::Vec4::new(1.0, 0.0, 0.0, 1.0)] as _,
+    ];
+
     let settings = koi_graphics_context::TextureSettings {
         wrapping_horizontal: koi_graphics_context::WrappingMode::ClampToEdge,
         wrapping_vertical: koi_graphics_context::WrappingMode::ClampToEdge,
@@ -174,8 +183,8 @@ pub fn prepare_cubemap(
         ..Default::default()
     };
     let cube_map = graphics.new_cube_map_with_data::<kmath::Vec4>(
-        face_size as _,
-        face_size as _,
+        1 as _,
+        1 as _,
         //Some(output_faces),
         &output_faces,
         settings,

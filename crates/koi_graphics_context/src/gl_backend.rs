@@ -599,7 +599,6 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     texture_unit,
                     cube_map,
                 } => {
-                    println!("SETTING CUBE MAP TO UNIT: {:?}", texture_unit);
                     // self.gl.uniform_1_i32(Some(uniform_location), unit as i32);
                     (self.active_texture)(GL_TEXTURE0 + *texture_unit as u32);
                     (self.bind_texture)(GL_TEXTURE_CUBE_MAP, cube_map.0.inner().index);
