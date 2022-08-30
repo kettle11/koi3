@@ -83,7 +83,7 @@ pub fn initialize_plugin(resources: &mut Resources) {
 
 pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {
     let mut cube_maps = resources.get::<AssetStore<CubeMap>>();
-    // cube_maps.finalize_asset_loads(resources);
+    cube_maps.finalize_asset_loads(resources);
 
     let window = resources.get::<kapp::Window>();
     let mut meshes = resources.get::<AssetStore<Mesh>>();

@@ -20,16 +20,12 @@ fn main() {
         ));
 
         let new_texture = resources.get::<AssetStore<Texture>>().load(
-            "examples/assets/test.JPG",
-            kgraphics::TextureSettings::default(),
-        );
-        let custom_shader = resources.get::<AssetStore<Shader>>().load(
-            "examples/assets/custom_shader.glsl",
-            ShaderSettings::default(),
+            "assets/characters.png",
+            koi_graphics_context::TextureSettings::default(),
         );
 
         let new_material = resources.get::<AssetStore<Material>>().add(Material {
-            shader: custom_shader,
+            shader: Shader::UNLIT,
             base_color_texture: Some(new_texture),
             perceptual_roughness: 0.05,
             ..Default::default()
