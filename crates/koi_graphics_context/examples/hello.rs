@@ -46,9 +46,12 @@ async fn run_async(app: Application, events: Events) {
             "#,
             r#"
             out vec4 color_out;
+
+            uniform vec4 p_custom_color;
+
             void main()
             {
-                color_out = vec4(0.0, 0.0, 1.0, 1.0);
+                color_out = p_custom_color;
             }"#,
             PipelineSettings {
                 faces_to_render: FacesToRender::FrontAndBack,
@@ -67,6 +70,10 @@ async fn run_async(app: Application, events: Events) {
     );
     let index_buffer = g.new_buffer(&[[0, 1, 2]], BufferUsage::Index);
 
+    let p_custom_color = pipeline
+        .get_uniform::<(f32, f32, f32, f32)>("p_custom_color")
+        .unwrap();
+
     loop {
         let event = events.next().await;
         match event {
@@ -78,6 +85,7 @@ async fn run_async(app: Application, events: Events) {
                     render_pass.set_pipeline(pipeline.clone());
                     render_pass
                         .set_vertex_attribute(position_attribute.clone(), Some(positions.clone()));
+                    render_pass.set_uniform(&p_custom_color, (0.0, 1.0, 0.0, 1.0));
                     render_pass.draw(Some(index_buffer.clone()), 0..1, 1);
                 }
 

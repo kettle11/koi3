@@ -1,6 +1,9 @@
-use crate::*;
+use crate::{
+    bump_allocator::{BumpAllocator, BumpHandle},
+    *,
+};
 
-pub enum Command {
+pub(crate) enum Command {
     Clear(kmath::Vec4),
     Present,
     SetPipeline(Pipeline),
@@ -9,12 +12,16 @@ pub enum Command {
         triangle_range: std::ops::Range<u32>,
         instances: u32,
     },
-    SetVertexAttribute {
-        attribute: VertexAttributeUntyped,
-        buffer: Option<BufferUntyped>,
+    SetUniform {
+        uniform_info: UniformInfo,
+        bump_handle: BumpHandle,
     },
     SetUniformBlock {
         uniform_block_index: u8,
+        buffer: Option<BufferUntyped>,
+    },
+    SetVertexAttribute {
+        attribute: VertexAttributeUntyped,
         buffer: Option<BufferUntyped>,
     },
     SetTexture {
@@ -23,16 +30,22 @@ pub enum Command {
     },
 }
 
-pub struct CommandBuffer(pub(crate) Vec<Command>);
+pub struct CommandBuffer {
+    pub(crate) bump_allocator: BumpAllocator,
+    pub(crate) commands: Vec<Command>,
+}
 
 impl CommandBuffer {
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self {
+            bump_allocator: BumpAllocator::new(),
+            commands: Vec::new(),
+        }
     }
 
     pub fn begin_render_pass(&mut self, color: Option<kmath::Vec4>) -> RenderPass {
         if let Some(color) = color {
-            self.0.push(Command::Clear(color))
+            self.commands.push(Command::Clear(color))
         }
         RenderPass {
             current_pipeline: None,
@@ -41,7 +54,8 @@ impl CommandBuffer {
     }
 
     pub fn clear(&mut self) {
-        self.0.clear()
+        self.bump_allocator.clear();
+        self.commands.clear()
     }
 }
 
@@ -53,7 +67,9 @@ pub struct RenderPass<'a> {
 impl<'a> RenderPass<'a> {
     pub fn set_pipeline(&mut self, pipeline: Pipeline) {
         self.current_pipeline = Some(pipeline.0.clone());
-        self.command_buffer.0.push(Command::SetPipeline(pipeline))
+        self.command_buffer
+            .commands
+            .push(Command::SetPipeline(pipeline))
     }
 
     pub fn set_vertex_attribute<D: BufferDataTrait>(
@@ -68,9 +84,20 @@ impl<'a> RenderPass<'a> {
                 .map(|p| p.inner().program_index),
             "`vertex attribute` is from a pipeline that is not currently bound."
         );
-        self.command_buffer.0.push(Command::SetVertexAttribute {
-            attribute: vertex_attribute.untyped(),
-            buffer: buffer.map(|b| b.untyped()),
+        self.command_buffer
+            .commands
+            .push(Command::SetVertexAttribute {
+                attribute: vertex_attribute.untyped(),
+                buffer: buffer.map(|b| b.untyped()),
+            })
+    }
+
+    pub fn set_uniform<U: UniformTypeTrait>(&mut self, uniform: &Uniform<U>, data: U) {
+        let bump_handle = self.command_buffer.bump_allocator.push(data);
+
+        self.command_buffer.commands.push(Command::SetUniform {
+            uniform_info: uniform.uniform_info.clone(),
+            bump_handle,
         })
     }
 
@@ -95,7 +122,7 @@ impl<'a> RenderPass<'a> {
                 "Incorrectly sized block passed to uniform block"
             );
 
-            self.command_buffer.0.push(Command::SetUniformBlock {
+            self.command_buffer.commands.push(Command::SetUniformBlock {
                 uniform_block_index,
                 buffer: buffer.map(|b| b.untyped()),
             })
@@ -104,7 +131,7 @@ impl<'a> RenderPass<'a> {
 
     pub fn set_texture(&mut self, texture_unit: u8, texture: &Texture) {
         assert!(texture_unit < 16);
-        self.command_buffer.0.push(Command::SetTexture {
+        self.command_buffer.commands.push(Command::SetTexture {
             texture_unit,
             texture: texture.clone(),
         });
@@ -123,7 +150,7 @@ impl<'a> RenderPass<'a> {
                 "`index_buffer` was not declared with `BufferUsage::Index`"
             )
         }
-        self.command_buffer.0.push(Command::Draw {
+        self.command_buffer.commands.push(Command::Draw {
             index_buffer,
             triangle_range,
             instances,
@@ -133,6 +160,6 @@ impl<'a> RenderPass<'a> {
 
 impl<'a> Drop for RenderPass<'a> {
     fn drop(&mut self) {
-        self.command_buffer.0.push(Command::Present);
+        self.command_buffer.commands.push(Command::Present);
     }
 }

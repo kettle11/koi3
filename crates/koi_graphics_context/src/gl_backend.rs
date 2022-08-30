@@ -52,6 +52,7 @@ pub const GL_ACTIVE_UNIFORM_MAX_LENGTH: GLenum = 0x8B87;
 pub const GL_ACTIVE_ATTRIBUTES: GLenum = 0x8B89;
 pub const GL_ACTIVE_ATTRIBUTE_MAX_LENGTH: GLenum = 0x8B8A;
 
+pub const GL_INT: GLenum = 0x1404;
 pub const GL_FLOAT: GLenum = 0x1406;
 pub const GL_FLOAT_VEC2: GLenum = 0x8B50;
 pub const GL_FLOAT_VEC3: GLenum = 0x8B51;
@@ -76,6 +77,7 @@ pub(crate) type GLchar = u8;
 pub(crate) type GLdouble = c_double;
 pub(crate) type GLsizeiptr = isize;
 pub(crate) type GLintptr = isize;
+pub(crate) type GLfloat = f32;
 
 pub struct GLBackend {
     pub gl_context: GLContext,
@@ -257,6 +259,22 @@ pub struct GLBackend {
     pub tex_parameter_i32: unsafe extern "system" fn(target: GLenum, pname: GLenum, param: GLint),
     pub generate_mipmap: unsafe extern "system" fn(target: GLenum),
     pub active_texture: unsafe extern "system" fn(texture: GLenum),
+    pub uniform_1fv:
+        unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLfloat),
+    pub uniform_2fv:
+        unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLfloat),
+    pub uniform_3fv:
+        unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLfloat),
+    pub uniform_4fv:
+        unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLfloat),
+    pub uniform_matrix_4fv: unsafe extern "system" fn(
+        location: GLint,
+        count: GLsizei,
+        transpose: GLboolean,
+        value: *const GLfloat,
+    ),
+    pub uniform_1iv:
+        unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLint),
 }
 
 impl GLBackend {
@@ -356,6 +374,12 @@ impl GLBackend {
             tex_parameter_i32: std::mem::transmute(get_f(&gl_context, "glTexParameteri")),
             generate_mipmap: std::mem::transmute(get_f(&gl_context, "glGenerateMipmap")),
             active_texture: std::mem::transmute(get_f(&gl_context, "glActiveTexture")),
+            uniform_1fv: std::mem::transmute(get_f(&gl_context, "glUniform1fv")),
+            uniform_2fv: std::mem::transmute(get_f(&gl_context, "glUniform2fv")),
+            uniform_3fv: std::mem::transmute(get_f(&gl_context, "glUniform3fv")),
+            uniform_4fv: std::mem::transmute(get_f(&gl_context, "glUniform4fv")),
+            uniform_matrix_4fv: std::mem::transmute(get_f(&gl_context, "glUniformMatrix4fv")),
+            uniform_1iv: std::mem::transmute(get_f(&gl_context, "glUniform1iv")),
             gl_context,
         };
 
@@ -385,7 +409,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
 
         let mut current_program = None;
 
-        for command in command_buffer.0.iter() {
+        for command in command_buffer.commands.iter() {
             match command {
                 Command::SetPipeline(pipeline) => {
                     let pipeline = pipeline.0.inner();
@@ -451,6 +475,42 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         (self.disable)(GL_BLEND);
                     }
                 }
+                Command::SetUniform {
+                    uniform_info,
+                    bump_handle,
+                } => {
+                    let location = uniform_info.location.unwrap_or(0) as _;
+                    let data = command_buffer.bump_allocator.get_raw_bytes(*bump_handle);
+
+                    let data = data.as_ptr();
+
+                    // TODO: It may be faster to use the non array types when the value is 1.
+                    match uniform_info.uniform_type {
+                        UniformType::Int(n) => (self.uniform_1iv)(location, n as _, data as _),
+                        UniformType::Float(n) => (self.uniform_1fv)(location, n as _, data as _),
+                        UniformType::Vec2(n) => (self.uniform_2fv)(location, n as _, data as _),
+                        UniformType::Vec3(n) => (self.uniform_3fv)(location, n as _, data as _),
+                        UniformType::Vec4(n) => (self.uniform_4fv)(location, n as _, data as _),
+                        UniformType::Mat4(n) => {
+                            (self.uniform_matrix_4fv)(location, n as _, 0, data as _)
+                        }
+                    }
+                }
+                Command::SetUniformBlock {
+                    uniform_block_index,
+                    buffer,
+                } => {
+                    if let Some(buffer) = buffer {
+                        let size_bytes = buffer_sizes[buffer.handle.inner().index as usize];
+                        (self.bind_buffer_range)(
+                            GL_UNIFORM_BUFFER,
+                            *uniform_block_index as _, // Index
+                            buffer.handle.inner().index,
+                            0 as isize,
+                            size_bytes as _,
+                        );
+                    }
+                }
                 Command::SetVertexAttribute { attribute, buffer } => {
                     if let Some(info) = &attribute.info {
                         if let Some(buffer) = buffer {
@@ -479,21 +539,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         }
                     }
                 }
-                Command::SetUniformBlock {
-                    uniform_block_index,
-                    buffer,
-                } => {
-                    if let Some(buffer) = buffer {
-                        let size_bytes = buffer_sizes[buffer.handle.inner().index as usize];
-                        (self.bind_buffer_range)(
-                            GL_UNIFORM_BUFFER,
-                            *uniform_block_index as _, // Index
-                            buffer.handle.inner().index,
-                            0 as isize,
-                            size_bytes as _,
-                        );
-                    }
-                }
+
                 Command::SetTexture {
                     texture_unit,
                     texture,
@@ -693,12 +739,25 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     } else {
                         Some(uniform_location as u32)
                     };
+                    let uniform_type = match uniform_type {
+                        GL_FLOAT => UniformType::Float(size_members as u8),
+                        GL_FLOAT_VEC2 => UniformType::Vec2(size_members as u8),
+                        GL_FLOAT_VEC3 => UniformType::Vec3(size_members as u8),
+                        GL_FLOAT_VEC4 => UniformType::Vec4(size_members as u8),
+                        GL_FLOAT_MAT4 => UniformType::Mat4(size_members as u8),
+                        GL_INT => UniformType::Int(size_members as u8),
+                        _ => {
+                            println!("UNIMPLEMENTED UNIFORM TYPE: {:?}", uniform_type);
+                            return None;
+                        }
+                    };
 
                     Some((
                         name,
                         UniformInfo {
+                            pipeline_index: program,
                             uniform_type,
-                            location: location?,
+                            location: Some(location?),
                         },
                     ))
                 }
@@ -748,6 +807,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 }
             }
 
+            // Read all vertex attributes
             {
                 unsafe fn get_attribute_info(
                     gl: &GLBackend,

@@ -4,6 +4,7 @@ use assets::*;
 
 pub mod backend_trait;
 
+mod bump_allocator;
 mod command_buffer;
 pub use command_buffer::*;
 
@@ -224,10 +225,48 @@ struct UniformBlockInfo {
     location: u32,
 }
 
+pub struct Uniform<U: UniformTypeTrait> {
+    uniform_info: UniformInfo,
+    phantom: std::marker::PhantomData<U>,
+}
+
+pub trait UniformTypeTrait: 'static {
+    const UNIFORM_TYPE: UniformType;
+}
+
+impl UniformTypeTrait for f32 {
+    const UNIFORM_TYPE: UniformType = UniformType::Float(1);
+}
+
+impl<const N: usize> UniformTypeTrait for [f32; N] {
+    const UNIFORM_TYPE: UniformType = UniformType::Float(N as u8);
+}
+
+impl UniformTypeTrait for (f32, f32, f32) {
+    const UNIFORM_TYPE: UniformType = UniformType::Vec3(1);
+}
+
+impl UniformTypeTrait for (f32, f32, f32, f32) {
+    const UNIFORM_TYPE: UniformType = UniformType::Vec4(1);
+}
+
+// TODO: More uniform types
+
 #[derive(Clone)]
 struct UniformInfo {
-    uniform_type: u32,
-    location: u32,
+    pipeline_index: u32,
+    uniform_type: UniformType,
+    location: Option<u32>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum UniformType {
+    Int(u8),
+    Float(u8),
+    Vec2(u8),
+    Vec3(u8),
+    Vec4(u8),
+    Mat4(u8),
 }
 
 #[derive(Clone, Debug)]
@@ -258,6 +297,31 @@ pub struct VertexAttributeUntyped {
 }
 
 impl Pipeline {
+    pub fn get_uniform<U: UniformTypeTrait>(&self, name: &str) -> Result<Uniform<U>, String> {
+        if let Some(uniform_info) = self.0.inner().uniforms.get(name) {
+            if uniform_info.uniform_type != U::UNIFORM_TYPE {
+                return Err(format!(
+                    "Incorrect uniform type. In shader: {:?}. Passed in: {:?}",
+                    uniform_info.uniform_type,
+                    U::UNIFORM_TYPE
+                ));
+            }
+            Ok(Uniform {
+                uniform_info: uniform_info.clone(),
+                phantom: std::marker::PhantomData,
+            })
+        } else {
+            Ok(Uniform {
+                uniform_info: UniformInfo {
+                    pipeline_index: self.0.inner().program_index,
+                    uniform_type: U::UNIFORM_TYPE,
+                    location: None,
+                },
+                phantom: std::marker::PhantomData,
+            })
+        }
+    }
+
     pub fn get_vertex_attribute<D: BufferDataTrait>(
         &self,
         name: &str,
