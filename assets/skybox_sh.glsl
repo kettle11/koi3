@@ -22,12 +22,12 @@ void main()
 in vec3 local_position;
 out vec4 color_out;
 
-uniform samplerCube p_cube_map;
+uniform samplerCube sp2_cube_map;
   
 void main()
 {
   
-    color_out.rgb = texture(p_cube_map, local_position).rgb;
+    color_out.rgb = texture(sp2_cube_map, local_position).rgb;
     color_out.rgb = read_spherical_harmonics(normalize(local_position));
     color_out.rgb = pow(color_out.rgb, vec3(1.0/2.2));
         

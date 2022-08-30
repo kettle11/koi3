@@ -55,17 +55,6 @@ pub fn initialize_plugin(resources: &mut Resources) {
         &window,
     );
 
-    // graphics_context.resize(&window, window_width as _, window_height as _);
-
-    // For now this needs to be called even if it's not used.
-    /*
-    let _render_target = graphics_context.get_render_target_for_window(
-        &window,
-        window_width as _,
-        window_height as _,
-    );
-    */
-
     resources.add(window);
 
     let mut renderer = Renderer::new(graphics_context, initial_settings.color_space);

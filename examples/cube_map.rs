@@ -4,7 +4,7 @@ use koi_camera_controls::CameraControls;
 fn main() {
     App::default()
         .with_resource(InitialSettings {
-            color_space: kgraphics::ColorSpace::SRGB,
+            color_space: koi_graphics_context::ColorSpace::SRGB,
             window_width: 1200,
             window_height: 1200,
             ..Default::default()
@@ -145,7 +145,7 @@ fn main() {
                         if prefabs.currently_loading() == 0 {
                             let prefab = prefabs.get_mut(&prefab_handle);
 
-                            let size = 1;
+                            let size = 0;
                             let spacing = 4.0;
 
                             for i in 0..size {

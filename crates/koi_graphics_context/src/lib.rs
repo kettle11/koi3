@@ -302,6 +302,7 @@ pub enum UniformType {
     Mat4(u8),
     Sampler2d,
     Sampler3d,
+    SamplerCube,
 }
 
 #[derive(Clone, Debug)]

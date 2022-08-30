@@ -69,6 +69,10 @@ pub const GL_TEXTURE_WRAP_T: GLenum = 0x2803;
 pub const GL_TEXTURE0: GLenum = 0x84C0;
 pub const GL_TEXTURE_CUBE_MAP: GLenum = 0x8513;
 
+pub const GL_SAMPLER_2D: GLenum = 0x8B5E;
+pub const GL_SAMPLER_3D: GLenum = 0x8B5F;
+pub const GL_SAMPLER_CUBE: GLenum = 0x8B60;
+
 pub(crate) type GLboolean = c_uchar;
 pub(crate) type GLint = c_int;
 pub(crate) type GLsizei = c_int;
@@ -278,6 +282,8 @@ pub struct GLBackend {
         unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLint),
     pub uniform_1uiv:
         unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLuint),
+    pub vertex_attrib_4f:
+        unsafe extern "system" fn(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat),
 }
 
 impl GLBackend {
@@ -384,6 +390,7 @@ impl GLBackend {
             uniform_matrix_4fv: std::mem::transmute(get_f(&gl_context, "glUniformMatrix4fv")),
             uniform_1iv: std::mem::transmute(get_f(&gl_context, "glUniform1iv")),
             uniform_1uiv: std::mem::transmute(get_f(&gl_context, "glUniform1uiv")),
+            vertex_attrib_4f: std::mem::transmute(get_f(&gl_context, "glVertexAttrib4f")),
             gl_context,
         };
 
@@ -407,6 +414,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         buffer_sizes: &Vec<u32>,
         texture_sizes: &Vec<(u32, u32, u32)>,
     ) {
+        self.gl_context.resize();
+
         // These are constant across all pipelines.
         (self.enable)(GL_DEPTH_TEST);
         (self.clear_depth)(1.0);
@@ -510,6 +519,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         }
                         UniformType::Sampler2d => (self.uniform_1fv)(location, 1, data as _),
                         UniformType::Sampler3d => (self.uniform_1fv)(location, 1, data as _),
+                        UniformType::SamplerCube => (self.uniform_1fv)(location, 1, data as _),
                     }
                 }
                 Command::SetUniformBlock {
@@ -527,7 +537,11 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         );
                     }
                 }
-                Command::SetVertexAttribute { attribute, buffer } => {
+                Command::SetAttribute {
+                    attribute,
+                    buffer,
+                    per_instance,
+                } => {
                     if let Some(info) = &attribute.info {
                         if let Some(buffer) = buffer {
                             (self.bind_buffer)(GL_ARRAY_BUFFER, buffer.handle.inner().index);
@@ -545,8 +559,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                                     (i * 16) as _,    // Offset
                                 );
 
-                                // TODO: Change this to 1 for per-instance.
-                                (self.vertex_attrib_divisor)(attribute_index + i, 0);
+                                (self.vertex_attrib_divisor)(
+                                    attribute_index + i,
+                                    if *per_instance { 1 } else { 0 },
+                                );
 
                                 (self.enable_vertex_attrib_array)(attribute_index + i);
                             }
@@ -555,7 +571,18 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         }
                     }
                 }
-
+                Command::SetAttributeToConstant { attribute, value } => {
+                    if let Some(info) = &attribute.info {
+                        (self.disable_vertex_attrib_array)(info.location);
+                        (self.vertex_attrib_4f)(
+                            info.location,
+                            value[0],
+                            value[1],
+                            value[2],
+                            value[3],
+                        );
+                    }
+                }
                 Command::SetTexture {
                     texture_unit,
                     texture,
@@ -567,6 +594,15 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         if is_3d { GL_TEXTURE_3D } else { GL_TEXTURE_2D },
                         texture.0.inner().index,
                     );
+                }
+                Command::SetCubeMap {
+                    texture_unit,
+                    cube_map,
+                } => {
+                    println!("SETTING CUBE MAP TO UNIT: {:?}", texture_unit);
+                    // self.gl.uniform_1_i32(Some(uniform_location), unit as i32);
+                    (self.active_texture)(GL_TEXTURE0 + *texture_unit as u32);
+                    (self.bind_texture)(GL_TEXTURE_CUBE_MAP, cube_map.0.inner().index);
                 }
                 Command::Draw {
                     index_buffer,
@@ -768,6 +804,9 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         GL_FLOAT_MAT4 => UniformType::Mat4(size_members),
                         GL_INT => UniformType::Int(size_members),
                         GL_UNSIGNED_INT => UniformType::UInt(size_members),
+                        GL_SAMPLER_2D => UniformType::Sampler2d,
+                        GL_SAMPLER_3D => UniformType::Sampler3d,
+                        GL_SAMPLER_CUBE => UniformType::SamplerCube,
                         _ => {
                             println!("UNIMPLEMENTED UNIFORM TYPE: {:?}", uniform_type);
                             return None;
@@ -793,15 +832,21 @@ impl crate::backend_trait::BackendTrait for GLBackend {
 
                     // Uniform blocks do not have a location
                     if let Some((name, uniform_info)) = uniform_info {
-                        if uniform_info.uniform_type == UniformType::Sampler2d
-                            || uniform_info.uniform_type == UniformType::Sampler3d
-                        {
-                            // Bind the location once
-                            if let Some(location) = uniform_info.location {
-                                let id = get_id(&name).unwrap() as i32;
-                                (self.uniform_1iv)(location as _, 1, (&id) as *const i32);
+                        match uniform_info.uniform_type {
+                            UniformType::Sampler2d
+                            | UniformType::Sampler3d
+                            | UniformType::SamplerCube => {
+                                // Bind the location once
+                                if let Some(location) = uniform_info.location {
+                                    let id = get_id(&name).expect(&name) as i32;
+
+                                    println!("SETTING SAMPLER: {name} to slot: {:?}", id);
+                                    (self.uniform_1iv)(location as _, 1, (&id) as *const i32);
+                                }
                             }
+                            _ => {}
                         }
+
                         uniforms.insert(name, uniform_info);
                     }
                 }

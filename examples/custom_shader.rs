@@ -4,7 +4,7 @@ use koi_camera_controls::CameraControls;
 fn main() {
     App::default()
         .with_resource(InitialSettings {
-            color_space: kgraphics::ColorSpace::SRGB,
+            color_space: koi_graphics_context::ColorSpace::SRGB,
             window_width: 400,
             window_height: 400,
             ..Default::default()
@@ -70,15 +70,13 @@ fn main() {
             */
 
             // Load a custom shader from a path
-            let custom_shader = resources.get::<AssetStore<Shader>>().load(
-                "examples/assets/custom_shader.glsl",
-                ShaderSettings::default(),
-            );
+            let custom_shader = resources
+                .get::<AssetStore<Shader>>()
+                .load("assets/custom_shader.glsl", ShaderSettings::default());
 
-            let cube_map = resources.get::<AssetStore<CubeMap>>().load(
-                "examples/assets/venice_sunset_small.hdr",
-                CubeMapSettings::default(),
-            );
+            let cube_map = resources
+                .get::<AssetStore<CubeMap>>()
+                .load("assets/venice_sunset_small.hdr", CubeMapSettings::default());
 
             // Create a material that uses the custom shader
             let custom_material = resources.get::<AssetStore<Material>>().add(Material {

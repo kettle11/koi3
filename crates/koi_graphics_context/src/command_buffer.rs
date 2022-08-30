@@ -26,13 +26,22 @@ pub(crate) enum Command {
         uniform_block_index: u8,
         buffer: Option<BufferUntyped>,
     },
-    SetVertexAttribute {
+    SetAttribute {
         attribute: VertexAttributeUntyped,
         buffer: Option<BufferUntyped>,
+        per_instance: bool,
+    },
+    SetAttributeToConstant {
+        attribute: VertexAttributeUntyped,
+        value: [f32; 4],
     },
     SetTexture {
         texture_unit: u8,
         texture: Texture,
+    },
+    SetCubeMap {
+        texture_unit: u8,
+        cube_map: CubeMap,
     },
 }
 
@@ -93,10 +102,11 @@ impl<'a> RenderPass<'a> {
     }
 
     #[inline]
-    pub fn set_vertex_attribute<D: BufferDataTrait>(
+    pub fn set_attribute<D: BufferDataTrait>(
         &mut self,
         vertex_attribute: &VertexAttribute<D>,
         buffer: Option<&Buffer<D>>,
+        per_instance: bool,
     ) {
         assert_eq!(
             Some(vertex_attribute.pipeline_index),
@@ -105,11 +115,23 @@ impl<'a> RenderPass<'a> {
                 .map(|p| p.inner().program_index),
             "`vertex attribute` is from a pipeline that is not currently bound."
         );
+        self.command_buffer.commands.push(Command::SetAttribute {
+            attribute: vertex_attribute.untyped(),
+            buffer: buffer.map(|b| b.untyped()),
+            per_instance,
+        })
+    }
+
+    pub fn set_attribute_to_constant(
+        &mut self,
+        attribute: &VertexAttribute<kmath::Vec4>,
+        value: [f32; 4],
+    ) {
         self.command_buffer
             .commands
-            .push(Command::SetVertexAttribute {
-                attribute: vertex_attribute.untyped(),
-                buffer: buffer.map(|b| b.untyped()),
+            .push(Command::SetAttributeToConstant {
+                attribute: attribute.untyped(),
+                value,
             })
     }
 
@@ -153,6 +175,14 @@ impl<'a> RenderPass<'a> {
         self.command_buffer.commands.push(Command::SetTexture {
             texture_unit,
             texture: texture.clone(),
+        });
+    }
+
+    pub fn set_cube_map(&mut self, texture_unit: u8, cube_map: &CubeMap) {
+        assert!(texture_unit < 16);
+        self.command_buffer.commands.push(Command::SetCubeMap {
+            texture_unit,
+            cube_map: cube_map.clone(),
         });
     }
 

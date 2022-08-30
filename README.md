@@ -12,8 +12,8 @@ It serves as a light-weight core that can be modified and adapted to a project, 
 
 Mode | Clean | Incremental
 :-- | --- | ---
-**Debug** | 5.97s | 0.41s
-**Release** | 10.83s | 0.76s
+**Debug** | ~6s | 0.41s
+**Release** | ~10s | 0.76s
 
 `koi` accomplishes these build times with narrowly scoped crates that build significantly faster than the typical Rust-ecosystem equivalents.
 

@@ -284,16 +284,13 @@ impl<'a> RenderPassExecutor<'a> {
                     self.render_pass
                         .set_uniform(&sp.p_reflectance, material.reflectance);
 
-                    /*
-                    self.render_pass.set_cube_map_property(
-                        &sp.p_cube_map,
-                        Some(material.cube_map.as_ref().map_or_else(
+                    self.render_pass.set_cube_map(
+                        2,
+                        material.cube_map.as_ref().map_or_else(
                             || &self.cube_maps.get(&Handle::PLACEHOLDER).texture,
                             |t| &self.cube_maps.get(t).texture,
-                        )),
-                        texture_unit,
+                        ),
                     );
-                    */
 
                     /*
                     if let Some(morphable_mesh_data) = material.morphable_mesh_data.as_ref() {
@@ -329,44 +326,49 @@ impl<'a> RenderPassExecutor<'a> {
 
                 // Bind the mesh for this group.
                 {
-                    self.render_pass.set_vertex_attribute(
+                    self.render_pass.set_attribute(
                         &shader_properties.position_attribute,
                         Some(&gpu_mesh.positions),
+                        false,
                     );
-                    self.render_pass.set_vertex_attribute(
+                    self.render_pass.set_attribute(
                         &shader_properties.normal_attribute,
                         gpu_mesh.normals.as_ref(),
+                        false,
                     );
-                    self.render_pass.set_vertex_attribute(
+                    self.render_pass.set_attribute(
                         &shader_properties.texture_coordinate_attribute,
                         gpu_mesh.texture_coordinates.as_ref(),
+                        false,
                     );
 
                     // If no color is provided set all vertex colors to white.
                     if let Some(colors) = gpu_mesh.colors.as_ref() {
-                        self.render_pass
-                            .set_vertex_attribute(&shader_properties.color_attribute, Some(colors));
-                    } else {
-                        /*
-                        self.render_pass.set_vertex_attribute_to_constant(
+                        self.render_pass.set_attribute(
                             &shader_properties.color_attribute,
-                            &[1.0, 1.0, 1.0, 1.0],
+                            Some(colors),
+                            false,
                         );
-                        */
+                    } else {
+                        self.render_pass.set_attribute_to_constant(
+                            &shader_properties.color_attribute,
+                            [1.0, 1.0, 1.0, 1.0],
+                        );
                     }
                 }
 
                 // Upload a new buffer for the thing being rendered.
                 // TODO: Investigate if this is inefficient for single objects.
-                // let local_to_world_data = self.graphics.new_buffer(
-                //     &self.this_render_pass.local_to_world_matrices,
-                //     BufferUsage::Data,
-                // );
+                let local_to_world_data = self.graphics.new_buffer(
+                    &self.this_render_pass.local_to_world_matrices,
+                    BufferUsage::Data,
+                );
 
-                // self.render_pass.set_instance_attribute(
-                //     &shader_properties.local_to_world_instance_attribute,
-                //     Some(&local_to_world_data),
-                // );
+                self.render_pass.set_attribute(
+                    &shader_properties.local_to_world_instance_attribute,
+                    Some(&local_to_world_data),
+                    true,
+                );
 
                 self.render_pass.draw(
                     Some(&gpu_mesh.index_buffer),

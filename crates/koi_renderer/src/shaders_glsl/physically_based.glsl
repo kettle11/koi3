@@ -21,13 +21,13 @@ in vec3 f_normal;
 uniform int p_textures_enabled;
 
 uniform vec4 p_base_color;
-uniform sampler2D p_base_color_texture;
+uniform sampler2D sp0_base_color_texture;
 
 uniform float p_metallic;
 
 // This value is squared on the CPU side before being passed in.
 uniform float p_roughness;
-uniform sampler2D p_metallic_roughness_texture;
+uniform sampler2D sp1_metallic_roughness_texture;
 
 // How much ambient light is visible to this model.
 uniform float p_ambient;
@@ -152,13 +152,13 @@ void main()
 
     vec4 base_color = p_base_color * f_vertex_color;
     if (base_color_texture_enabled) {
-        base_color *= texture(p_base_color_texture, f_texture_coordinates);
+        base_color *= texture(sp0_base_color_texture, f_texture_coordinates);
     }
 
     float roughness = p_roughness;
     float metallic = p_metallic;
     if (metallic_roughness_texture_enabled) {
-        vec4 metallic_roughness = texture(p_metallic_roughness_texture, f_texture_coordinates);
+        vec4 metallic_roughness = texture(sp1_metallic_roughness_texture, f_texture_coordinates);
         metallic *= metallic_roughness.b;
         roughness *= metallic_roughness.g;
     }
