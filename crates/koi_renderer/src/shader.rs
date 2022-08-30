@@ -1,7 +1,7 @@
-use kgraphics::{GraphicsContextTrait, PipelineBuilderTrait, PipelineTrait};
+use koi_graphics_context::BufferDataTrait;
 
 pub struct Shader {
-    pub pipeline: kgraphics::Pipeline,
+    pub pipeline: koi_graphics_context::Pipeline,
     pub(crate) shader_render_properties: ShaderRenderProperties,
 }
 
@@ -21,6 +21,8 @@ pub(crate) struct SceneInfoUniformBlock {
     pub spherical_harmonic_weights: [kmath::Vec4; 9],
     pub lights: [LightInfo; MAX_BOUND_LIGHTS],
 }
+
+impl BufferDataTrait for SceneInfoUniformBlock {}
 
 #[allow(unused)]
 #[repr(C)]
@@ -52,44 +54,48 @@ impl Default for LightInfo {
 /// Standard properties that a shader will use.
 pub(crate) struct ShaderRenderProperties {
     // Uniform blocks
-    // pub(crate) ub_scene_info: kgraphics::UniformBlock<SceneInfoUniformBlock>,
+    // pub(crate) ub_scene_info: koi_graphics_context::UniformBlock<SceneInfoUniformBlock>,
     // Per-instance attributes
-    pub(crate) local_to_world_instance_attribute: kgraphics::VertexAttribute<kmath::Mat4>,
+    pub(crate) local_to_world_instance_attribute:
+        koi_graphics_context::VertexAttribute<kmath::Mat4>,
     // Atributes
-    pub(crate) position_attribute: kgraphics::VertexAttribute<kmath::Vec3>,
-    pub(crate) normal_attribute: kgraphics::VertexAttribute<kmath::Vec3>,
-    pub(crate) texture_coordinate_attribute: kgraphics::VertexAttribute<kmath::Vec2>,
-    pub(crate) color_attribute: kgraphics::VertexAttribute<kmath::Vec4>,
+    pub(crate) position_attribute: koi_graphics_context::VertexAttribute<kmath::Vec3>,
+    pub(crate) normal_attribute: koi_graphics_context::VertexAttribute<kmath::Vec3>,
+    pub(crate) texture_coordinate_attribute: koi_graphics_context::VertexAttribute<kmath::Vec2>,
+    pub(crate) color_attribute: koi_graphics_context::VertexAttribute<kmath::Vec4>,
     // Per-object Uniforms
-    pub(crate) p_base_color: kgraphics::Vec4Property,
-    pub(crate) p_base_color_texture: kgraphics::TextureProperty,
+    pub(crate) p_base_color: koi_graphics_context::Uniform<kmath::Vec4>,
+    // pub(crate) p_base_color_texture: koi_graphics_context::TextureProperty,
     //
-    pub(crate) p_metallic: kgraphics::FloatProperty,
-    pub(crate) p_roughness: kgraphics::FloatProperty,
-    pub(crate) p_metallic_roughness_texture: kgraphics::TextureProperty,
+    pub(crate) p_metallic: koi_graphics_context::Uniform<f32>,
+    pub(crate) p_roughness: koi_graphics_context::Uniform<f32>,
+    // pub(crate) p_metallic_roughness_texture: koi_graphics_context::TextureProperty,
     //
-    pub(crate) p_ambient: kgraphics::FloatProperty,
-    pub(crate) p_emissive: kgraphics::FloatProperty,
-    pub(crate) p_reflectance: kgraphics::FloatProperty,
+    pub(crate) p_ambient: koi_graphics_context::Uniform<f32>,
+    pub(crate) p_emissive: koi_graphics_context::Uniform<f32>,
+    pub(crate) p_reflectance: koi_graphics_context::Uniform<f32>,
     //
-    pub(crate) p_textures_enabled: kgraphics::IntProperty,
+    pub(crate) p_textures_enabled: koi_graphics_context::Uniform<i32>,
     // Optional extras:
-    pub(crate) p_cube_map: kgraphics::CubeMapProperty,
+    // pub(crate) p_cube_map: koi_graphics_context::CubeMapProperty,
 }
 
 #[derive(Clone, Copy)]
 pub struct ShaderSettings {
-    pub faces_to_render: kgraphics::FacesToRender,
-    pub blending: Option<(kgraphics::BlendFactor, kgraphics::BlendFactor)>,
-    pub depth_test: kgraphics::DepthTest,
+    pub faces_to_render: koi_graphics_context::FacesToRender,
+    pub blending: Option<(
+        koi_graphics_context::BlendFactor,
+        koi_graphics_context::BlendFactor,
+    )>,
+    pub depth_test: koi_graphics_context::DepthTest,
 }
 
 impl Default for ShaderSettings {
     fn default() -> Self {
         Self {
-            faces_to_render: kgraphics::FacesToRender::Front,
+            faces_to_render: koi_graphics_context::FacesToRender::Front,
             blending: None,
-            depth_test: kgraphics::DepthTest::LessOrEqual,
+            depth_test: koi_graphics_context::DepthTest::LessOrEqual,
         }
     }
 }
@@ -115,28 +121,18 @@ impl crate::Renderer {
         let (vertex_source, fragment_source) =
             crate::shader_parser::parse_shader(&self.shader_snippets, source, "");
 
-        let vertex_function = self
-            .raw_graphics_context
-            .new_vertex_function(&vertex_source)
-            .map_err(ShaderError::VertexCompilationError)?;
-        let fragment_function = self
-            .raw_graphics_context
-            .new_fragment_function(&fragment_source)
-            .map_err(ShaderError::FragmentCompilationError)?;
-
         let pipeline = self
             .raw_graphics_context
             .new_pipeline(
-                vertex_function,
-                fragment_function,
+                &vertex_source,
+                &fragment_source,
                 /* Todo: This arbitrary pixel format is a problem */
-                kgraphics::PixelFormat::RG8Unorm,
+                koi_graphics_context::PipelineSettings {
+                    blending: shader_settings.blending,
+                    faces_to_render: shader_settings.faces_to_render,
+                    depth_test: shader_settings.depth_test,
+                },
             )
-            // For now all pipelines just have alpha blending by default.
-            .blending(shader_settings.blending)
-            .faces_to_render(shader_settings.faces_to_render)
-            .depth_test(shader_settings.depth_test)
-            .build()
             .map_err(ShaderError::PipelineCompilationError)?;
 
         let shader_render_properties = ShaderRenderProperties {
@@ -153,24 +149,24 @@ impl crate::Renderer {
                 .unwrap(),
             color_attribute: pipeline.get_vertex_attribute("a_color").unwrap(),
             // Per-object Uniforms
-            p_base_color: pipeline.get_vec4_property("p_base_color").unwrap(),
-            p_base_color_texture: pipeline
-                .get_texture_property("p_base_color_texture")
-                .unwrap(),
+            p_base_color: pipeline.get_uniform("p_base_color").unwrap(),
+            // p_base_color_texture: pipeline
+            //     .get_texture_property("p_base_color_texture")
+            //     .unwrap(),
             //
-            p_metallic: pipeline.get_float_property("p_metallic").unwrap(),
-            p_roughness: pipeline.get_float_property("p_roughness").unwrap(),
-            p_metallic_roughness_texture: pipeline
-                .get_texture_property("p_metallic_roughness_texture")
-                .unwrap(),
+            p_metallic: pipeline.get_uniform("p_metallic").unwrap(),
+            p_roughness: pipeline.get_uniform("p_roughness").unwrap(),
+            // p_metallic_roughness_texture: pipeline
+            //     .get_texture_property("p_metallic_roughness_texture")
+            //     .unwrap(),
             //
-            p_ambient: pipeline.get_float_property("p_ambient").unwrap(),
-            p_emissive: pipeline.get_float_property("p_emissive").unwrap(),
-            p_reflectance: pipeline.get_float_property("p_reflectance").unwrap(),
+            p_ambient: pipeline.get_uniform("p_ambient").unwrap(),
+            p_emissive: pipeline.get_uniform("p_emissive").unwrap(),
+            p_reflectance: pipeline.get_uniform("p_reflectance").unwrap(),
             //
-            p_textures_enabled: pipeline.get_int_property("p_textures_enabled").unwrap(),
+            p_textures_enabled: pipeline.get_uniform("p_textures_enabled").unwrap(),
             //
-            p_cube_map: pipeline.get_cube_map_property("p_cube_map").unwrap(),
+            //  p_cube_map: pipeline.get_cube_map_property("p_cube_map").unwrap(),
         };
         Ok(Shader {
             pipeline,

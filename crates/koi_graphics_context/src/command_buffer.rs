@@ -12,6 +12,12 @@ pub(crate) enum Command {
         triangle_range: std::ops::Range<u32>,
         instances: u32,
     },
+    SetViewPort {
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    },
     SetUniform {
         uniform_info: UniformInfo,
         bump_handle: BumpHandle,
@@ -65,17 +71,31 @@ pub struct RenderPass<'a> {
 }
 
 impl<'a> RenderPass<'a> {
-    pub fn set_pipeline(&mut self, pipeline: Pipeline) {
+    pub fn set_pipeline(&mut self, pipeline: &Pipeline) {
         self.current_pipeline = Some(pipeline.0.clone());
         self.command_buffer
             .commands
-            .push(Command::SetPipeline(pipeline))
+            .push(Command::SetPipeline(pipeline.clone()))
+    }
+
+    pub fn set_viewport(&mut self, x: f32, y: f32, width: f32, height: f32) {
+        // TODO: x, y, width, and height should be between 0.0 and 1.0
+        // assert!(x >= 0.0 && x <= 1.0);
+        // assert!(y >= 0.0 && y <= 1.0);
+        // assert!(width >= 0.0 && width <= 1.0);
+        // assert!(height >= 0.0 && height <= 1.0);
+        self.command_buffer.commands.push(Command::SetViewPort {
+            x,
+            y,
+            width,
+            height,
+        })
     }
 
     pub fn set_vertex_attribute<D: BufferDataTrait>(
         &mut self,
-        vertex_attribute: VertexAttribute<D>,
-        buffer: Option<Buffer<D>>,
+        vertex_attribute: &VertexAttribute<D>,
+        buffer: Option<&Buffer<D>>,
     ) {
         assert_eq!(
             Some(vertex_attribute.pipeline_index),
@@ -139,7 +159,7 @@ impl<'a> RenderPass<'a> {
 
     pub fn draw(
         &mut self,
-        index_buffer: Option<Buffer<[u32; 3]>>,
+        index_buffer: Option<&Buffer<[u32; 3]>>,
         triangle_range: std::ops::Range<u32>,
         instances: u32,
     ) {
@@ -151,7 +171,7 @@ impl<'a> RenderPass<'a> {
             )
         }
         self.command_buffer.commands.push(Command::Draw {
-            index_buffer,
+            index_buffer: index_buffer.cloned(),
             triangle_range,
             instances,
         })

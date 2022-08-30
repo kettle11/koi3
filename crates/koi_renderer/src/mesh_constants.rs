@@ -20,7 +20,7 @@ impl AssetTrait for Mesh {
 }
 
 pub fn initialize_meshes(
-    graphics: &mut kgraphics::GraphicsContext,
+    graphics: &mut koi_graphics_context::GraphicsContext,
 ) -> koi_assets::AssetStore<Mesh> {
     let mesh_data = MeshData::default();
     let mesh = Mesh::new(graphics, mesh_data);

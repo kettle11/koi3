@@ -3,7 +3,6 @@ use crate::{
     *,
 };
 
-use kgraphics::GraphicsContextTrait;
 use koi_assets::*;
 use koi_resources::Resources;
 use koi_transform::GlobalTransform;
@@ -12,7 +11,7 @@ pub struct InitialSettings {
     pub name: String,
     pub window_width: usize,
     pub window_height: usize,
-    pub color_space: kgraphics::ColorSpace,
+    pub color_space: koi_graphics_context::ColorSpace,
 }
 
 impl Default for InitialSettings {
@@ -21,7 +20,7 @@ impl Default for InitialSettings {
             name: "Koi".into(),
             window_width: 800,
             window_height: 800,
-            color_space: kgraphics::ColorSpace::SRGB,
+            color_space: koi_graphics_context::ColorSpace::SRGB,
         }
     }
 }
@@ -32,15 +31,6 @@ pub fn initialize_plugin(resources: &mut Resources) {
     world_cloner.register_clone_type::<Handle<Mesh>>();
 
     let initial_settings = resources.remove::<InitialSettings>().unwrap_or_default();
-
-    // Initialize the graphics context.
-    let mut graphics_context =
-        kgraphics::GraphicsContext::new_with_settings(kgraphics::GraphicsContextSettings {
-            high_resolution_framebuffer: true,
-            /// How many MSAA samples the window framebuffer should have
-            samples: 4,
-            color_space: Some(initial_settings.color_space),
-        });
 
     let window_width = initial_settings.window_width;
     let window_height = initial_settings.window_height;
@@ -54,14 +44,27 @@ pub fn initialize_plugin(resources: &mut Resources) {
             .build()
     };
 
-    graphics_context.resize(&window, window_width as _, window_height as _);
+    // Initialize the graphics context.
+    let mut graphics_context = koi_graphics_context::GraphicsContext::new(
+        koi_graphics_context::GraphicsContextSettings {
+            high_resolution_framebuffer: true,
+            /// How many MSAA samples the window framebuffer should have
+            samples: 4,
+            color_space: Some(initial_settings.color_space),
+        },
+        &window,
+    );
+
+    // graphics_context.resize(&window, window_width as _, window_height as _);
 
     // For now this needs to be called even if it's not used.
+    /*
     let _render_target = graphics_context.get_render_target_for_window(
         &window,
         window_width as _,
         window_height as _,
     );
+    */
 
     resources.add(window);
 
@@ -91,7 +94,7 @@ pub fn initialize_plugin(resources: &mut Resources) {
 
 pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {
     let mut cube_maps = resources.get::<AssetStore<CubeMap>>();
-    cube_maps.finalize_asset_loads(resources);
+    // cube_maps.finalize_asset_loads(resources);
 
     let window = resources.get::<kapp::Window>();
     let mut meshes = resources.get::<AssetStore<Mesh>>();
@@ -107,31 +110,17 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
 
     let mut renderer = resources.get::<Renderer>();
 
-    #[allow(clippy::significant_drop_in_scrutinee)]
-    for mesh in meshes.get_dropped_assets() {
-        if let Some(gpu_mesh) = mesh.gpu_mesh {
-            gpu_mesh.delete(&mut renderer.raw_graphics_context);
-        }
-    }
+    meshes.cleanup_dropped_assets();
     materials.cleanup_dropped_assets();
-    // TODO: Properly deallocate dropped programs.
     shaders.cleanup_dropped_assets();
-
-    #[allow(clippy::significant_drop_in_scrutinee)]
-    for texture in textures.get_dropped_assets() {
-        renderer.raw_graphics_context.delete_texture(texture.0);
-    }
-    #[allow(clippy::significant_drop_in_scrutinee)]
-    for cube_map in cube_maps.get_dropped_assets() {
-        renderer
-            .raw_graphics_context
-            .delete_cube_map(cube_map.texture);
-    }
+    textures.cleanup_dropped_assets();
+    cube_maps.cleanup_dropped_assets();
 
     let (window_width, window_height) = window.size();
-    renderer
-        .raw_graphics_context
-        .resize(&*window, window_width, window_height);
+    // TODO: Does this need to be resized?
+    // renderer
+    //     .raw_graphics_context
+    //     .resize(&*window, window_width, window_height);
 
     let mut camera_query = world.query::<(&GlobalTransform, &Camera)>();
 

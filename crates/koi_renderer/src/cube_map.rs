@@ -1,11 +1,10 @@
 use crate::{spherical_harmonics::SphericalHarmonics, Renderer};
-use kgraphics::{GraphicsContextTrait, TextureSettings};
 use kmath::*;
 use koi_assets::AssetTrait;
 use koi_resources::Resources;
 
 pub struct CubeMap {
-    pub(crate) texture: kgraphics::CubeMap,
+    pub(crate) texture: koi_graphics_context::CubeMap,
     /// Used for efficient irradiance.
     pub spherical_harmonics: SphericalHarmonics<4>,
     pub brightest_direction: Vec3,
@@ -164,34 +163,23 @@ pub fn prepare_cubemap(
         output_faces0[5].as_slice(),
     ];
 
-    let output_faces = unsafe {
-        [
-            slice_to_bytes(output_faces[0]),
-            slice_to_bytes(output_faces[1]),
-            slice_to_bytes(output_faces[2]),
-            slice_to_bytes(output_faces[3]),
-            slice_to_bytes(output_faces[4]),
-            slice_to_bytes(output_faces[5]),
-        ]
+    let settings = koi_graphics_context::TextureSettings {
+        wrapping_horizontal: koi_graphics_context::WrappingMode::ClampToEdge,
+        wrapping_vertical: koi_graphics_context::WrappingMode::ClampToEdge,
+        minification_filter: koi_graphics_context::FilterMode::Linear,
+        magnification_filter: koi_graphics_context::FilterMode::Linear,
+        generate_mipmaps: false,
+        srgb: false,
+        ..Default::default()
     };
-
-    let cube_map = graphics
-        .new_cube_map(
-            face_size as _,
-            face_size as _,
-            Some(output_faces),
-            kgraphics::PixelFormat::RGBA32F,
-            TextureSettings {
-                wrapping_horizontal: kgraphics::WrappingMode::ClampToEdge,
-                wrapping_vertical: kgraphics::WrappingMode::ClampToEdge,
-                minification_filter: kgraphics::FilterMode::Linear,
-                magnification_filter: kgraphics::FilterMode::Linear,
-                generate_mipmaps: false,
-                srgb: false,
-                ..Default::default()
-            },
-        )
-        .unwrap();
+    let cube_map = graphics.new_cube_map::<kmath::Vec4>(
+        face_size as _,
+        face_size as _,
+        //Some(output_faces),
+        settings,
+    );
+    // TODO: Make this use f16 instead.
+    graphics.update_cube_map::<kmath::Vec4>(&cube_map, &output_faces, settings);
 
     CubeMap {
         texture: cube_map,
@@ -217,7 +205,7 @@ fn hdri_data_from_bytes(bytes: &[u8]) -> Option<crate::TextureResult> {
         data: crate::TextureData::Bytes(Box::new(texture)),
         width: image.width as u32,
         height: image.height as u32,
-        pixel_format: kgraphics::PixelFormat::RGBA32F,
+        pixel_format: koi_graphics_context::PixelFormat::RGBA32F,
     })
 }
 

@@ -401,7 +401,7 @@ fn get_texture(
 
         textures.load(
             path.to_str().unwrap(),
-            koi_renderer::kgraphics::TextureSettings {
+            koi_renderer::koi_graphics_context::TextureSettings {
                 srgb,
                 ..Default::default()
             },

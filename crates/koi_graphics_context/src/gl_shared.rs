@@ -62,8 +62,6 @@ pub const RGBA8: c_uint = 0x8058;
 pub const SRGB8: c_uint = 0x8C41;
 pub const SRGB8_ALPHA8: c_uint = 0x8C43;
 
-pub const RGB16F: c_uint = 0x881B;
-pub const RGB32F: c_uint = 0x8815;
 pub const RGBA16F: c_uint = 0x881A;
 pub const RGBA32F: c_uint = 0x8814;
 

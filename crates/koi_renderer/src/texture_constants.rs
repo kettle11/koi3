@@ -1,6 +1,6 @@
 use crate::Texture;
-use kgraphics::GraphicsContextTrait;
 use koi_assets::*;
+use koi_graphics_context::{TextureDataTrait, TextureSettings};
 use koi_resources::Resources;
 
 impl Texture {
@@ -13,35 +13,32 @@ impl Texture {
 }
 
 impl AssetTrait for Texture {
-    type Settings = kgraphics::TextureSettings;
+    type Settings = koi_graphics_context::TextureSettings;
 }
 
 pub(crate) struct TextureResult {
     pub width: u32,
     pub height: u32,
-    pub pixel_format: kgraphics::PixelFormat,
+    pub pixel_format: koi_graphics_context::PixelFormat,
     pub data: TextureData,
 }
 
 pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetStore<Texture> {
-    let texture = Texture(
-        renderer
-            .raw_graphics_context
-            .new_texture(
-                1,
-                1,
-                1,
-                Some(&[255, 255, 255, 255]),
-                kgraphics::PixelFormat::RGBA8Unorm,
-                kgraphics::TextureSettings {
-                    srgb: false,
-                    ..Default::default()
-                },
-            )
-            .unwrap(),
-    );
+    let texture = Texture(renderer.raw_graphics_context.new_texture_with_data(
+        1,
+        1,
+        1,
+        &[[255, 255, 255, 255]],
+        koi_graphics_context::TextureSettings {
+            srgb: false,
+            ..Default::default()
+        },
+    ));
 
-    async fn load(path: String, settings: kgraphics::TextureSettings) -> Option<TextureResult> {
+    async fn load(
+        path: String,
+        settings: koi_graphics_context::TextureSettings,
+    ) -> Option<TextureResult> {
         let extension = std::path::Path::new(&path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
@@ -73,7 +70,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
 
                 Some(TextureResult {
                     data: TextureData::Bytes(Box::new(pixels)),
-                    pixel_format: kgraphics::PixelFormat::RGBA8Unorm,
+                    pixel_format: koi_graphics_context::PixelFormat::RGBA8Unorm,
                     width: width as _,
                     height: height as _,
                 })
@@ -108,9 +105,9 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                         // which is required for mipmap generation
                         if settings.srgb {
                             pixels = extend_pixels_3_with_alpha(pixels);
-                            kgraphics::PixelFormat::RGBA8Unorm
+                            koi_graphics_context::PixelFormat::RGBA8Unorm
                         } else {
-                            kgraphics::PixelFormat::RGB8Unorm
+                            koi_graphics_context::PixelFormat::RGB8Unorm
                         }
                     }
                     jpeg_decoder::PixelFormat::L8 => {
@@ -118,9 +115,9 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                         // which is required for mipmap generation
                         if settings.srgb {
                             pixels = extend_pixels_1_with_alpha(pixels);
-                            kgraphics::PixelFormat::RGBA8Unorm
+                            koi_graphics_context::PixelFormat::RGBA8Unorm
                         } else {
-                            kgraphics::PixelFormat::R8Unorm
+                            koi_graphics_context::PixelFormat::R8Unorm
                         }
                     }
                     jpeg_decoder::PixelFormat::CMYK32 => {
@@ -145,7 +142,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
 
     fn finalize_load(
         source: TextureResult,
-        settings: kgraphics::TextureSettings,
+        settings: koi_graphics_context::TextureSettings,
         resources: &Resources,
     ) -> Option<Texture> {
         Some(new_texture_from_texture_load_data(
@@ -159,63 +156,51 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
         koi_assets::AssetStore::new_with_load_functions(texture, load, finalize_load);
 
     textures.add_and_leak(
-        Texture(
-            renderer
-                .raw_graphics_context
-                .new_texture(
-                    1,
-                    1,
-                    1,
-                    Some(&[0, 0, 0, 255]),
-                    kgraphics::PixelFormat::RGBA8Unorm,
-                    kgraphics::TextureSettings {
-                        srgb: false,
-                        ..Default::default()
-                    },
-                )
-                .unwrap(),
-        ),
+        Texture(renderer.raw_graphics_context.new_texture_with_data(
+            1,
+            1,
+            1,
+            &[[0, 0, 0, 255]],
+            koi_graphics_context::TextureSettings {
+                srgb: false,
+                ..Default::default()
+            },
+        )),
         &Texture::BLACK,
     );
 
     textures.add_and_leak(
-        Texture(
-            renderer
-                .raw_graphics_context
-                .new_texture(
-                    1,
-                    1,
-                    1,
-                    Some(&[128, 128, 255, 255]),
-                    kgraphics::PixelFormat::RGBA8Unorm,
-                    kgraphics::TextureSettings {
-                        srgb: false,
-                        ..Default::default()
-                    },
-                )
-                .unwrap(),
-        ),
+        Texture(renderer.raw_graphics_context.new_texture_with_data(
+            1,
+            1,
+            1,
+            &[[128, 128, 255, 255]],
+            koi_graphics_context::TextureSettings {
+                srgb: false,
+                ..Default::default()
+            },
+        )),
         &Texture::DEFAULT_NORMAL,
     );
     textures
 }
 
 fn new_texture_from_texture_load_data(
-    graphics: &mut kgraphics::GraphicsContext,
+    graphics: &mut koi_graphics_context::GraphicsContext,
     texture_load_data: TextureResult,
-    texture_settings: kgraphics::TextureSettings,
+    texture_settings: koi_graphics_context::TextureSettings,
 ) -> Texture {
     Texture(match texture_load_data.data {
-        TextureData::Bytes(data) => graphics
-            .new_texture(
+        TextureData::Bytes(data) => unsafe {
+            graphics.new_texture_with_bytes(
                 texture_load_data.width,
                 texture_load_data.height,
                 1,
-                Some(data.as_u8_array()),
+                data.as_u8_array(),
                 texture_load_data.pixel_format,
                 texture_settings,
             )
-            .unwrap(),
+        },
         #[cfg(target_arch = "wasm32")]
         TextureData::JSObject(data) => graphics
             .new_texture_from_js_object(

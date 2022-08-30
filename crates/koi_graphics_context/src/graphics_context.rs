@@ -1,5 +1,3 @@
-use core::slice;
-
 use crate::*;
 
 pub struct GraphicsContextSettings {
@@ -7,7 +5,7 @@ pub struct GraphicsContextSettings {
     pub high_resolution_framebuffer: bool,
     /// How many MSAA samples should be requested for the framebuffer?
     pub samples: u8,
-    // pub color_space: Option<ColorSpace>,
+    pub color_space: Option<ColorSpace>,
 }
 
 impl Default for GraphicsContextSettings {
@@ -15,7 +13,7 @@ impl Default for GraphicsContextSettings {
         Self {
             high_resolution_framebuffer: true,
             samples: 2,
-            // color_space: Some(ColorSpace::SRGB),
+            color_space: Some(ColorSpace::SRGB),
         }
     }
 }
@@ -82,6 +80,19 @@ impl GraphicsContext {
         }
     }
 
+    pub fn new_texture_with_data<D: TextureDataTrait>(
+        &mut self,
+        width: u32,
+        height: u32,
+        depth: u32,
+        data: &[D],
+        settings: TextureSettings,
+    ) -> Texture {
+        let texture = self.new_texture::<D>(width, height, depth, settings);
+        self.update_texture(&texture, 0, 0, 0, width, height, depth, data, settings);
+        texture
+    }
+
     /// Create a [Texture].
     /// After creating the [Texture] set its data with [Self::update_texture]
     pub fn new_texture<D: TextureDataTrait>(
@@ -92,6 +103,17 @@ impl GraphicsContext {
         settings: TextureSettings,
     ) -> Texture {
         let pixel_format = D::PIXEL_FORMAT;
+        self.new_texture_with_pixel_format(width, height, depth, pixel_format, settings)
+    }
+
+    pub fn new_texture_with_pixel_format(
+        &mut self,
+        width: u32,
+        height: u32,
+        depth: u32,
+        pixel_format: PixelFormat,
+        settings: TextureSettings,
+    ) -> Texture {
         let handle = unsafe {
             self.texture_assets.new_handle(self.backend.new_texture(
                 width,
@@ -111,6 +133,34 @@ impl GraphicsContext {
         Texture(handle)
     }
 
+    pub unsafe fn new_texture_with_bytes(
+        &mut self,
+        width: u32,
+        height: u32,
+        depth: u32,
+        data: &[u8],
+        pixel_format: PixelFormat,
+        settings: TextureSettings,
+    ) -> Texture {
+        let texture =
+            self.new_texture_with_pixel_format(width, height, depth, pixel_format, settings);
+
+        let data = unsafe { slice_to_bytes(data) };
+        unsafe {
+            self.backend.update_texture(
+                &texture.0.inner(),
+                0,
+                0,
+                0,
+                width,
+                height,
+                depth,
+                data,
+                settings,
+            )
+        }
+        texture
+    }
     /// Update the contents of a [Texture]
     pub fn update_texture<D: TextureDataTrait>(
         &mut self,
@@ -163,13 +213,21 @@ impl GraphicsContext {
         }
     }
 
-    pub fn new_cube_map(
+    pub fn new_cube_map<D: TextureDataTrait>(
         &mut self,
         width: usize,
         height: usize,
-        depth: usize,
         settings: TextureSettings,
     ) -> CubeMap {
+        todo!()
+    }
+
+    pub fn update_cube_map<D: TextureDataTrait>(
+        &mut self,
+        cube_map: &CubeMap,
+        data: &[&[D]; 6],
+        settings: TextureSettings,
+    ) {
         todo!()
     }
 

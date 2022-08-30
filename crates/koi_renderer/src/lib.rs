@@ -35,7 +35,7 @@ mod cube_map;
 pub use cube_map::*;
 
 pub use kcolor::*;
-pub use kgraphics;
+pub use koi_graphics_context;
 
 mod renderer;
 pub use renderer::*;

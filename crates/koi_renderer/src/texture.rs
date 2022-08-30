@@ -1,1 +1,1 @@
-pub struct Texture(pub(crate) kgraphics::Texture);
+pub struct Texture(pub(crate) koi_graphics_context::Texture);

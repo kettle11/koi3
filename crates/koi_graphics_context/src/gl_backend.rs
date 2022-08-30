@@ -475,6 +475,15 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         (self.disable)(GL_BLEND);
                     }
                 }
+                &Command::SetViewPort {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => {
+                    // TODO: x, y, width, and height should be passed in from 0 to 1.0 instead.
+                    (self.viewport)(x as i32, y as i32, width as i32, height as i32)
+                }
                 Command::SetUniform {
                     uniform_info,
                     bump_handle,
@@ -494,6 +503,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         UniformType::Mat4(n) => {
                             (self.uniform_matrix_4fv)(location, n as _, 0, data as _)
                         }
+                        UniformType::Sampler2d => (self.uniform_1fv)(location, 1, data as _),
+                        UniformType::Sampler3d => (self.uniform_1fv)(location, 1, data as _),
                     }
                 }
                 Command::SetUniformBlock {
@@ -700,6 +711,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             let mut uniform_blocks = Vec::new();
             let mut vertex_attributes = std::collections::HashMap::new();
 
+            fn get_id(name: &str) -> Option<u32> {
+                Some(name[2..name.find('_')?].parse().ok()?)
+            }
+
             // First read all uniforms
             {
                 unsafe fn get_uniform_info(
@@ -771,6 +786,15 @@ impl crate::backend_trait::BackendTrait for GLBackend {
 
                     // Uniform blocks do not have a location
                     if let Some((name, uniform_info)) = uniform_info {
+                        if uniform_info.uniform_type == UniformType::Sampler2d
+                            || uniform_info.uniform_type == UniformType::Sampler3d
+                        {
+                            // Bind the location once
+                            if let Some(location) = uniform_info.location {
+                                let id = get_id(&name).unwrap() as i32;
+                                (self.uniform_1iv)(location as _, 1, (&id) as *const i32);
+                            }
+                        }
                         uniforms.insert(name, uniform_info);
                     }
                 }
@@ -788,10 +812,6 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
                     &mut max_name_length,
                 );
-
-                fn get_id(name: &str) -> Option<u32> {
-                    Some(name[2..name.find('_')?].parse().ok()?)
-                }
 
                 for i in 0..uniform_block_count {
                     let (name, size_bytes) =

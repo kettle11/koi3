@@ -28,7 +28,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/unlit.glsl"),
             crate::ShaderSettings {
-                faces_to_render: kgraphics::FacesToRender::FrontAndBack,
+                faces_to_render: koi_graphics_context::FacesToRender::FrontAndBack,
                 blending: None,
                 ..Default::default()
             },
@@ -66,7 +66,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/physically_based.glsl"),
             crate::ShaderSettings {
-                faces_to_render: kgraphics::FacesToRender::Front,
+                faces_to_render: koi_graphics_context::FacesToRender::Front,
                 blending: None,
                 ..Default::default()
             },
@@ -80,7 +80,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
             include_str!("shaders_glsl/equirectangular_to_cubemap.glsl"),
             crate::ShaderSettings {
                 // Todo: is this necessary?
-                depth_test: kgraphics::DepthTest::LessOrEqual,
+                depth_test: koi_graphics_context::DepthTest::LessOrEqual,
                 blending: None,
                 ..Default::default()
             },
@@ -93,7 +93,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/skybox.glsl"),
             crate::ShaderSettings {
-                faces_to_render: kgraphics::FacesToRender::Front,
+                faces_to_render: koi_graphics_context::FacesToRender::Front,
                 ..Default::default()
             },
         )
@@ -104,7 +104,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/physically_based.glsl"),
             crate::ShaderSettings {
-                faces_to_render: kgraphics::FacesToRender::FrontAndBack,
+                faces_to_render: koi_graphics_context::FacesToRender::FrontAndBack,
                 blending: None,
                 ..Default::default()
             },
@@ -117,7 +117,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/physically_based_with_morph.glsl"),
             crate::ShaderSettings {
-                faces_to_render: kgraphics::FacesToRender::Front,
+                faces_to_render: koi_graphics_context::FacesToRender::Front,
                 blending: None,
                 ..Default::default()
             },

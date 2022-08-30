@@ -1,5 +1,4 @@
 use crate::*;
-use kgraphics::GraphicsContextTrait;
 use koi_assets::*;
 use koi_resources::Resources;
 
@@ -70,23 +69,19 @@ impl MorphableMeshData {
         }
 
         println!("HERE HERE HERE");
-        let morph_targets_texture = textures.add(Texture(
-            graphics
-                .new_texture(
-                    dimension_needed as u32,
-                    dimension_needed as u32,
-                    morph_targets.len() as u32,
-                    Some(unsafe { slice_to_bytes(&data) }),
-                    kgraphics::PixelFormat::RGBA16F,
-                    kgraphics::TextureSettings {
-                        srgb: false,
-                       
-                        generate_mipmaps: false,
-                        ..Default::default()
-                    },
-                )
-                .unwrap(),
-        ));
+
+        let morph_targets_texture = textures.add(Texture(graphics.new_texture_with_data(
+            dimension_needed as u32,
+            dimension_needed as u32,
+            morph_targets.len() as u32,
+            &data,
+            koi_graphics_context::TextureSettings {
+                srgb: false,
+
+                generate_mipmaps: false,
+                ..Default::default()
+            },
+        )));
         println!("HERE HERE HERE: {:?}", dimension_needed);
 
         let mesh = meshes.add(Mesh::new(graphics, mesh_data));

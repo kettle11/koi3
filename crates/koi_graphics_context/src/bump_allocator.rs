@@ -49,8 +49,10 @@ impl BumpAllocator {
         &self.data[handle.offset..handle.offset + handle.size]
     }
 
+    /*
     /// This is super unsafe if it's the incorrect type
     pub unsafe fn get_any<T: Sized>(&self, handle: BumpHandle) -> &T {
         &*((&self.data[handle.offset]) as *const _ as *const T)
     }
+    */
 }

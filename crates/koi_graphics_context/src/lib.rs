@@ -1,5 +1,7 @@
-mod assets;
+mod kmath_impls;
+pub use kmath_impls::*;
 
+mod assets;
 use assets::*;
 
 pub mod backend_trait;
@@ -15,6 +17,12 @@ mod gl_shared;
 
 mod graphics_context;
 pub use graphics_context::*;
+
+#[derive(Clone, Copy, Debug)]
+pub enum ColorSpace {
+    SRGB,
+    DisplayP3,
+}
 
 #[derive(Clone, Copy)]
 pub struct PipelineSettings {
@@ -69,6 +77,12 @@ impl TextureDataTrait for [u8; 4] {
     const PIXEL_FORMAT: PixelFormat = PixelFormat::RGBA8Unorm;
 }
 impl TextureDataTrait for [f32; 4] {
+    const PIXEL_FORMAT: PixelFormat = PixelFormat::RGBA32F;
+}
+impl TextureDataTrait for [half::f16; 4] {
+    const PIXEL_FORMAT: PixelFormat = PixelFormat::RGBA16F;
+}
+impl TextureDataTrait for kmath::Vec4 {
     const PIXEL_FORMAT: PixelFormat = PixelFormat::RGBA32F;
 }
 
@@ -234,8 +248,16 @@ pub trait UniformTypeTrait: 'static {
     const UNIFORM_TYPE: UniformType;
 }
 
+impl UniformTypeTrait for i32 {
+    const UNIFORM_TYPE: UniformType = UniformType::Int(1);
+}
+
 impl UniformTypeTrait for f32 {
     const UNIFORM_TYPE: UniformType = UniformType::Float(1);
+}
+
+impl<const N: usize> UniformTypeTrait for [i32; N] {
+    const UNIFORM_TYPE: UniformType = UniformType::Int(N as u8);
 }
 
 impl<const N: usize> UniformTypeTrait for [f32; N] {
@@ -267,6 +289,8 @@ pub enum UniformType {
     Vec3(u8),
     Vec4(u8),
     Mat4(u8),
+    Sampler2d,
+    Sampler3d,
 }
 
 #[derive(Clone, Debug)]
@@ -355,6 +379,7 @@ impl Pipeline {
 pub trait GraphicsDataTrait {}
 
 pub trait BufferDataTrait: 'static {}
+impl BufferDataTrait for i32 {}
 impl BufferDataTrait for f32 {}
 impl BufferDataTrait for u32 {}
 impl<const N: usize> BufferDataTrait for [f32; N] {}

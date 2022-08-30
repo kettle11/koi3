@@ -1,12 +1,10 @@
 use crate::*;
-use kgraphics::{
-    CommandBufferTrait, DataBuffer, GraphicsContextTrait, PipelineTrait, RenderPassTrait,
-};
 use koi_assets::*;
+use koi_graphics_context::BufferUsage;
 use koi_transform::Transform;
 
 pub struct Renderer {
-    pub raw_graphics_context: kgraphics::GraphicsContext,
+    pub raw_graphics_context: koi_graphics_context::GraphicsContext,
     render_pass_pool: Vec<RenderPass>,
     pub automatically_redraw: bool,
     pub(crate) shader_snippets: std::collections::HashMap<&'static str, &'static str>,
@@ -15,8 +13,8 @@ pub struct Renderer {
 
 impl Renderer {
     pub(crate) fn new(
-        raw_graphics_context: kgraphics::GraphicsContext,
-        color_space: kgraphics::ColorSpace,
+        raw_graphics_context: koi_graphics_context::GraphicsContext,
+        color_space: koi_graphics_context::ColorSpace,
     ) -> Self {
         Self {
             raw_graphics_context,
@@ -24,8 +22,10 @@ impl Renderer {
             automatically_redraw: true,
             shader_snippets: std::collections::HashMap::new(),
             color_space: match color_space {
-                kgraphics::ColorSpace::SRGB => kcolor::color_spaces::ENCODED_SRGB,
-                kgraphics::ColorSpace::DisplayP3 => kcolor::color_spaces::ENCODED_DISPLAY_P3,
+                koi_graphics_context::ColorSpace::SRGB => kcolor::color_spaces::ENCODED_SRGB,
+                koi_graphics_context::ColorSpace::DisplayP3 => {
+                    kcolor::color_spaces::ENCODED_DISPLAY_P3
+                }
             },
         }
     }
@@ -53,8 +53,6 @@ impl Renderer {
             RenderPass {
                 meshes_to_draw: Vec::new(),
                 local_to_world_matrices: Vec::new(),
-                data_buffers_to_cleanup: Vec::new(),
-                data_buffers_to_cleanup1: Vec::new(),
                 camera: camera.clone(),
                 camera_transform: *camera_transform,
                 view_width,
@@ -95,8 +93,6 @@ pub struct RenderPass {
     local_to_world_matrices: Vec<kmath::Mat4>,
     view_width: f32,
     view_height: f32,
-    data_buffers_to_cleanup: Vec<DataBuffer<kmath::Mat4>>,
-    data_buffers_to_cleanup1: Vec<DataBuffer<SceneInfoUniformBlock>>,
     color_space: kcolor::ColorSpace,
     light_info: [LightInfo; MAX_BOUND_LIGHTS],
     lights_bound: usize,
@@ -154,7 +150,7 @@ impl RenderPass {
 
     fn execute(
         &mut self,
-        graphics: &mut kgraphics::GraphicsContext,
+        graphics: &mut koi_graphics_context::GraphicsContext,
         meshes: &AssetStore<Mesh>,
         materials: &AssetStore<Material>,
         shaders: &AssetStore<Shader>,
@@ -162,61 +158,58 @@ impl RenderPass {
         cube_maps: &AssetStore<CubeMap>,
         morphable_mesh_data: &AssetStore<MorphableMeshData>,
     ) {
-        // Cleanup last frame's data buffers.
-        // These are cleaned up here for now because if a buffer is deleted it can
-        // leave an attribute unbound which makes OpenGL grumpy and refuse to render properly.
-        for data_buffer in self.data_buffers_to_cleanup.drain(..) {
-            graphics.delete_data_buffer(data_buffer);
-        }
-
-        for data_buffer in self.data_buffers_to_cleanup1.drain(..) {
-            graphics.delete_data_buffer(data_buffer);
-        }
-
         let mut command_buffer = graphics.new_command_buffer();
 
+        /*
         let mut render_pass = command_buffer.begin_render_pass_with_framebuffer(
-            &kgraphics::Framebuffer::default(),
+            &koi_graphics_context::Framebuffer::default(),
             self.camera
                 .clear_color
                 .map(|v| v.to_rgb_color(self.color_space).into()),
         );
-        render_pass.set_viewport(0, 0, self.view_width as u32, self.view_height as u32);
+        */
+        let mut render_pass = command_buffer.begin_render_pass(
+            self.camera
+                .clear_color
+                .map(|v| v.to_rgb_color(self.color_space).into()),
+        );
+        render_pass.set_viewport(0.0, 0.0, self.view_width as f32, self.view_height as f32);
 
-        let mut render_pass_executor = RenderPassExecutor {
-            graphics,
-            meshes,
-            materials,
-            shaders,
-            textures,
-            cube_maps,
-            morphable_mesh_data,
-            render_pass,
-            current_material_and_shader: None,
-            current_gpu_mesh: None,
-            camera_position: self.camera_transform.position,
-            world_to_camera: self.camera_transform.local_to_world().inversed(),
-            camera_to_screen: self
-                .camera
-                .projection_matrix(self.view_width, self.view_height),
-            this_render_pass: self,
-        };
+        {
+            let mut render_pass_executor = RenderPassExecutor {
+                graphics,
+                meshes,
+                materials,
+                shaders,
+                textures,
+                cube_maps,
+                morphable_mesh_data,
+                render_pass,
+                current_material_and_shader: None,
+                current_gpu_mesh: None,
+                camera_position: self.camera_transform.position,
+                world_to_camera: self.camera_transform.local_to_world().inversed(),
+                camera_to_screen: self
+                    .camera
+                    .projection_matrix(self.view_width, self.view_height),
+                this_render_pass: self,
+            };
 
-        render_pass_executor.execute();
-        command_buffer.present();
-        graphics.commit_command_buffer(command_buffer);
+            render_pass_executor.execute();
+        }
+        graphics.execute_command_buffer(command_buffer);
     }
 }
 
 struct RenderPassExecutor<'a> {
-    graphics: &'a mut kgraphics::GraphicsContext,
+    graphics: &'a mut koi_graphics_context::GraphicsContext,
     meshes: &'a AssetStore<Mesh>,
     materials: &'a AssetStore<Material>,
     shaders: &'a AssetStore<Shader>,
     textures: &'a AssetStore<Texture>,
     cube_maps: &'a AssetStore<CubeMap>,
     morphable_mesh_data: &'a AssetStore<MorphableMeshData>,
-    render_pass: kgraphics::RenderPass<'a>,
+    render_pass: koi_graphics_context::RenderPass<'a>,
     current_material_and_shader: Option<(&'a Material, &'a Shader)>,
     current_gpu_mesh: Option<&'a GPUMesh>,
     camera_position: kmath::Vec3,
@@ -249,9 +242,9 @@ impl<'a> RenderPassExecutor<'a> {
                     let sp = &shader.shader_render_properties;
 
                     self.render_pass
-                        .set_int_property(&sp.p_textures_enabled, p_textures_enabled);
+                        .set_uniform(&sp.p_textures_enabled, p_textures_enabled);
 
-                    self.render_pass.set_vec4_property(
+                    self.render_pass.set_uniform(
                         &sp.p_base_color,
                         material
                             .base_color
@@ -260,6 +253,7 @@ impl<'a> RenderPassExecutor<'a> {
                     );
                     let mut texture_unit = 0;
 
+                    /*
                     self.render_pass.set_texture_property(
                         &sp.p_base_color_texture,
                         Some(material.base_color_texture.as_ref().map_or_else(
@@ -268,8 +262,10 @@ impl<'a> RenderPassExecutor<'a> {
                         )),
                         texture_unit,
                     );
+                    */
                     texture_unit += 1;
 
+                    /*
                     self.render_pass.set_texture_property(
                         &sp.p_metallic_roughness_texture,
                         Some(material.metallic_roughness_texture.as_ref().map_or_else(
@@ -278,24 +274,26 @@ impl<'a> RenderPassExecutor<'a> {
                         )),
                         texture_unit,
                     );
+                    */
                     texture_unit += 1;
 
                     self.render_pass
-                        .set_float_property(&sp.p_metallic, material.metallicness);
+                        .set_uniform(&sp.p_metallic, material.metallicness);
 
                     // Roughness is multiplied by itself to make roughness increase in a more *perceptually* linear way.
                     // TODO: Investigate how this matches with other software.
-                    self.render_pass.set_float_property(
+                    self.render_pass.set_uniform(
                         &sp.p_roughness,
                         material.perceptual_roughness * material.perceptual_roughness,
                     );
                     self.render_pass
-                        .set_float_property(&sp.p_ambient, material.ambient_scale);
+                        .set_uniform(&sp.p_ambient, material.ambient_scale);
                     self.render_pass
-                        .set_float_property(&sp.p_emissive, material.emissiveness);
+                        .set_uniform(&sp.p_emissive, material.emissiveness);
                     self.render_pass
-                        .set_float_property(&sp.p_reflectance, material.reflectance);
+                        .set_uniform(&sp.p_reflectance, material.reflectance);
 
+                    /*
                     self.render_pass.set_cube_map_property(
                         &sp.p_cube_map,
                         Some(material.cube_map.as_ref().map_or_else(
@@ -304,13 +302,16 @@ impl<'a> RenderPassExecutor<'a> {
                         )),
                         texture_unit,
                     );
+                    */
                     texture_unit += 1;
 
+                    /*
                     if let Some(morphable_mesh_data) = material.morphable_mesh_data.as_ref() {
                         let morphable_mesh_data = self.morphable_mesh_data.get(morphable_mesh_data);
                         let texture = self
                             .textures
                             .get(&morphable_mesh_data.morph_targets_texture);
+
                         self.render_pass.set_texture_property(
                             &shader
                                 .pipeline
@@ -333,6 +334,7 @@ impl<'a> RenderPassExecutor<'a> {
                             ),
                         )
                     }
+                    */
                 }
 
                 // Bind the mesh for this group.
@@ -355,35 +357,33 @@ impl<'a> RenderPassExecutor<'a> {
                         self.render_pass
                             .set_vertex_attribute(&shader_properties.color_attribute, Some(colors));
                     } else {
+                        /*
                         self.render_pass.set_vertex_attribute_to_constant(
                             &shader_properties.color_attribute,
                             &[1.0, 1.0, 1.0, 1.0],
                         );
+                        */
                     }
                 }
 
                 // Upload a new buffer for the thing being rendered.
                 // TODO: Investigate if this is inefficient for single objects.
-                let local_to_world_data = self
-                    .graphics
-                    .new_data_buffer(&self.this_render_pass.local_to_world_matrices)
-                    .unwrap();
-
-                self.render_pass.set_instance_attribute(
-                    &shader_properties.local_to_world_instance_attribute,
-                    Some(&local_to_world_data),
+                let local_to_world_data = self.graphics.new_buffer(
+                    &self.this_render_pass.local_to_world_matrices,
+                    BufferUsage::Data,
                 );
 
-                self.render_pass.draw_triangles_instanced(
-                    gpu_mesh.index_end - gpu_mesh.index_start,
-                    &gpu_mesh.index_buffer,
+                // self.render_pass.set_instance_attribute(
+                //     &shader_properties.local_to_world_instance_attribute,
+                //     Some(&local_to_world_data),
+                // );
+
+                self.render_pass.draw(
+                    Some(&gpu_mesh.index_buffer),
+                    gpu_mesh.index_start..gpu_mesh.index_end,
                     self.this_render_pass.local_to_world_matrices.len() as u32,
                 );
                 self.this_render_pass.local_to_world_matrices.clear();
-                // This data buffer is deleted later after the commands are submitted.
-                self.this_render_pass
-                    .data_buffers_to_cleanup
-                    .push(local_to_world_data);
             }
         }
     }
@@ -391,9 +391,8 @@ impl<'a> RenderPassExecutor<'a> {
     fn execute(&mut self) {
         // Bind global data.
         {
-            let data_buffer = self
-                .graphics
-                .new_data_buffer(&[SceneInfoUniformBlock {
+            let data_buffer = self.graphics.new_buffer(
+                &[SceneInfoUniformBlock {
                     p_world_to_camera: self.world_to_camera,
                     p_camera_to_screen: self.camera_to_screen,
                     p_camera_position: self.camera_position,
@@ -411,17 +410,10 @@ impl<'a> RenderPassExecutor<'a> {
                         ),
                     // TODO: Don't do a clone here
                     lights: self.this_render_pass.light_info.clone(),
-                }])
-                .unwrap();
-            self.render_pass.set_uniform_block(
-                &kgraphics::UniformBlock::from_location(0),
-                Some(&data_buffer),
+                }],
+                BufferUsage::Data,
             );
-
-            // TODO: Come up with a more elegant way to cleanup allocation buffers.
-            self.this_render_pass
-                .data_buffers_to_cleanup1
-                .push(data_buffer);
+            self.render_pass.set_uniform_block(0, Some(&data_buffer));
         }
 
         // Sort meshes by material, then mesh.
