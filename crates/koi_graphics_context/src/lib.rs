@@ -36,6 +36,7 @@ impl Default for PipelineSettings {
 pub struct TextureInner {
     index: u32,
     texture_type: TextureType,
+    pixel_format: PixelFormat,
     mip: u8,
 }
 
@@ -49,6 +50,26 @@ enum TextureType {
 }
 
 pub struct Texture(Handle<TextureInner>);
+
+pub trait TextureDataTrait {
+    const PIXEL_FORMAT: PixelFormat;
+}
+
+impl TextureDataTrait for u8 {
+    const PIXEL_FORMAT: PixelFormat = PixelFormat::R8Unorm;
+}
+impl TextureDataTrait for [u8; 2] {
+    const PIXEL_FORMAT: PixelFormat = PixelFormat::RG8Unorm;
+}
+impl TextureDataTrait for [u8; 3] {
+    const PIXEL_FORMAT: PixelFormat = PixelFormat::RGB8Unorm;
+}
+impl TextureDataTrait for [u8; 4] {
+    const PIXEL_FORMAT: PixelFormat = PixelFormat::RGBA8Unorm;
+}
+impl TextureDataTrait for [f32; 4] {
+    const PIXEL_FORMAT: PixelFormat = PixelFormat::RGBA32F;
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum FilterMode {
@@ -275,7 +296,7 @@ impl BufferDataTrait for u32 {}
 impl<const N: usize> BufferDataTrait for [f32; N] {}
 impl<const N: usize> BufferDataTrait for [u32; N] {}
 
-unsafe fn slice_to_bytes<T>(t: &[T]) -> &[u8] {
+pub(crate) unsafe fn slice_to_bytes<T>(t: &[T]) -> &[u8] {
     let ptr = t.as_ptr() as *const u8;
     let size = std::mem::size_of::<T>() * t.len();
     std::slice::from_raw_parts(ptr, size)

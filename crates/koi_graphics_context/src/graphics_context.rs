@@ -1,3 +1,5 @@
+use core::slice;
+
 use crate::*;
 
 pub struct GraphicsContextSettings {
@@ -80,14 +82,14 @@ impl GraphicsContext {
 
     /// Create a [Texture].
     /// After creating the [Texture] set its data with [Self::update_texture]
-    pub fn new_texture(
+    pub fn new_texture<D: TextureDataTrait>(
         &mut self,
         width: usize,
         height: usize,
         depth: usize,
-        pixel_format: PixelFormat,
         settings: TextureSettings,
     ) -> Texture {
+        let pixel_format = D::PIXEL_FORMAT;
         unsafe {
             Texture(self.texture_assets.new_handle(self.backend.new_texture(
                 width,
@@ -100,17 +102,40 @@ impl GraphicsContext {
     }
 
     /// Update the contents of a [Texture]
-    pub fn update_texture(
+    pub fn update_texture<D: TextureDataTrait>(
         &mut self,
+        texture: &Texture,
         x: usize,
         y: usize,
         z: usize,
         width: usize,
         height: usize,
         depth: usize,
+        data: &[D],
         settings: TextureSettings,
     ) {
-        todo!()
+        assert_eq!(
+            data.len(),
+            width * height * depth,
+            "Data passed in does not match the size being updated"
+        );
+
+        // TODO: Assert that the texture is actually this size.
+        
+        let data = unsafe { slice_to_bytes(data) };
+        unsafe {
+            self.backend.update_texture(
+                &texture.0.inner(),
+                x,
+                y,
+                z,
+                width,
+                height,
+                depth,
+                data,
+                settings,
+            )
+        }
     }
 
     pub fn new_cube_map(

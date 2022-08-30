@@ -16,7 +16,7 @@ pub trait BackendTrait {
     ) -> TextureInner;
     unsafe fn update_texture(
         &mut self,
-        texture: &Texture,
+        texture: &TextureInner,
         x: usize,
         y: usize,
         z: usize,
@@ -24,7 +24,6 @@ pub trait BackendTrait {
         height: usize,
         depth: usize,
         data: &[u8],
-        pixel_format: PixelFormat,
         settings: TextureSettings,
     );
     unsafe fn delete_texture(&mut self, texture_inner: TextureInner);

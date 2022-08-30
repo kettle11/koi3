@@ -822,6 +822,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             let texture = TextureInner {
                 index: texture_index,
                 texture_type: TextureType::Texture,
+                pixel_format: pixel_format_in,
                 mip: 0,
             };
             {
@@ -898,13 +899,14 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 index: renderbuffer,
                 texture_type: TextureType::RenderBuffer,
                 mip: 0,
+                pixel_format: pixel_format_in,
             }
         }
     }
 
     unsafe fn update_texture(
         &mut self,
-        texture: &Texture,
+        texture: &TextureInner,
         x: usize,
         y: usize,
         z: usize,
@@ -912,14 +914,13 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         height: usize,
         depth: usize,
         data: &[u8],
-        pixel_format: PixelFormat,
         settings: TextureSettings,
     ) {
-        let texture_index = texture.0.inner().index;
-        let (target, texture_index) = match texture.0.inner().texture_type {
-            TextureType::Texture => (GL_TEXTURE_2D, texture_index),
+        let texture_index = texture.index;
+        let (target, texture_index) = match texture.texture_type {
+            TextureType::Texture => (GL_TEXTURE_2D, texture.index),
             TextureType::CubeMap { face } => {
-                (GL_TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture_index)
+                (GL_TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture.index)
             }
             TextureType::RenderBuffer { .. } => {
                 panic!("For now textures with MSAA cannot be updated by a call to `update_texture`")
@@ -933,10 +934,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         };
         let (pixel_format, inner_pixel_format, type_) =
             crate::gl_shared::pixel_format_to_gl_format_and_inner_format_and_type(
-                pixel_format,
+                texture.pixel_format,
                 settings.srgb,
             );
-        (self.bind_texture)(target, texture_index);
+        (self.bind_texture)(target, texture.index);
 
         if depth > 1 {
             (self.tex_sub_image_3d)(

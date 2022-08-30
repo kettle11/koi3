@@ -22,14 +22,18 @@ async fn run_async(app: Application, events: Events) {
         &window,
     );
 
-    g.new_texture(
+    let texture = g.new_texture::<[u8; 4]>(16, 16, 1, TextureSettings::default());
+    g.update_texture(
+        &texture,
+        0,
+        0,
+        0,
         16,
         16,
         1,
-        PixelFormat::RGB8Unorm,
+        &[[1.0, 0.0, 0.0, 1.0]; 16 * 16 * 1],
         TextureSettings::default(),
     );
-
     let pipeline = g
         .new_pipeline(
             r#"
