@@ -395,7 +395,7 @@ impl<'a> RenderPassExecutor<'a> {
                     light_count: self.this_render_pass.lights_bound as _,
                     spherical_harmonic_weights: self
                         .cube_maps
-                        .get(&Handle::from_index(0))
+                        .get(&Handle::from_index(1))
                         .spherical_harmonics
                         .convolve_with_cos_irradiance_and_premultiply_constants(
                             self.this_render_pass.exposure_scale_factor,
