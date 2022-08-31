@@ -91,29 +91,28 @@ fn main() {
 
             let spacing = 2.0;
 
-            /*
-                        for i in 0..rows {
-                            for j in 0..columns {
-                                world.spawn((
-                                    Transform::new().with_position(Vec3::new(
-                                        j as f32 * spacing,
-                                        i as f32 * spacing,
-                                        -2.0,
-                                    )),
-                                    materials.add(Material {
-                                        shader: Shader::PHYSICALLY_BASED,
-                                        // base_color: Random::new().color(),
-                                        // metallic: i as f32 / rows as f32,
-                                        perceptual_roughness: (j as f32 / columns as f32).clamp(0.01, 1.0),
-                                        ..Default::default()
-                                    }),
-                                    Mesh::SPHERE,
-                                ));
-                            }
-                        }
-            */
+            for i in 0..rows {
+                for j in 0..columns {
+                    world.spawn((
+                        Transform::new().with_position(Vec3::new(
+                            j as f32 * spacing,
+                            i as f32 * spacing,
+                            -2.0,
+                        )),
+                        materials.add(Material {
+                            shader: Shader::PHYSICALLY_BASED,
+                            // base_color: Random::new().color(),
+                            // metallic: i as f32 / rows as f32,
+                            perceptual_roughness: (j as f32 / columns as f32).clamp(0.01, 1.0),
+                            ..Default::default()
+                        }),
+                        Mesh::SPHERE,
+                    ));
+                }
+            }
+
             let mut prefabs = resources.get::<AssetStore<Prefab>>();
-            let prefab_handle = prefabs.load("assets/low-poly_truck_car_drifter/scene.gltf", ());
+            let prefab_handle = prefabs.load("assets/cat_statue/scene.gltf", ());
             /*
             struct Rotator;
 
@@ -145,7 +144,7 @@ fn main() {
                         if prefabs.currently_loading() == 0 {
                             let prefab = prefabs.get_mut(&prefab_handle);
 
-                            let size = 0;
+                            let size = 10;
                             let spacing = 4.0;
 
                             for i in 0..size {

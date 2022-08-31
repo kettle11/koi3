@@ -15,6 +15,9 @@ mod gl_backend;
 #[cfg(feature = "gl")]
 mod gl_shared;
 
+#[cfg(feature = "webgpu")]
+mod webgpu_backend;
+
 mod graphics_context;
 pub use graphics_context::*;
 

@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [features] 
-default = ["gl"]
+default = ["webgpu"]
 gl = ["kapp/gl_context"]
+webgpu = []
 
 [dependencies]
 half = {version = "2.1.0", no-default-features = true}
@@ -13,3 +14,8 @@ half = {version = "2.1.0", no-default-features = true}
 kapp = {path = "../../../koi2/crates/kapp", default-features=false}
 kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
 kmath = {path = "../../../koi2/crates/kmath", default-features=false}
+ktasks = {path = "../../../koi2/crates/ktasks"}
+klog = {path = "../../../koi2/crates/klog"}
+
+[target.'cfg(target_arch="wasm32")'.dependencies]
+kwasm = {path = "../../../koi2/crates/kwasm"}

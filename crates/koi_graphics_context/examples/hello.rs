@@ -14,13 +14,14 @@ async fn run_async(app: Application, events: Events) {
         .build();
     window.request_redraw();
 
-    let mut g = GraphicsContext::new(
-        GraphicsContextSettings {
-            high_resolution_framebuffer: true,
-            ..Default::default()
-        },
-        &window,
-    );
+    let g = ktasks::spawn_local(GraphicsContext::new(GraphicsContextSettings {
+        high_resolution_framebuffer: true,
+        ..Default::default()
+    }));
+    g.run();
+    ktasks::run_current_thread_tasks();
+    let mut g = g.get_result().unwrap();
+    g.set_main_window(&window);
 
     let texture = g.new_texture::<[u8; 4]>(16, 16, 1, TextureSettings::default());
     g.update_texture(

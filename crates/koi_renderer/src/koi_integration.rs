@@ -25,7 +25,7 @@ impl Default for InitialSettings {
     }
 }
 
-pub fn initialize_plugin(resources: &mut Resources) {
+pub async fn initialize_plugin(resources: &mut Resources) {
     let world_cloner = resources.get_mut::<koi_ecs::WorldCloner>();
     world_cloner.register_clone_type::<Handle<Material>>();
     world_cloner.register_clone_type::<Handle<Mesh>>();
@@ -45,15 +45,18 @@ pub fn initialize_plugin(resources: &mut Resources) {
     };
 
     // Initialize the graphics context.
-    let graphics_context = koi_graphics_context::GraphicsContext::new(
-        koi_graphics_context::GraphicsContextSettings {
+    let mut graphics_context =
+        koi_graphics_context::GraphicsContext::new(koi_graphics_context::GraphicsContextSettings {
             high_resolution_framebuffer: true,
             /// How many MSAA samples the window framebuffer should have
             samples: 4,
             color_space: Some(initial_settings.color_space),
-        },
-        &window,
-    );
+        })
+        .await;
+    graphics_context.set_main_window(&window);
+
+    // Request redraw here to kick off the series of redraws.
+    window.request_redraw();
 
     resources.add(window);
 

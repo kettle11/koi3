@@ -169,6 +169,13 @@ pub struct GLBackend {
         type_: GLenum,
         indices: *const core::ffi::c_void,
     ),
+    pub draw_elements_instanced: unsafe extern "system" fn(
+        mode: GLenum,
+        count: GLsizei,
+        type_: GLenum,
+        indices: *const core::ffi::c_void,
+        instancecount: GLsizei,
+    ),
     pub gen_buffers: unsafe extern "system" fn(n: GLsizei, buffers: *mut GLuint),
     pub buffer_data: unsafe extern "system" fn(
         target: GLenum,
@@ -289,7 +296,7 @@ pub struct GLBackend {
 }
 
 impl GLBackend {
-    pub unsafe fn new(settings: GraphicsContextSettings, initial_window: &kapp::Window) -> Self {
+    pub unsafe fn new(settings: GraphicsContextSettings) -> Self {
         let mut gl_context_builder = GLContext::builder();
         gl_context_builder.high_resolution_framebuffer(settings.high_resolution_framebuffer);
         gl_context_builder.samples(settings.samples);
@@ -313,7 +320,7 @@ impl GLBackend {
             address
         }
 
-        let mut s = Self {
+        let s = Self {
             clear: std::mem::transmute(get_f(&gl_context, "glClear")),
             clear_color: std::mem::transmute(get_f(&gl_context, "glClearColor")),
             gen_vertex_arrays: std::mem::transmute(get_f(&gl_context, "glGenVertexArrays")),
@@ -351,6 +358,10 @@ impl GLBackend {
             clear_depth: std::mem::transmute(get_f(&gl_context, "glClearDepth")),
             bind_buffer: std::mem::transmute(get_f(&gl_context, "glBindBuffer")),
             draw_elements: std::mem::transmute(get_f(&gl_context, "glDrawElements")),
+            draw_elements_instanced: std::mem::transmute(get_f(
+                &gl_context,
+                "glDrawElementsInstanced",
+            )),
             gen_buffers: std::mem::transmute(get_f(&gl_context, "glGenBuffers")),
             buffer_data: std::mem::transmute(get_f(&gl_context, "glBufferData")),
             delete_buffers: std::mem::transmute(get_f(&gl_context, "glDeleteBuffers")),
@@ -403,10 +414,6 @@ impl GLBackend {
         (s.gen_vertex_arrays)(1, &mut vertex_array);
         (s.bind_vertex_array)(vertex_array);
 
-        s.gl_context.set_window(Some(&initial_window)).unwrap();
-        s.gl_context.resize();
-        (s.viewport)(0, 0, 800, 800);
-
         s
     }
 }
@@ -423,6 +430,11 @@ impl GLBackend {
 }
 
 impl crate::backend_trait::BackendTrait for GLBackend {
+    unsafe fn set_main_window(&mut self, window: &kapp::Window) {
+        self.gl_context.set_window(Some(&window)).unwrap();
+        self.gl_context.resize();
+    }
+
     unsafe fn execute_command_buffer(
         &mut self,
         command_buffer: &crate::CommandBuffer,
@@ -631,23 +643,33 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     triangle_range,
                     instances,
                 } => {
-                    if *instances > 1 {
-                        todo!()
-                    } else {
-                        let count = triangle_range.end - triangle_range.start;
+                    let count = triangle_range.end - triangle_range.start;
 
-                        if let Some(index_buffer) = index_buffer {
-                            (self.bind_buffer)(
-                                GL_ELEMENT_ARRAY_BUFFER,
-                                index_buffer.handle.inner().index,
+                    if let Some(index_buffer) = index_buffer {
+                        (self.bind_buffer)(
+                            GL_ELEMENT_ARRAY_BUFFER,
+                            index_buffer.handle.inner().index,
+                        );
+
+                        if *instances > 1 {
+                            (self.draw_elements_instanced)(
+                                GL_TRIANGLES,
+                                (count * 3) as i32,
+                                GL_UNSIGNED_INT,
+                                (triangle_range.start * 3 * std::mem::size_of::<u32>() as u32) as _,
+                                *instances as _,
                             );
-
+                        } else {
                             (self.draw_elements)(
                                 GL_TRIANGLES,
                                 (count * 3) as i32,
                                 GL_UNSIGNED_INT,
                                 (triangle_range.start * 3 * std::mem::size_of::<u32>() as u32) as _,
                             );
+                        }
+                    } else {
+                        if *instances > 1 {
+                            todo!()
                         } else {
                             (self.draw_arrays)(GL_TRIANGLES, 0, (count * 3) as i32);
                         }

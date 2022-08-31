@@ -46,6 +46,7 @@ pub(crate) enum Command {
 }
 
 impl Command {
+    #[allow(unused)]
     pub fn name(&self) -> &str {
         match self {
             Command::Clear(_) => "Clear",

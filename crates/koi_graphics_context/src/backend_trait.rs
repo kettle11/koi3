@@ -1,6 +1,9 @@
+use kapp::Window;
+
 use crate::*;
 
 pub trait BackendTrait {
+    unsafe fn set_main_window(&mut self, window: &Window);
     unsafe fn execute_command_buffer(
         &mut self,
         command_buffer: &crate::CommandBuffer,
@@ -58,4 +61,16 @@ pub trait BackendTrait {
 
     unsafe fn new_buffer(&mut self, buffer_usage: BufferUsage, data: &[u8]) -> BufferInner;
     unsafe fn delete_buffer(&mut self, buffer_inner: BufferInner);
+
+    #[cfg(target_arch = "wasm32")]
+    unsafe fn new_texture_from_js_object(
+        &mut self,
+        _width: u32,
+        _height: u32,
+        _js_object_data: &kwasm::JSObjectDynamic,
+        _pixel_format: PixelFormat,
+        _texture_settings: TextureSettings,
+    ) -> TextureInner {
+        todo!()
+    }
 }

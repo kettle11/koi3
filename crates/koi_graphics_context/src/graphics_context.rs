@@ -30,19 +30,25 @@ pub struct GraphicsContext {
 }
 
 impl GraphicsContext {
-    pub fn new(settings: GraphicsContextSettings, initial_window: &kapp::Window) -> Self {
+    pub async fn new(settings: GraphicsContextSettings) -> Self {
+        Self {
+            #[cfg(feature = "gl")]
+            backend: Box::new(unsafe { gl_backend::GLBackend::new(settings) }),
+            #[cfg(feature = "webgpu")]
+            backend: Box::new(webgpu_backend::WebGPUBackend::new(settings).await.unwrap()),
+            command_buffer_pool: Vec::new(),
+            texture_assets: Assets::new(),
+            pipeline_assets: Assets::new(),
+            buffer_assets: Assets::new(),
+            cube_map_assets: Assets::new(),
+            buffer_sizes_bytes: Vec::new(),
+            texture_size_pixels: Vec::new(),
+        }
+    }
+
+    pub fn set_main_window(&mut self, window: &kapp::Window) {
         unsafe {
-            Self {
-                #[cfg(feature = "gl")]
-                backend: Box::new(gl_backend::GLBackend::new(settings, initial_window)),
-                command_buffer_pool: Vec::new(),
-                texture_assets: Assets::new(),
-                pipeline_assets: Assets::new(),
-                buffer_assets: Assets::new(),
-                cube_map_assets: Assets::new(),
-                buffer_sizes_bytes: Vec::new(),
-                texture_size_pixels: Vec::new(),
-            }
+            self.backend.set_main_window(window);
         }
     }
 
@@ -312,5 +318,28 @@ impl GraphicsContext {
         }
         self.command_buffer_pool.push(command_buffer);
         self.cleanup();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn new_texture_from_js_object(
+        &mut self,
+        width: u32,
+        height: u32,
+        js_object_data: &kwasm::JSObjectDynamic,
+        pixel_format: PixelFormat,
+        texture_settings: TextureSettings,
+    ) -> Texture {
+        unsafe {
+            Texture(
+                self.texture_assets
+                    .new_handle(self.backend.new_texture_from_js_object(
+                        width,
+                        height,
+                        js_object_data,
+                        pixel_format,
+                        texture_settings,
+                    )),
+            )
+        }
     }
 }

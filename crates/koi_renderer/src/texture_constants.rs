@@ -201,15 +201,13 @@ fn new_texture_from_texture_load_data(
             )
         },
         #[cfg(target_arch = "wasm32")]
-        TextureData::JSObject(data) => graphics
-            .new_texture_from_js_object(
-                texture_load_data.width,
-                texture_load_data.height,
-                &data,
-                texture_load_data.pixel_format,
-                texture_settings,
-            )
-            .unwrap(),
+        TextureData::JSObject(data) => graphics.new_texture_from_js_object(
+            texture_load_data.width,
+            texture_load_data.height,
+            &data,
+            texture_load_data.pixel_format,
+            texture_settings,
+        ),
     })
 }
 

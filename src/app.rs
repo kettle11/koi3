@@ -74,31 +74,44 @@ impl App {
 
         self.resources.add(kapp_app);
 
-        self.add_standard_plugins();
+        // Spawning this as a task allows setup events to be asynchronous,
+        // which is required for WebGPU.
+        let plugin_setup_done = ktasks::spawn_local(self.add_standard_plugins());
+        plugin_setup_done.run();
+        let mut app: Option<App> = None;
 
         kapp_event_loop.run(move |kapp_event| {
-            self.handle_event(Event::KappEvent(kapp_event.clone()));
-            self.run_fixed_update();
+            if let Some(app) = &mut app {
+                app.handle_event(Event::KappEvent(kapp_event.clone()));
+                app.run_fixed_update();
 
-            match kapp_event {
-                kapp_platform_common::Event::WindowCloseRequested { .. } => {
-                    let kapp_app = self.resources.get_mut::<kapp::Application>();
-                    kapp_app.quit()
+                match kapp_event {
+                    kapp_platform_common::Event::WindowCloseRequested { .. } => {
+                        let kapp_app = app.resources.get_mut::<kapp::Application>();
+                        kapp_app.quit()
+                    }
+                    kapp_platform_common::Event::Draw { .. } => {
+                        app.resources.get_mut::<Time>().update_draw();
+                        app.handle_event(Event::Draw);
+                        app.handle_event(Event::PostDraw);
+                    }
+                    kapp_platform_common::Event::Quit => {
+                        ktasks::shutdown_worker_threads();
+                    }
+                    _ => {}
                 }
-                kapp_platform_common::Event::Draw { .. } => {
-                    self.resources.get_mut::<Time>().update_draw();
-                    self.handle_event(Event::Draw);
-                    self.handle_event(Event::PostDraw);
+            } else {
+                ktasks::run_current_thread_tasks();
+                app = plugin_setup_done.get_result();
+                if app.is_some() {
+                    klog::log!("Loading complete");
                 }
-                kapp_platform_common::Event::Quit => {
-                    ktasks::shutdown_worker_threads();
-                }
-                _ => {}
             }
         });
     }
 
     pub fn handle_event(&mut self, event: Event) {
+        ktasks::run_current_thread_tasks();
         ktasks::run_tasks_unless_there_are_workers();
 
         // This funky memory-swap approach allows `EventHandlers` to be part of `Resources`
@@ -123,16 +136,17 @@ impl App {
         }
     }
 
-    fn add_standard_plugins(&mut self) {
+    async fn add_standard_plugins(mut self) -> Self {
         koi_prefabs::initialize_plugin(&mut self.resources);
 
         #[cfg(feature = "koi_renderer")]
-        koi_renderer::initialize_plugin(&mut self.resources);
+        koi_renderer::initialize_plugin(&mut self.resources).await;
         #[cfg(feature = "koi_input")]
         koi_input::initialize_plugin(&mut self.resources);
         #[cfg(feature = "koi_camera_controls")]
         koi_camera_controls::initialize_plugin(&mut self.resources);
 
         koi_transform::transform_plugin::initialize_plugin(&mut self.resources);
+        self
     }
 }
