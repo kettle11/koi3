@@ -45,6 +45,24 @@ pub(crate) enum Command {
     },
 }
 
+impl Command {
+    pub fn name(&self) -> &str {
+        match self {
+            Command::Clear(_) => "Clear",
+            Command::Present => "Present",
+            Command::SetPipeline(_) => "SetPipeline",
+            Command::Draw { .. } => "Draw",
+            Command::SetViewPort { .. } => "SetViewPort",
+            Command::SetUniform { .. } => "SetUniform",
+            Command::SetUniformBlock { .. } => "SetUniformBlock",
+            Command::SetAttribute { .. } => "SetAttribute",
+            Command::SetAttributeToConstant { .. } => "SetAttributeToConstant",
+            Command::SetTexture { .. } => "SetTexture",
+            Command::SetCubeMap { .. } => "SetCubeMap",
+        }
+    }
+}
+
 pub struct CommandBuffer {
     pub(crate) bump_allocator: BumpAllocator,
     pub(crate) commands: Vec<Command>,

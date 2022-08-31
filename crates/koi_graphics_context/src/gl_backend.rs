@@ -284,6 +284,8 @@ pub struct GLBackend {
         unsafe extern "system" fn(location: GLint, count: GLsizei, value: *const GLuint),
     pub vertex_attrib_4f:
         unsafe extern "system" fn(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat),
+    pub get_error: unsafe extern "system" fn() -> GLenum,
+    pub uniform_1i: unsafe extern "system" fn(location: GLint, v0: GLint),
 }
 
 impl GLBackend {
@@ -391,6 +393,8 @@ impl GLBackend {
             uniform_1iv: std::mem::transmute(get_f(&gl_context, "glUniform1iv")),
             uniform_1uiv: std::mem::transmute(get_f(&gl_context, "glUniform1uiv")),
             vertex_attrib_4f: std::mem::transmute(get_f(&gl_context, "glVertexAttrib4f")),
+            get_error: std::mem::transmute(get_f(&gl_context, "glGetError")),
+            uniform_1i: std::mem::transmute(get_f(&gl_context, "glUniform1i")),
             gl_context,
         };
 
@@ -404,6 +408,17 @@ impl GLBackend {
         (s.viewport)(0, 0, 800, 800);
 
         s
+    }
+}
+
+impl GLBackend {
+    pub fn check_for_error(&self) {
+        unsafe {
+            let error = (self.get_error)();
+            if error != 0 {
+                panic!("GL ERROR: {:?}", error);
+            }
+        }
     }
 }
 
@@ -423,6 +438,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         let mut current_program = None;
 
         for command in command_buffer.commands.iter() {
+            // println!("COMMAND: {:?}", command.name());
+            // self.check_for_error();
             match command {
                 Command::SetPipeline(pipeline) => {
                     let pipeline = pipeline.0.inner();
@@ -501,25 +518,31 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     uniform_info,
                     bump_handle,
                 } => {
-                    let location = uniform_info.location.unwrap_or(0) as _;
-                    let data = command_buffer.bump_allocator.get_raw_bytes(*bump_handle);
+                    if let Some(location) = uniform_info.location {
+                        let location = location as i32;
+                        let data = command_buffer.bump_allocator.get_raw_bytes(*bump_handle);
 
-                    let data = data.as_ptr();
+                        let data = data.as_ptr();
 
-                    // TODO: It may be faster to use the non array types when the value is 1.
-                    match uniform_info.uniform_type {
-                        UniformType::Int(n) => (self.uniform_1iv)(location, n as _, data as _),
-                        UniformType::UInt(n) => (self.uniform_1uiv)(location, n as _, data as _),
-                        UniformType::Float(n) => (self.uniform_1fv)(location, n as _, data as _),
-                        UniformType::Vec2(n) => (self.uniform_2fv)(location, n as _, data as _),
-                        UniformType::Vec3(n) => (self.uniform_3fv)(location, n as _, data as _),
-                        UniformType::Vec4(n) => (self.uniform_4fv)(location, n as _, data as _),
-                        UniformType::Mat4(n) => {
-                            (self.uniform_matrix_4fv)(location, n as _, 0, data as _)
+                        // TODO: It may be faster to use the non array types when the value is 1.
+                        match uniform_info.uniform_type {
+                            UniformType::Int(n) => (self.uniform_1iv)(location, n as _, data as _),
+                            UniformType::UInt(n) => {
+                                (self.uniform_1uiv)(location, n as _, data as _)
+                            }
+                            UniformType::Float(n) => {
+                                (self.uniform_1fv)(location, n as _, data as _)
+                            }
+                            UniformType::Vec2(n) => (self.uniform_2fv)(location, n as _, data as _),
+                            UniformType::Vec3(n) => (self.uniform_3fv)(location, n as _, data as _),
+                            UniformType::Vec4(n) => (self.uniform_4fv)(location, n as _, data as _),
+                            UniformType::Mat4(n) => {
+                                (self.uniform_matrix_4fv)(location, n as _, 0, data as _)
+                            }
+                            UniformType::Sampler2d => (self.uniform_1fv)(location, 1, data as _),
+                            UniformType::Sampler3d => (self.uniform_1fv)(location, 1, data as _),
+                            UniformType::SamplerCube => (self.uniform_1fv)(location, 1, data as _),
                         }
-                        UniformType::Sampler2d => (self.uniform_1fv)(location, 1, data as _),
-                        UniformType::Sampler3d => (self.uniform_1fv)(location, 1, data as _),
-                        UniformType::SamplerCube => (self.uniform_1fv)(location, 1, data as _),
                     }
                 }
                 Command::SetUniformBlock {
@@ -618,6 +641,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                                 GL_ELEMENT_ARRAY_BUFFER,
                                 index_buffer.handle.inner().index,
                             );
+
                             (self.draw_elements)(
                                 GL_TRIANGLES,
                                 (count * 3) as i32,
@@ -755,6 +779,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 Some(name[2..name.find('_')?].parse().ok()?)
             }
 
+            (self.use_program)(program);
+
             // First read all uniforms
             {
                 unsafe fn get_uniform_info(
@@ -829,7 +855,6 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 for i in 0..uniform_count {
                     let uniform_info = get_uniform_info(self, program, i);
 
-                    // Uniform blocks do not have a location
                     if let Some((name, uniform_info)) = uniform_info {
                         match uniform_info.uniform_type {
                             UniformType::Sampler2d
@@ -839,8 +864,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                                 if let Some(location) = uniform_info.location {
                                     let id = get_id(&name).expect(&name) as i32;
 
-                                    println!("SETTING SAMPLER: {name} to slot: {:?}", id);
-                                    (self.uniform_1iv)(location as _, 1, (&id) as *const i32);
+                                    self.check_for_error();
+
+                                    (self.uniform_1i)(location as _, id);
+                                    self.check_for_error();
                                 }
                             }
                             _ => {}
@@ -932,13 +959,14 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 (self.get_program_iv)(program, GL_ACTIVE_ATTRIBUTES, &mut count);
                 let vertex_attribute_count = count as u32;
 
-                println!("ATTRIBUTE COUNT: {:?}", vertex_attribute_count);
                 for i in 0..vertex_attribute_count {
                     if let Some((name, attribute_info)) = get_attribute_info(self, program, i) {
                         vertex_attributes.insert(name, attribute_info);
                     }
                 }
             }
+
+            (self.use_program)(0);
 
             Ok(PipelineInner {
                 program_index: program,
@@ -1249,9 +1277,11 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             (self.buffer_data)(
                 gl_buffer_usage,
                 bytes.len() as _,
-                bytes.as_ptr() as _,
+                bytes.as_ptr() as *const std::ffi::c_void,
                 GL_STATIC_DRAW,
             );
+            (self.bind_buffer)(gl_buffer_usage, 0);
+
             BufferInner {
                 buffer_usage,
                 index: buffer,
