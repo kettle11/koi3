@@ -10,6 +10,7 @@ pub struct WebGPUBackend {
     new_texture: JSObject,
     update_texture: JSObject,
     destroy: JSObject,
+    execute_commands: JSObject,
 }
 
 impl WebGPUBackend {
@@ -29,6 +30,7 @@ impl WebGPUBackend {
             new_texture: o.get_property("new_texture"),
             update_texture: o.get_property("update_texture"),
             destroy: o.get_property("destroy"),
+            execute_commands: o.get_property("execute_commands"),
         })
     }
 }
@@ -41,7 +43,7 @@ impl BackendTrait for WebGPUBackend {
         buffer_sizes: &Vec<u32>,
         texture_sizes: &Vec<(u32, u32, u32)>,
     ) {
-        klog::log!("TODO: execute_command_buffer");
+        self.execute_commands.call();
     }
 
     unsafe fn new_texture(

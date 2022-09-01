@@ -4,11 +4,17 @@ use crate::{
 };
 
 pub(crate) enum Command {
-    Clear(kmath::Vec4),
+    BeginRenderPass {
+        clear_color: kmath::Vec4,
+    },
     Present,
-    SetPipeline(Pipeline),
+    SetPipeline {
+        pipeline_index: u32,
+        // TODO: Remove the need for PipelineSettings here.
+        pipeline_settings: PipelineSettings,
+    },
     Draw {
-        index_buffer: Option<Buffer<[u32; 3]>>,
+        index_buffer_index: Option<u32>,
         triangle_range: std::ops::Range<u32>,
         instances: u32,
     },
@@ -37,7 +43,7 @@ pub(crate) enum Command {
     },
     SetTexture {
         texture_unit: u8,
-        texture: Texture,
+        texture_index: u32,
     },
     SetCubeMap {
         texture_unit: u8,
@@ -49,9 +55,9 @@ impl Command {
     #[allow(unused)]
     pub fn name(&self) -> &str {
         match self {
-            Command::Clear(_) => "Clear",
+            Command::BeginRenderPass { .. } => "BeginRenderPass",
             Command::Present => "Present",
-            Command::SetPipeline(_) => "SetPipeline",
+            Command::SetPipeline { .. } => "SetPipeline",
             Command::Draw { .. } => "Draw",
             Command::SetViewPort { .. } => "SetViewPort",
             Command::SetUniform { .. } => "SetUniform",
@@ -67,19 +73,25 @@ impl Command {
 pub struct CommandBuffer {
     pub(crate) bump_allocator: BumpAllocator,
     pub(crate) commands: Vec<Command>,
+    pipelines: Vec<Pipeline>,
+    buffers: Vec<BufferUntyped>,
+    textures: Vec<Texture>,
 }
 
 impl CommandBuffer {
     pub fn new() -> Self {
         Self {
             bump_allocator: BumpAllocator::new(),
+            pipelines: Vec::new(),
             commands: Vec::new(),
+            buffers: Vec::new(),
+            textures: Vec::new(),
         }
     }
 
-    pub fn begin_render_pass(&mut self, color: Option<kmath::Vec4>) -> RenderPass {
-        if let Some(color) = color {
-            self.commands.push(Command::Clear(color))
+    pub fn begin_render_pass(&mut self, clear_color: Option<kmath::Vec4>) -> RenderPass {
+        if let Some(clear_color) = clear_color {
+            self.commands.push(Command::BeginRenderPass { clear_color })
         }
         RenderPass {
             current_pipeline: None,
@@ -89,7 +101,10 @@ impl CommandBuffer {
 
     pub fn clear(&mut self) {
         self.bump_allocator.clear();
-        self.commands.clear()
+        self.commands.clear();
+        self.pipelines.clear();
+        self.buffers.clear();
+        self.textures.clear();
     }
 }
 
@@ -101,9 +116,11 @@ pub struct RenderPass<'a> {
 impl<'a> RenderPass<'a> {
     pub fn set_pipeline(&mut self, pipeline: &Pipeline) {
         self.current_pipeline = Some(pipeline.0.clone());
-        self.command_buffer
-            .commands
-            .push(Command::SetPipeline(pipeline.clone()))
+        self.command_buffer.pipelines.push(pipeline.clone());
+        self.command_buffer.commands.push(Command::SetPipeline {
+            pipeline_index: pipeline.0.inner().program_index,
+            pipeline_settings: pipeline.0.inner().pipeline_settings,
+        });
     }
 
     pub fn set_viewport(&mut self, x: f32, y: f32, width: f32, height: f32) {
@@ -191,9 +208,10 @@ impl<'a> RenderPass<'a> {
 
     pub fn set_texture(&mut self, texture_unit: u8, texture: &Texture) {
         assert!(texture_unit < 16);
+        self.command_buffer.textures.push(texture.clone());
         self.command_buffer.commands.push(Command::SetTexture {
             texture_unit,
-            texture: texture.clone(),
+            texture_index: texture.0.inner().index,
         });
     }
 
@@ -216,10 +234,13 @@ impl<'a> RenderPass<'a> {
                 index_buffer.handle.inner().buffer_usage,
                 BufferUsage::Index,
                 "`index_buffer` was not declared with `BufferUsage::Index`"
-            )
+            );
+
+            self.command_buffer.buffers.push(index_buffer.untyped());
         }
+
         self.command_buffer.commands.push(Command::Draw {
-            index_buffer: index_buffer.cloned(),
+            index_buffer_index: index_buffer.map(|i| i.handle.inner().index),
             triangle_range,
             instances,
         })

@@ -453,15 +453,16 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             // println!("COMMAND: {:?}", command.name());
             // self.check_for_error();
             match command {
-                Command::SetPipeline(pipeline) => {
-                    let pipeline = pipeline.0.inner();
-                    let program_index = pipeline.program_index;
-                    if current_program != Some(program_index) {
-                        (self.use_program)(program_index);
-                        current_program = Some(program_index);
+                Command::SetPipeline {
+                    pipeline_index,
+                    pipeline_settings,
+                } => {
+                    if current_program != Some(pipeline_index) {
+                        (self.use_program)(*pipeline_index);
+                        current_program = Some(pipeline_index);
                     }
 
-                    match pipeline.pipeline_settings.depth_test {
+                    match pipeline_settings.depth_test {
                         crate::DepthTest::AlwaysPass => {
                             (self.depth_func)(GL_ALWAYS);
                         }
@@ -479,7 +480,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         }
                     };
 
-                    match pipeline.pipeline_settings.faces_to_render {
+                    match pipeline_settings.faces_to_render {
                         FacesToRender::Front => {
                             (self.enable)(GL_CULL_FACE);
                             (self.cull_face)(GL_BACK)
@@ -498,7 +499,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     };
 
                     if let Some((source_blend_factor, destination_blend_factor)) =
-                        pipeline.pipeline_settings.blending
+                        pipeline_settings.blending
                     {
                         fn blending_to_gl(blending: BlendFactor) -> GLenum {
                             match blending {
@@ -620,14 +621,14 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 }
                 Command::SetTexture {
                     texture_unit,
-                    texture,
+                    texture_index,
                 } => {
-                    let is_3d = texture_sizes[texture.0.inner().index as usize].2 > 1;
+                    let is_3d = texture_sizes[*texture_index as usize].2 > 1;
                     // self.gl.uniform_1_i32(Some(uniform_location), unit as i32);
                     (self.active_texture)(GL_TEXTURE0 + *texture_unit as u32);
                     (self.bind_texture)(
                         if is_3d { GL_TEXTURE_3D } else { GL_TEXTURE_2D },
-                        texture.0.inner().index,
+                        *texture_index,
                     );
                 }
                 Command::SetCubeMap {
@@ -639,17 +640,14 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     (self.bind_texture)(GL_TEXTURE_CUBE_MAP, cube_map.0.inner().index);
                 }
                 Command::Draw {
-                    index_buffer,
+                    index_buffer_index,
                     triangle_range,
                     instances,
                 } => {
                     let count = triangle_range.end - triangle_range.start;
 
-                    if let Some(index_buffer) = index_buffer {
-                        (self.bind_buffer)(
-                            GL_ELEMENT_ARRAY_BUFFER,
-                            index_buffer.handle.inner().index,
-                        );
+                    if let Some(index_buffer_index) = index_buffer_index {
+                        (self.bind_buffer)(GL_ELEMENT_ARRAY_BUFFER, *index_buffer_index);
 
                         if *instances > 1 {
                             (self.draw_elements_instanced)(
@@ -675,8 +673,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         }
                     }
                 }
-                Command::Clear(color) => {
-                    (self.clear_color)(color.x, color.y, color.z, color.w);
+                Command::BeginRenderPass { clear_color } => {
+                    (self.clear_color)(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
                     (self.clear)(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
                 }
                 Command::Present => {
