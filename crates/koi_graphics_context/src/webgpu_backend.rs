@@ -1,3 +1,6 @@
+//! THIS BACKEND DOES NOT WORK YET
+//! Most of it is unimplemented. It's purely experiemntal.
+
 use std::collections::HashMap;
 
 use kwasm::*;

@@ -134,6 +134,6 @@ var web_gpu_object = {
         passEncoder.end();
 
         device.queue.submit([commandEncoder.finish()]);
-    }
+    },
 };
 web_gpu_object
