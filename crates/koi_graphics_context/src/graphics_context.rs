@@ -32,6 +32,8 @@ pub struct GraphicsContext {
 impl GraphicsContext {
     pub async fn new(settings: GraphicsContextSettings) -> Self {
         Self {
+            #[cfg(all(target_arch = "wasm32", feature = "webgl"))]
+            backend: Box::new(unsafe { webgl_backend::WebGLBackend::new(settings) }),
             #[cfg(feature = "gl")]
             backend: Box::new(unsafe { gl_backend::GLBackend::new(settings) }),
             #[cfg(feature = "webgpu")]
@@ -272,6 +274,7 @@ impl GraphicsContext {
                 slice_to_bytes(data[5]),
             ]
         };
+
         unsafe {
             self.backend
                 .update_cube_map(&cube_map.0.inner(), width, height, &data, settings)

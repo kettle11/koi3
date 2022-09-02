@@ -174,7 +174,6 @@ pub fn prepare_cubemap(
         ..Default::default()
     };
 
-    println!("FACE SIZE: {:?}", face_size);
     let cube_map = graphics.new_cube_map_with_data::<kmath::Vec4>(
         face_size as _,
         face_size as _,

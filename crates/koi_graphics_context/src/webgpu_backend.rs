@@ -148,6 +148,75 @@ impl BackendTrait for WebGPUBackend {
         fragment_source: &str,
         pipeline_settings: crate::PipelineSettings,
     ) -> Result<crate::PipelineInner, String> {
+        fn transpile_shader(source: &str, stage: naga::ShaderStage) -> Option<String> {
+            klog::log!("TRANSPILING");
+            klog::log!("{}", source);
+            let mut parser = naga::front::glsl::Parser::default();
+            let module = parser
+                .parse(
+                    &naga::front::glsl::Options {
+                        stage,
+                        defines: Default::default(),
+                    },
+                    source,
+                )
+                .unwrap_or_else(|errors| {
+                    for error in errors {
+                        let location = error.meta.location(source);
+
+                        let mut line_start = 0;
+                        let mut line_end = 0;
+
+                        let mut line_numbers = location.line_number;
+                        for (i, c) in source.char_indices() {
+                            if c == '\n' {
+                                line_start = line_end;
+                                line_end = i;
+                                line_numbers -= 1;
+                                if line_numbers == 0 {
+                                    break;
+                                }
+                            }
+                        }
+                        klog::log!(
+                            "GLSL to WGSL error: {:?} {}",
+                            error.kind,
+                            &source[location.offset as usize
+                                ..location.offset as usize + location.length as usize]
+                        );
+                        klog::log!(
+                            "{:?} | {}",
+                            location.line_number,
+                            &source[line_start + 1..line_end]
+                        );
+                    }
+                    panic!()
+                });
+
+            let module_info = match naga::valid::Validator::new(
+                naga::valid::ValidationFlags::default(),
+                naga::valid::Capabilities::all(), // Is this correct?
+            )
+            .validate(&module)
+            {
+                Ok(info) => Some(info),
+                Err(error) => {
+                    klog::log!("{:?}", error);
+                    None
+                }
+            }?;
+            naga::back::wgsl::write_string(
+                &module,
+                &module_info,
+                naga::back::wgsl::WriterFlags::empty(),
+            )
+            .ok()
+        }
+
+        let vertex_source = transpile_shader(vertex_source, naga::ShaderStage::Vertex).unwrap();
+        let fragment_source =
+            transpile_shader(fragment_source, naga::ShaderStage::Fragment).unwrap();
+
         let vertex_source = JSString::new(&vertex_source);
         let fragment_source = JSString::new(&fragment_source);
         let js_object = self

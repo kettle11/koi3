@@ -10,10 +10,14 @@ mod bump_allocator;
 mod command_buffer;
 pub use command_buffer::*;
 
+#[cfg(any(feature = "gl", feature = "webgl"))]
+mod gl_shared;
+
+#[cfg(feature = "webgl")]
+mod webgl_backend;
+
 #[cfg(feature = "gl")]
 mod gl_backend;
-#[cfg(feature = "gl")]
-mod gl_shared;
 
 #[cfg(feature = "webgpu")]
 mod webgpu_backend;

@@ -1,47 +1,54 @@
 use crate::*;
-use core::ffi::c_uint;
 
-pub const HALF_FLOAT: c_uint = 0x140B;
-pub const FLOAT: c_uint = 0x1406;
-pub const UNSIGNED_SHORT: c_uint = 0x1403;
-pub const UNSIGNED_INT: c_uint = 0x1405;
-pub const UNSIGNED_BYTE: c_uint = 0x1401;
+pub(crate) type GLenum = core::ffi::c_uint;
 
-pub const DEPTH_COMPONENT16: c_uint = 0x81A5;
-pub const DEPTH_COMPONENT24: c_uint = 0x81A6;
-pub const DEPTH_COMPONENT32F: c_uint = 0x8CAC;
+pub const HALF_FLOAT: GLenum = 0x140B;
+pub const FLOAT: GLenum = 0x1406;
+pub const UNSIGNED_SHORT: GLenum = 0x1403;
+pub const UNSIGNED_INT: GLenum = 0x1405;
+pub const UNSIGNED_BYTE: GLenum = 0x1401;
 
-pub const NEAREST: c_uint = 0x2600;
-pub const LINEAR: c_uint = 0x2601;
-pub const NEAREST_MIPMAP_NEAREST: c_uint = 0x2700;
-pub const LINEAR_MIPMAP_NEAREST: c_uint = 0x2701;
-pub const NEAREST_MIPMAP_LINEAR: c_uint = 0x2702;
-pub const LINEAR_MIPMAP_LINEAR: c_uint = 0x2703;
+pub const DEPTH_COMPONENT16: GLenum = 0x81A5;
+pub const DEPTH_COMPONENT24: GLenum = 0x81A6;
+pub const DEPTH_COMPONENT32F: GLenum = 0x8CAC;
 
-pub const CLAMP_TO_EDGE: c_uint = 0x812F;
-pub const MIRRORED_REPEAT: c_uint = 0x8370;
-pub const REPEAT: c_uint = 0x2901;
+pub const NEAREST: GLenum = 0x2600;
+pub const LINEAR: GLenum = 0x2601;
+pub const NEAREST_MIPMAP_NEAREST: GLenum = 0x2700;
+pub const LINEAR_MIPMAP_NEAREST: GLenum = 0x2701;
+pub const NEAREST_MIPMAP_LINEAR: GLenum = 0x2702;
+pub const LINEAR_MIPMAP_LINEAR: GLenum = 0x2703;
 
-pub const DEPTH_COMPONENT: c_uint = 0x1902;
-pub const RED: c_uint = 0x1903;
-pub const RG: c_uint = 0x8227;
-pub const RGB: c_uint = 0x1907;
-pub const RGBA: c_uint = 0x1908;
+pub const CLAMP_TO_EDGE: GLenum = 0x812F;
+pub const MIRRORED_REPEAT: GLenum = 0x8370;
+pub const REPEAT: GLenum = 0x2901;
 
-pub const R8: c_uint = 0x8229;
-pub const RG8: c_uint = 0x822B;
-pub const RGB8: c_uint = 0x8051;
-pub const RGBA8: c_uint = 0x8058;
-pub const SRGB8_ALPHA8: c_uint = 0x8C43;
+pub const DEPTH_COMPONENT: GLenum = 0x1902;
+pub const RED: GLenum = 0x1903;
+pub const RG: GLenum = 0x8227;
+pub const RGB: GLenum = 0x1907;
+pub const RGBA: GLenum = 0x1908;
 
-pub const RGBA16F: c_uint = 0x881A;
-pub const RGBA32F: c_uint = 0x8814;
+pub const R8: GLenum = 0x8229;
+pub const RG8: GLenum = 0x822B;
+pub const RGB8: GLenum = 0x8051;
+pub const RGBA8: GLenum = 0x8058;
+pub const SRGB8_ALPHA8: GLenum = 0x8C43;
+
+pub const RGBA16F: GLenum = 0x881A;
+pub const RGBA32F: GLenum = 0x8814;
+pub const TEXTURE_2D: GLenum = 0x0DE1;
+pub const TEXTURE_CUBE_MAP_POSITIVE_X: GLenum = 0x8515;
+pub const TEXTURE_CUBE_MAP: GLenum = 0x8513;
+
+pub const ELEMENT_ARRAY_BUFFER: GLenum = 0x8893;
+pub const ARRAY_BUFFER: GLenum = 0x8892;
 
 // Useful reference: https://webgl2fundamentals.org/webgl/lessons/webgl-data-textures.html
 pub fn pixel_format_to_gl_format_and_inner_format_and_type(
     pixel_format: PixelFormat,
     srgb: bool,
-) -> (c_uint, c_uint, c_uint) {
+) -> (GLenum, GLenum, GLenum) {
     if srgb {
         assert_eq!(pixel_format, PixelFormat::RGBA8Unorm);
         return (RGBA, SRGB8_ALPHA8, UNSIGNED_BYTE);
@@ -84,7 +91,7 @@ pub fn minification_filter_to_gl_enum(
     minification_filter_mode: FilterMode,
     mipmap_filter_mode: FilterMode,
     has_mipmaps: bool,
-) -> c_uint {
+) -> GLenum {
     if has_mipmaps {
         match (minification_filter_mode, mipmap_filter_mode) {
             (FilterMode::Nearest, FilterMode::Nearest) => NEAREST_MIPMAP_NEAREST,
@@ -100,14 +107,14 @@ pub fn minification_filter_to_gl_enum(
     }
 }
 
-pub fn magnification_filter_to_gl_enum(filter_mode: FilterMode) -> c_uint {
+pub fn magnification_filter_to_gl_enum(filter_mode: FilterMode) -> GLenum {
     match filter_mode {
         FilterMode::Nearest => NEAREST,
         FilterMode::Linear => LINEAR,
     }
 }
 
-pub fn wrapping_to_gl_enum(wrapping_mode: WrappingMode) -> c_uint {
+pub fn wrapping_to_gl_enum(wrapping_mode: WrappingMode) -> GLenum {
     match wrapping_mode {
         WrappingMode::ClampToEdge => CLAMP_TO_EDGE,
         WrappingMode::MirrorRepeat => MIRRORED_REPEAT,

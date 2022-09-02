@@ -4,6 +4,9 @@ pub fn kecs_component_impl(value: &Value) -> String {
     let (name, generic_parameters) = match value {
         Value::Struct(s) => (&s.name, &s.generic_parameters),
         Value::Enum(e) => (&e.name, &e.generic_parameters),
+        _ => {
+            panic!()
+        }
     };
 
     format!(

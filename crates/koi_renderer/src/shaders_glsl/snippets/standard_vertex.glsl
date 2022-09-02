@@ -1,3 +1,5 @@
+precision mediump float;
+
 #INCLUDE scene_info
 
 in mat4 ia_local_to_world;

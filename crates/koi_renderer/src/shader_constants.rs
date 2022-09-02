@@ -7,7 +7,7 @@ impl Shader {
     pub const PHYSICALLY_BASED: Handle<Self> = Handle::from_index(1);
     pub const SKYBOX: Handle<Self> = Handle::from_index(2);
     pub const PHYSICALLY_BASED_DOUBLE_SIDED: Handle<Self> = Handle::from_index(3);
-    pub const PHYSICALLY_BASED_WITH_MORPH: Handle<Self> = Handle::from_index(4);
+    // pub const PHYSICALLY_BASED_WITH_MORPH: Handle<Self> = Handle::from_index(4);
 }
 
 pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resources) {
@@ -113,6 +113,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
 
     asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED_DOUBLE_SIDED);
 
+    /*
     let shader = renderer
         .new_shader(
             include_str!("shaders_glsl/physically_based_with_morph.glsl"),
@@ -125,6 +126,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .unwrap();
 
     asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED_WITH_MORPH);
+    */
 
     resources.add(asset_store);
 }

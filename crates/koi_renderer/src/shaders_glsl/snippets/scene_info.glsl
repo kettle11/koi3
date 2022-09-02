@@ -13,22 +13,22 @@ struct LightInfo {
 layout (std140) uniform ub0_scene_info
 {
     // Also known as 'view'
-    uniform mat4 p_world_to_camera;
+    mat4 p_world_to_camera;
     // Also known as 'projection'
-    uniform mat4 p_camera_to_screen;
+    mat4 p_camera_to_screen;
 
-    uniform vec3 p_camera_position;
-    uniform float p_dither_scale;
+    vec3 p_camera_position;
+    float p_dither_scale;
 
-    uniform float p_fog_start;
-    uniform float p_fog_end;
+    float p_fog_start;
+    float p_fog_end;
 
-    uniform float p_exposure;
+    float p_exposure;
     lowp uint light_count;
 
-    uniform vec4 spherical_harmonic_weights[9];
+    vec4 spherical_harmonic_weights[9];
     
-    uniform LightInfo p_lights[20];
+    LightInfo p_lights[20];
 }; 
 
 vec3 read_spherical_harmonics(const vec3 n) {
