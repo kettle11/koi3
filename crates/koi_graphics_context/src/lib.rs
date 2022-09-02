@@ -13,7 +13,7 @@ pub use command_buffer::*;
 #[cfg(any(feature = "gl", feature = "webgl"))]
 mod gl_shared;
 
-#[cfg(feature = "webgl")]
+#[cfg(all(target_arch = "wasm32", feature = "webgl"))]
 mod webgl_backend;
 
 #[cfg(feature = "gl")]

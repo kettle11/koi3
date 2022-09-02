@@ -44,6 +44,48 @@ pub const TEXTURE_CUBE_MAP: GLenum = 0x8513;
 pub const ELEMENT_ARRAY_BUFFER: GLenum = 0x8893;
 pub const ARRAY_BUFFER: GLenum = 0x8892;
 
+pub const ONE: GLenum = 1;
+pub const ONE_MINUS_SRC_ALPHA: GLenum = 0x0303;
+pub const SRC_ALPHA: GLenum = 0x0302;
+pub const ALWAYS: GLenum = 0x0207;
+pub const LESS: GLenum = 0x0201;
+pub const LEQUAL: GLenum = 0x0203;
+pub const GREATER: GLenum = 0x0204;
+pub const GEQUAL: GLenum = 0x0206;
+
+pub const BACK: GLenum = 0x0405;
+pub const FRONT: GLenum = 0x0404;
+pub const FRONT_AND_BACK: GLenum = 0x0408;
+pub const TEXTURE0: GLenum = 0x84C0;
+pub const TEXTURE_3D: GLenum = 0x806F;
+pub const ACTIVE_UNIFORMS: GLenum = 0x8B86;
+
+pub const INT: GLenum = 0x1404;
+pub const FLOAT_VEC2: GLenum = 0x8B50;
+pub const FLOAT_VEC3: GLenum = 0x8B51;
+pub const FLOAT_VEC4: GLenum = 0x8B52;
+pub const FLOAT_MAT4: GLenum = 0x8B5C;
+
+pub const ACTIVE_ATTRIBUTES: GLenum = 0x8B89;
+pub const ACTIVE_UNIFORM_BLOCKS: GLenum = 0x8A36;
+
+pub fn gl_uniform_type_to_uniform_type(gl_enum: GLenum, size_members: u8) -> UniformType {
+    match gl_enum {
+        FLOAT => UniformType::Float(size_members),
+        FLOAT_VEC2 => UniformType::Vec2(size_members),
+        FLOAT_VEC3 => UniformType::Vec3(size_members),
+        FLOAT_VEC4 => UniformType::Vec4(size_members),
+        FLOAT_MAT4 => UniformType::Mat4(size_members),
+        INT => UniformType::Int(size_members),
+        UNSIGNED_INT => UniformType::UInt(size_members),
+        SAMPLER_2D => UniformType::Sampler2d,
+        SAMPLER_3D => UniformType::Sampler3d,
+        SAMPLER_CUBE => UniformType::SamplerCube,
+        _ => {
+            panic!("UNIMPLEMENTED UNIFORM TYPE: {:?}", gl_enum);
+        }
+    }
+}
 // Useful reference: https://webgl2fundamentals.org/webgl/lessons/webgl-data-textures.html
 pub fn pixel_format_to_gl_format_and_inner_format_and_type(
     pixel_format: PixelFormat,

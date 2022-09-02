@@ -552,9 +552,11 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                             UniformType::Mat4(n) => {
                                 (self.uniform_matrix_4fv)(location, n as _, 0, data as _)
                             }
-                            UniformType::Sampler2d => (self.uniform_1fv)(location, 1, data as _),
-                            UniformType::Sampler3d => (self.uniform_1fv)(location, 1, data as _),
-                            UniformType::SamplerCube => (self.uniform_1fv)(location, 1, data as _),
+                            UniformType::Sampler2d
+                            | UniformType::Sampler3d
+                            | UniformType::SamplerCube => {
+                                (self.uniform_1iv)(location, 1, data as _)
+                            }
                         }
                     }
                 }
@@ -589,10 +591,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                                 (self.vertex_attrib_pointer)(
                                     attribute_index + i as u32,    // Index
                                     (byte_size as i32 / 4).min(4), // Number of components. It's assumed that components are always 32 bit.
-                                    GL_FLOAT,
-                                    0,                // false
+                                    GL_FLOAT, // TODO: This shouldn't always be float.
+                                    0,        // false
                                     byte_size as i32, // 0 means to assume tightly packed
-                                    (i * 16) as _,    // Offset
+                                    (i * 16) as _, // Offset
                                 );
 
                                 (self.vertex_attrib_divisor)(
@@ -633,11 +635,11 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 }
                 Command::SetCubeMap {
                     texture_unit,
-                    cube_map,
+                    cube_map_index,
                 } => {
                     // self.gl.uniform_1_i32(Some(uniform_location), unit as i32);
                     (self.active_texture)(GL_TEXTURE0 + *texture_unit as u32);
-                    (self.bind_texture)(GL_TEXTURE_CUBE_MAP, cube_map.0.inner().index);
+                    (self.bind_texture)(GL_TEXTURE_CUBE_MAP, *cube_map_index);
                 }
                 Command::Draw {
                     index_buffer_index,
@@ -645,31 +647,35 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     instances,
                 } => {
                     let count = triangle_range.end - triangle_range.start;
+                    let count_vertices = (count * 3) as i32;
 
                     if let Some(index_buffer_index) = index_buffer_index {
                         (self.bind_buffer)(GL_ELEMENT_ARRAY_BUFFER, *index_buffer_index);
 
+                        let offset_bytes =
+                            (triangle_range.start * 3 * std::mem::size_of::<u32>() as u32) as _;
+
                         if *instances > 1 {
                             (self.draw_elements_instanced)(
                                 GL_TRIANGLES,
-                                (count * 3) as i32,
+                                count_vertices,
                                 GL_UNSIGNED_INT,
-                                (triangle_range.start * 3 * std::mem::size_of::<u32>() as u32) as _,
+                                offset_bytes,
                                 *instances as _,
                             );
                         } else {
                             (self.draw_elements)(
                                 GL_TRIANGLES,
-                                (count * 3) as i32,
+                                count_vertices,
                                 GL_UNSIGNED_INT,
-                                (triangle_range.start * 3 * std::mem::size_of::<u32>() as u32) as _,
+                                offset_bytes,
                             );
                         }
                     } else {
                         if *instances > 1 {
                             todo!()
                         } else {
-                            (self.draw_arrays)(GL_TRIANGLES, 0, (count * 3) as i32);
+                            (self.draw_arrays)(GL_TRIANGLES, 0, count_vertices);
                         }
                     }
                 }
@@ -841,22 +847,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         Some(uniform_location as u32)
                     };
                     let size_members = size_members as u8;
-                    let uniform_type = match uniform_type {
-                        GL_FLOAT => UniformType::Float(size_members),
-                        GL_FLOAT_VEC2 => UniformType::Vec2(size_members),
-                        GL_FLOAT_VEC3 => UniformType::Vec3(size_members),
-                        GL_FLOAT_VEC4 => UniformType::Vec4(size_members),
-                        GL_FLOAT_MAT4 => UniformType::Mat4(size_members),
-                        GL_INT => UniformType::Int(size_members),
-                        GL_UNSIGNED_INT => UniformType::UInt(size_members),
-                        GL_SAMPLER_2D => UniformType::Sampler2d,
-                        GL_SAMPLER_3D => UniformType::Sampler3d,
-                        GL_SAMPLER_CUBE => UniformType::SamplerCube,
-                        _ => {
-                            println!("UNIMPLEMENTED UNIFORM TYPE: {:?}", uniform_type);
-                            return None;
-                        }
-                    };
+                    let uniform_type = gl_uniform_type_to_uniform_type(uniform_type, size_members);
 
                     Some((
                         name,

@@ -47,7 +47,7 @@ pub(crate) enum Command {
     },
     SetCubeMap {
         texture_unit: u8,
-        cube_map: CubeMap,
+        cube_map_index: u32,
     },
 }
 
@@ -219,7 +219,7 @@ impl<'a> RenderPass<'a> {
         assert!(texture_unit < 16);
         self.command_buffer.commands.push(Command::SetCubeMap {
             texture_unit,
-            cube_map: cube_map.clone(),
+            cube_map_index: cube_map.0.inner().index,
         });
     }
 

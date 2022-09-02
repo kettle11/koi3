@@ -34,7 +34,7 @@ impl GraphicsContext {
         Self {
             #[cfg(all(target_arch = "wasm32", feature = "webgl"))]
             backend: Box::new(unsafe { webgl_backend::WebGLBackend::new(settings) }),
-            #[cfg(feature = "gl")]
+            #[cfg(all(feature = "gl", not(target_arch = "wasm32")))]
             backend: Box::new(unsafe { gl_backend::GLBackend::new(settings) }),
             #[cfg(feature = "webgpu")]
             backend: Box::new(webgpu_backend::WebGPUBackend::new(settings).await.unwrap()),
