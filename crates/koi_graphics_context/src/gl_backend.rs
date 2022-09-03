@@ -4,71 +4,6 @@ use crate::*;
 use core::ffi::{c_double, c_float, c_int, c_uchar, c_uint, c_void};
 use kapp::*;
 
-pub const GL_COLOR_BUFFER_BIT: c_uint = 0x4000;
-pub const GL_DEPTH_BUFFER_BIT: c_uint = 0x100;
-pub const GL_TEXTURE_2D: c_uint = 0x0DE1;
-pub const GL_TEXTURE_3D: GLenum = 0x806F;
-pub const GL_TEXTURE_CUBE_MAP_POSITIVE_X: c_uint = 0x8515;
-pub const GL_RENDERBUFFER: c_uint = 0x8D41;
-pub const GL_COMPILE_STATUS: c_uint = 0x8B81;
-pub const GL_INFO_LOG_LENGTH: c_uint = 0x8B84;
-
-pub const GL_FRAGMENT_SHADER: c_uint = 0x8B30;
-pub const GL_VERTEX_SHADER: c_uint = 0x8B31;
-pub const GL_LINK_STATUS: c_uint = 0x8B82;
-
-pub const GL_DEPTH_TEST: GLenum = 0x0B71;
-pub const GL_ALWAYS: GLenum = 0x0207;
-
-pub const GL_LEQUAL: GLenum = 0x0203;
-pub const GL_LESS: GLenum = 0x0201;
-
-pub const GL_GEQUAL: GLenum = 0x0206;
-pub const GL_GREATER: GLenum = 0x0204;
-
-pub const GL_CULL_FACE: GLenum = 0x0B44;
-pub const GL_BACK: GLenum = 0x0405;
-pub const GL_FRONT: GLenum = 0x0404;
-pub const GL_FRONT_AND_BACK: GLenum = 0x0408;
-
-pub const GL_ONE: GLenum = 1;
-pub const GL_ONE_MINUS_SRC_ALPHA: GLenum = 0x0303;
-pub const GL_SRC_ALPHA: GLenum = 0x0302;
-pub const GL_BLEND: GLenum = 0x0BE2;
-pub const GL_ELEMENT_ARRAY_BUFFER: GLenum = 0x8893;
-pub const GL_ARRAY_BUFFER: GLenum = 0x8892;
-
-pub const GL_TRIANGLES: GLenum = 0x0004;
-pub const GL_UNSIGNED_INT: GLenum = 0x1405;
-pub const GL_STATIC_DRAW: GLenum = 0x88E4;
-
-pub const GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: GLenum = 0x8A35;
-pub const GL_ACTIVE_UNIFORM_BLOCKS: GLenum = 0x8A36;
-
-pub const GL_UNIFORM_BLOCK_DATA_SIZE: GLenum = 0x8A40;
-pub const GL_ACTIVE_UNIFORMS: GLenum = 0x8B86;
-pub const GL_ACTIVE_UNIFORM_MAX_LENGTH: GLenum = 0x8B87;
-
-pub const GL_ACTIVE_ATTRIBUTES: GLenum = 0x8B89;
-pub const GL_ACTIVE_ATTRIBUTE_MAX_LENGTH: GLenum = 0x8B8A;
-
-pub const GL_INT: GLenum = 0x1404;
-pub const GL_FLOAT: GLenum = 0x1406;
-pub const GL_FLOAT_VEC2: GLenum = 0x8B50;
-pub const GL_FLOAT_VEC3: GLenum = 0x8B51;
-pub const GL_FLOAT_VEC4: GLenum = 0x8B52;
-pub const GL_FLOAT_MAT4: GLenum = 0x8B5C;
-
-pub const GL_UNIFORM_BUFFER: GLenum = 0x8A11;
-
-pub const GL_TEXTURE_MIN_FILTER: GLenum = 0x2801;
-pub const GL_TEXTURE_MAG_FILTER: GLenum = 0x2800;
-pub const GL_TEXTURE_WRAP_S: GLenum = 0x2802;
-pub const GL_TEXTURE_WRAP_T: GLenum = 0x2803;
-
-pub const GL_TEXTURE0: GLenum = 0x84C0;
-pub const GL_TEXTURE_CUBE_MAP: GLenum = 0x8513;
-
 pub(crate) type GLboolean = c_uchar;
 pub(crate) type GLint = c_int;
 pub(crate) type GLsizei = c_int;
@@ -440,7 +375,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         self.gl_context.resize();
 
         // These are constant across all pipelines.
-        (self.enable)(GL_DEPTH_TEST);
+        (self.enable)(DEPTH_TEST);
         (self.clear_depth)(1.0);
 
         let mut current_program = None;
@@ -460,37 +395,37 @@ impl crate::backend_trait::BackendTrait for GLBackend {
 
                     match pipeline_settings.depth_test {
                         crate::DepthTest::AlwaysPass => {
-                            (self.depth_func)(GL_ALWAYS);
+                            (self.depth_func)(ALWAYS);
                         }
                         crate::DepthTest::Less => {
-                            (self.depth_func)(GL_LESS);
+                            (self.depth_func)(LESS);
                         }
                         crate::DepthTest::Greater => {
-                            (self.depth_func)(GL_GREATER);
+                            (self.depth_func)(GREATER);
                         }
                         crate::DepthTest::LessOrEqual => {
-                            (self.depth_func)(GL_LEQUAL);
+                            (self.depth_func)(LEQUAL);
                         }
                         crate::DepthTest::GreaterOrEqual => {
-                            (self.depth_func)(GL_GEQUAL);
+                            (self.depth_func)(GEQUAL);
                         }
                     };
 
                     match pipeline_settings.faces_to_render {
                         FacesToRender::Front => {
-                            (self.enable)(GL_CULL_FACE);
-                            (self.cull_face)(GL_BACK)
+                            (self.enable)(CULL_FACE);
+                            (self.cull_face)(BACK)
                         }
                         FacesToRender::Back => {
-                            (self.enable)(GL_CULL_FACE);
-                            (self.cull_face)(GL_FRONT)
+                            (self.enable)(CULL_FACE);
+                            (self.cull_face)(FRONT)
                         }
                         FacesToRender::FrontAndBack => {
-                            (self.disable)(GL_CULL_FACE);
+                            (self.disable)(CULL_FACE);
                         }
                         FacesToRender::None => {
-                            (self.enable)(GL_CULL_FACE);
-                            (self.cull_face)(GL_FRONT_AND_BACK)
+                            (self.enable)(CULL_FACE);
+                            (self.cull_face)(FRONT_AND_BACK)
                         }
                     };
 
@@ -499,19 +434,19 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     {
                         fn blending_to_gl(blending: BlendFactor) -> GLenum {
                             match blending {
-                                BlendFactor::One => GL_ONE,
-                                BlendFactor::OneMinusSourceAlpha => GL_ONE_MINUS_SRC_ALPHA,
-                                BlendFactor::SourceAlpha => GL_SRC_ALPHA,
+                                BlendFactor::One => ONE,
+                                BlendFactor::OneMinusSourceAlpha => ONE_MINUS_SRC_ALPHA,
+                                BlendFactor::SourceAlpha => SRC_ALPHA,
                             }
                         }
 
-                        (self.enable)(GL_BLEND);
+                        (self.enable)(BLEND);
                         (self.blend_func)(
                             blending_to_gl(source_blend_factor),
                             blending_to_gl(destination_blend_factor),
                         );
                     } else {
-                        (self.disable)(GL_BLEND);
+                        (self.disable)(BLEND);
                     }
                 }
                 &Command::SetViewPort {
@@ -563,7 +498,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     if let Some(buffer) = buffer {
                         let size_bytes = buffer_sizes[buffer.handle.inner().index as usize];
                         (self.bind_buffer_range)(
-                            GL_UNIFORM_BUFFER,
+                            UNIFORM_BUFFER,
                             *uniform_block_index as _, // Index
                             buffer.handle.inner().index,
                             0 as isize,
@@ -578,7 +513,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 } => {
                     if let Some(info) = &attribute.info {
                         if let Some(buffer) = buffer {
-                            (self.bind_buffer)(GL_ARRAY_BUFFER, buffer.handle.inner().index);
+                            (self.bind_buffer)(ARRAY_BUFFER, buffer.handle.inner().index);
 
                             let attribute_index = info.location;
                             let byte_size = info.byte_size;
@@ -587,10 +522,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                                 (self.vertex_attrib_pointer)(
                                     attribute_index + i as u32,    // Index
                                     (byte_size as i32 / 4).min(4), // Number of components. It's assumed that components are always 32 bit.
-                                    GL_FLOAT, // TODO: This shouldn't always be float.
-                                    0,        // false
+                                    FLOAT,            // TODO: This shouldn't always be float.
+                                    0,                // false
                                     byte_size as i32, // 0 means to assume tightly packed
-                                    (i * 16) as _, // Offset
+                                    (i * 16) as _,    // Offset
                                 );
 
                                 (self.vertex_attrib_divisor)(
@@ -623,9 +558,9 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 } => {
                     let is_3d = texture_sizes[*texture_index as usize].2 > 1;
                     // self.gl.uniform_1_i32(Some(uniform_location), unit as i32);
-                    (self.active_texture)(GL_TEXTURE0 + *texture_unit as u32);
+                    (self.active_texture)(TEXTURE0 + *texture_unit as u32);
                     (self.bind_texture)(
-                        if is_3d { GL_TEXTURE_3D } else { GL_TEXTURE_2D },
+                        if is_3d { TEXTURE_3D } else { TEXTURE_2D },
                         *texture_index,
                     );
                 }
@@ -634,8 +569,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     cube_map_index,
                 } => {
                     // self.gl.uniform_1_i32(Some(uniform_location), unit as i32);
-                    (self.active_texture)(GL_TEXTURE0 + *texture_unit as u32);
-                    (self.bind_texture)(GL_TEXTURE_CUBE_MAP, *cube_map_index);
+                    (self.active_texture)(TEXTURE0 + *texture_unit as u32);
+                    (self.bind_texture)(TEXTURE_CUBE_MAP, *cube_map_index);
                 }
                 Command::Draw {
                     index_buffer_index,
@@ -646,24 +581,24 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     let count_vertices = (count * 3) as i32;
 
                     if let Some(index_buffer_index) = index_buffer_index {
-                        (self.bind_buffer)(GL_ELEMENT_ARRAY_BUFFER, *index_buffer_index);
+                        (self.bind_buffer)(ELEMENT_ARRAY_BUFFER, *index_buffer_index);
 
                         let offset_bytes =
                             (triangle_range.start * 3 * std::mem::size_of::<u32>() as u32) as _;
 
                         if *instances > 1 {
                             (self.draw_elements_instanced)(
-                                GL_TRIANGLES,
+                                TRIANGLES,
                                 count_vertices,
-                                GL_UNSIGNED_INT,
+                                UNSIGNED_INT,
                                 offset_bytes,
                                 *instances as _,
                             );
                         } else {
                             (self.draw_elements)(
-                                GL_TRIANGLES,
+                                TRIANGLES,
                                 count_vertices,
-                                GL_UNSIGNED_INT,
+                                UNSIGNED_INT,
                                 offset_bytes,
                             );
                         }
@@ -671,13 +606,13 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                         if *instances > 1 {
                             todo!()
                         } else {
-                            (self.draw_arrays)(GL_TRIANGLES, 0, count_vertices);
+                            (self.draw_arrays)(TRIANGLES, 0, count_vertices);
                         }
                     }
                 }
                 Command::BeginRenderPass { clear_color } => {
                     (self.clear_color)(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-                    (self.clear)(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+                    (self.clear)(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT)
                 }
                 Command::Present => {
                     self.gl_context.swap_buffers();
@@ -693,7 +628,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
     ) -> Result<PipelineInner, String> {
         unsafe fn get_shader_info_log(gl: &GLBackend, shader: u32) -> String {
             let mut length = 0;
-            (gl.get_shader_iv)(shader, GL_INFO_LOG_LENGTH, &mut length);
+            (gl.get_shader_iv)(shader, INFO_LOG_LENGTH, &mut length);
             if length > 0 {
                 let mut log: Vec<u8> = vec![0; length as usize];
                 (gl.get_shader_info_log)(shader, length, &mut length, log.as_mut_ptr());
@@ -717,7 +652,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             (gl.compile_shader)(shader);
 
             let mut status = 0;
-            (gl.get_shader_iv)(shader, GL_COMPILE_STATUS, &mut status);
+            (gl.get_shader_iv)(shader, COMPILE_STATUS, &mut status);
             let success = 1 == status;
 
             if success {
@@ -729,7 +664,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
 
         unsafe fn get_program_info_log(gl: &GLBackend, program: u32) -> String {
             let mut length = 0;
-            (gl.get_program_iv)(program, GL_INFO_LOG_LENGTH, &mut length);
+            (gl.get_program_iv)(program, INFO_LOG_LENGTH, &mut length);
             if length > 0 {
                 let mut log: Vec<u8> = vec![0; length as usize];
 
@@ -741,8 +676,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             }
         }
 
-        let vertex_function = compile_shader(self, GL_VERTEX_SHADER, vertex_source)?;
-        let fragment_function = compile_shader(self, GL_FRAGMENT_SHADER, fragment_source)?;
+        let vertex_function = compile_shader(self, VERTEX_SHADER, vertex_source)?;
+        let fragment_function = compile_shader(self, FRAGMENT_SHADER, fragment_source)?;
 
         let program = (self.create_program)();
         (self.attach_shader)(program, vertex_function);
@@ -753,7 +688,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         (self.delete_shader)(fragment_function);
 
         let mut status = 0;
-        (self.get_program_iv)(program, GL_LINK_STATUS, &mut status);
+        (self.get_program_iv)(program, LINK_STATUS, &mut status);
         let success = 1 == status;
 
         pub unsafe fn get_uniform_block_name_and_size(
@@ -764,7 +699,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             let mut max_name_length = 0;
             (gl.get_program_iv)(
                 program,
-                GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
+                ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
                 &mut max_name_length,
             );
 
@@ -786,7 +721,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             (gl.get_active_uniform_block_iv)(
                 program,
                 uniform_block_index,
-                GL_UNIFORM_BLOCK_DATA_SIZE,
+                UNIFORM_BLOCK_DATA_SIZE,
                 &mut size_bytes,
             );
             Some((name, size_bytes as u32))
@@ -813,7 +748,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     let mut uniform_max_length = 0;
                     (gl.get_program_iv)(
                         program,
-                        GL_ACTIVE_UNIFORM_MAX_LENGTH,
+                        ACTIVE_UNIFORM_MAX_LENGTH,
                         &mut uniform_max_length,
                     );
 
@@ -856,7 +791,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 }
 
                 let mut uniform_count = 0;
-                (self.get_program_iv)(program, GL_ACTIVE_UNIFORMS, &mut uniform_count);
+                (self.get_program_iv)(program, ACTIVE_UNIFORMS, &mut uniform_count);
                 let uniform_count = uniform_count as u32;
 
                 for i in 0..uniform_count {
@@ -888,13 +823,13 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             // Next read all uniform blocks.
             {
                 let mut uniform_block_count = 0;
-                (self.get_program_iv)(program, GL_ACTIVE_UNIFORM_BLOCKS, &mut uniform_block_count);
+                (self.get_program_iv)(program, ACTIVE_UNIFORM_BLOCKS, &mut uniform_block_count);
                 let uniform_block_count = uniform_block_count as u32;
 
                 let mut max_name_length = 0;
                 (self.get_program_iv)(
                     program,
-                    GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
+                    ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
                     &mut max_name_length,
                 );
 
@@ -922,7 +857,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     let mut attribute_max_length = 0;
                     (gl.get_program_iv)(
                         program,
-                        GL_ACTIVE_ATTRIBUTE_MAX_LENGTH,
+                        ACTIVE_ATTRIBUTE_MAX_LENGTH,
                         &mut attribute_max_length,
                     );
                     let mut name: Vec<u8> = vec![0; attribute_max_length as usize];
@@ -944,11 +879,11 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     let name = String::from_utf8(name).unwrap();
 
                     let byte_size = match attribute_type {
-                        GL_FLOAT => 4,
-                        GL_FLOAT_VEC2 => 8,
-                        GL_FLOAT_VEC3 => 12,
-                        GL_FLOAT_VEC4 => 16,
-                        GL_FLOAT_MAT4 => 64,
+                        FLOAT => 4,
+                        FLOAT_VEC2 => 8,
+                        FLOAT_VEC3 => 12,
+                        FLOAT_VEC4 => 16,
+                        FLOAT_MAT4 => 64,
                         _ => return None,
                     };
 
@@ -963,7 +898,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     ))
                 }
                 let mut count = 0;
-                (self.get_program_iv)(program, GL_ACTIVE_ATTRIBUTES, &mut count);
+                (self.get_program_iv)(program, ACTIVE_ATTRIBUTES, &mut count);
                 let vertex_attribute_count = count as u32;
 
                 for i in 0..vertex_attribute_count {
@@ -1011,9 +946,9 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             };
             {
                 let (target, texture_index) = match texture.texture_type {
-                    TextureType::Texture => (GL_TEXTURE_2D, texture_index),
+                    TextureType::Texture => (TEXTURE_2D, texture_index),
                     TextureType::CubeMapFace { face } => {
-                        (GL_TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture_index)
+                        (TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture_index)
                     }
                     TextureType::RenderBuffer { .. } => {
                         panic!("For now textures with MSAA cannot be updated by a call to `update_texture`")
@@ -1061,7 +996,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         } else {
             let mut renderbuffer = 0;
             (self.gen_textures)(1, &mut renderbuffer);
-            (self.bind_renderbuffer)(GL_RENDERBUFFER, renderbuffer);
+            (self.bind_renderbuffer)(RENDERBUFFER, renderbuffer);
 
             let (_pixel_format, inner_pixel_format, _type_) =
                 crate::gl_shared::pixel_format_to_gl_format_and_inner_format_and_type(
@@ -1069,7 +1004,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                     settings.srgb,
                 );
             (self.renderbuffer_storage_multisample)(
-                GL_RENDERBUFFER,
+                RENDERBUFFER,
                 settings.msaa_samples as i32,
                 inner_pixel_format,
                 width as i32,
@@ -1098,9 +1033,9 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         settings: TextureSettings,
     ) {
         let (target, texture_index) = match texture.texture_type {
-            TextureType::Texture => (GL_TEXTURE_2D, texture.index),
+            TextureType::Texture => (TEXTURE_2D, texture.index),
             TextureType::CubeMapFace { face } => {
-                (GL_TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture.index)
+                (TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture.index)
             }
             TextureType::RenderBuffer { .. } => {
                 panic!("For now textures with MSAA cannot be updated by a call to `update_texture`")
@@ -1151,15 +1086,15 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         );
         let magnification_filter = magnification_filter_to_gl_enum(settings.magnification_filter);
 
-        (self.tex_parameter_i32)(target, GL_TEXTURE_MIN_FILTER, minification_filter as i32);
+        (self.tex_parameter_i32)(target, TEXTURE_MIN_FILTER, minification_filter as i32);
 
-        (self.tex_parameter_i32)(target, GL_TEXTURE_MAG_FILTER, magnification_filter as i32);
+        (self.tex_parameter_i32)(target, TEXTURE_MAG_FILTER, magnification_filter as i32);
 
         let wrapping_horizontal = wrapping_to_gl_enum(settings.wrapping_horizontal);
         let wrapping_vertical = wrapping_to_gl_enum(settings.wrapping_vertical);
 
-        (self.tex_parameter_i32)(target, GL_TEXTURE_WRAP_S, wrapping_horizontal as i32);
-        (self.tex_parameter_i32)(target, GL_TEXTURE_WRAP_T, wrapping_vertical as i32);
+        (self.tex_parameter_i32)(target, TEXTURE_WRAP_S, wrapping_horizontal as i32);
+        (self.tex_parameter_i32)(target, TEXTURE_WRAP_T, wrapping_vertical as i32);
 
         if settings.generate_mipmaps {
             (self.generate_mipmap)(target);
@@ -1213,10 +1148,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 texture_settings.srgb,
             );
         unsafe {
-            (self.bind_texture)(GL_TEXTURE_CUBE_MAP, cube_map.index);
+            (self.bind_texture)(TEXTURE_CUBE_MAP, cube_map.index);
             for i in 0..6 {
                 (self.tex_image_2d)(
-                    GL_TEXTURE_CUBE_MAP_POSITIVE_X + i as u32,
+                    TEXTURE_CUBE_MAP_POSITIVE_X + i as u32,
                     0,                         /* mip level */
                     inner_pixel_format as i32, // Internal format, how the GPU stores these pixels.
                     width as i32,
@@ -1237,32 +1172,24 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 magnification_filter_to_gl_enum(texture_settings.magnification_filter);
 
             (self.tex_parameter_i32)(
-                GL_TEXTURE_CUBE_MAP,
-                GL_TEXTURE_MIN_FILTER,
+                TEXTURE_CUBE_MAP,
+                TEXTURE_MIN_FILTER,
                 minification_filter as i32,
             );
             (self.tex_parameter_i32)(
-                GL_TEXTURE_CUBE_MAP,
-                GL_TEXTURE_MAG_FILTER,
+                TEXTURE_CUBE_MAP,
+                TEXTURE_MAG_FILTER,
                 magnification_filter as i32,
             );
 
             let wrapping_horizontal = wrapping_to_gl_enum(texture_settings.wrapping_horizontal);
             let wrapping_vertical = wrapping_to_gl_enum(texture_settings.wrapping_vertical);
 
-            (self.tex_parameter_i32)(
-                GL_TEXTURE_CUBE_MAP,
-                GL_TEXTURE_WRAP_S,
-                wrapping_horizontal as i32,
-            );
-            (self.tex_parameter_i32)(
-                GL_TEXTURE_CUBE_MAP,
-                GL_TEXTURE_WRAP_T,
-                wrapping_vertical as i32,
-            );
+            (self.tex_parameter_i32)(TEXTURE_CUBE_MAP, TEXTURE_WRAP_S, wrapping_horizontal as i32);
+            (self.tex_parameter_i32)(TEXTURE_CUBE_MAP, TEXTURE_WRAP_T, wrapping_vertical as i32);
 
             if texture_settings.generate_mipmaps {
-                (self.generate_mipmap)(GL_TEXTURE_CUBE_MAP);
+                (self.generate_mipmap)(TEXTURE_CUBE_MAP);
             }
         }
     }
@@ -1276,8 +1203,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             let mut buffer = 0;
             (self.gen_buffers)(1, &mut buffer);
             let gl_buffer_usage = match buffer_usage {
-                BufferUsage::Data => GL_ARRAY_BUFFER,
-                BufferUsage::Index => GL_ELEMENT_ARRAY_BUFFER,
+                BufferUsage::Data => ARRAY_BUFFER,
+                BufferUsage::Index => ELEMENT_ARRAY_BUFFER,
             };
             (self.bind_buffer)(gl_buffer_usage, buffer);
 
@@ -1285,7 +1212,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 gl_buffer_usage,
                 bytes.len() as _,
                 bytes.as_ptr() as *const std::ffi::c_void,
-                GL_STATIC_DRAW,
+                STATIC_DRAW,
             );
             (self.bind_buffer)(gl_buffer_usage, 0);
 

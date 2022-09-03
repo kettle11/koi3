@@ -16,7 +16,7 @@ mod gl_shared;
 #[cfg(all(target_arch = "wasm32", feature = "webgl"))]
 mod webgl_backend;
 
-#[cfg(feature = "gl")]
+#[cfg(all(not(target_arch = "wasm32"), feature = "gl"))]
 mod gl_backend;
 
 #[cfg(feature = "webgpu")]

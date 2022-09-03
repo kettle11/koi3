@@ -130,7 +130,7 @@ impl WebGLBackend {
 }
 
 impl backend_trait::BackendTrait for WebGLBackend {
-    unsafe fn set_main_window(&mut self, window: &kapp::Window) {
+    unsafe fn set_main_window(&mut self, _window: &kapp::Window) {
         // Does nothing for now
     }
 

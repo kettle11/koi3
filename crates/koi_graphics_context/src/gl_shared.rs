@@ -2,76 +2,114 @@ use crate::*;
 
 pub(crate) type GLenum = core::ffi::c_uint;
 
-pub const HALF_FLOAT: GLenum = 0x140B;
-pub const FLOAT: GLenum = 0x1406;
-pub const UNSIGNED_SHORT: GLenum = 0x1403;
-pub const UNSIGNED_INT: GLenum = 0x1405;
-pub const UNSIGNED_BYTE: GLenum = 0x1401;
+pub(crate) use constants::*;
 
-pub const DEPTH_COMPONENT16: GLenum = 0x81A5;
-pub const DEPTH_COMPONENT24: GLenum = 0x81A6;
-pub const DEPTH_COMPONENT32F: GLenum = 0x8CAC;
+#[allow(unused)]
+mod constants {
+    use super::GLenum;
+    pub const COLOR_BUFFER_BIT: GLenum = 0x4000;
+    pub const DEPTH_BUFFER_BIT: GLenum = 0x100;
+    pub const TEXTURE_2D: GLenum = 0x0DE1;
+    pub const TEXTURE_3D: GLenum = 0x806F;
+    pub const TEXTURE_CUBE_MAP_POSITIVE_X: GLenum = 0x8515;
+    pub const RENDERBUFFER: GLenum = 0x8D41;
+    pub const COMPILE_STATUS: GLenum = 0x8B81;
+    pub const INFO_LOG_LENGTH: GLenum = 0x8B84;
 
-pub const NEAREST: GLenum = 0x2600;
-pub const LINEAR: GLenum = 0x2601;
-pub const NEAREST_MIPMAP_NEAREST: GLenum = 0x2700;
-pub const LINEAR_MIPMAP_NEAREST: GLenum = 0x2701;
-pub const NEAREST_MIPMAP_LINEAR: GLenum = 0x2702;
-pub const LINEAR_MIPMAP_LINEAR: GLenum = 0x2703;
+    pub const FRAGMENT_SHADER: GLenum = 0x8B30;
+    pub const VERTEX_SHADER: GLenum = 0x8B31;
+    pub const LINK_STATUS: GLenum = 0x8B82;
 
-pub const CLAMP_TO_EDGE: GLenum = 0x812F;
-pub const MIRRORED_REPEAT: GLenum = 0x8370;
-pub const REPEAT: GLenum = 0x2901;
+    pub const DEPTH_TEST: GLenum = 0x0B71;
+    pub const ALWAYS: GLenum = 0x0207;
 
-pub const DEPTH_COMPONENT: GLenum = 0x1902;
-pub const RED: GLenum = 0x1903;
-pub const RG: GLenum = 0x8227;
-pub const RGB: GLenum = 0x1907;
-pub const RGBA: GLenum = 0x1908;
+    pub const LEQUAL: GLenum = 0x0203;
+    pub const LESS: GLenum = 0x0201;
 
-pub const R8: GLenum = 0x8229;
-pub const RG8: GLenum = 0x822B;
-pub const RGB8: GLenum = 0x8051;
-pub const RGBA8: GLenum = 0x8058;
-pub const SRGB8_ALPHA8: GLenum = 0x8C43;
+    pub const GEQUAL: GLenum = 0x0206;
+    pub const GREATER: GLenum = 0x0204;
 
-pub const RGBA16F: GLenum = 0x881A;
-pub const RGBA32F: GLenum = 0x8814;
-pub const TEXTURE_2D: GLenum = 0x0DE1;
-pub const TEXTURE_CUBE_MAP_POSITIVE_X: GLenum = 0x8515;
-pub const TEXTURE_CUBE_MAP: GLenum = 0x8513;
+    pub const CULL_FACE: GLenum = 0x0B44;
+    pub const BACK: GLenum = 0x0405;
+    pub const FRONT: GLenum = 0x0404;
+    pub const FRONT_AND_BACK: GLenum = 0x0408;
 
-pub const ELEMENT_ARRAY_BUFFER: GLenum = 0x8893;
-pub const ARRAY_BUFFER: GLenum = 0x8892;
+    pub const ONE: GLenum = 1;
+    pub const ONE_MINUS_SRC_ALPHA: GLenum = 0x0303;
+    pub const SRC_ALPHA: GLenum = 0x0302;
+    pub const BLEND: GLenum = 0x0BE2;
+    pub const ELEMENT_ARRAY_BUFFER: GLenum = 0x8893;
+    pub const ARRAY_BUFFER: GLenum = 0x8892;
 
-pub const ONE: GLenum = 1;
-pub const ONE_MINUS_SRC_ALPHA: GLenum = 0x0303;
-pub const SRC_ALPHA: GLenum = 0x0302;
-pub const ALWAYS: GLenum = 0x0207;
-pub const LESS: GLenum = 0x0201;
-pub const LEQUAL: GLenum = 0x0203;
-pub const GREATER: GLenum = 0x0204;
-pub const GEQUAL: GLenum = 0x0206;
+    pub const TRIANGLES: GLenum = 0x0004;
+    pub const UNSIGNED_INT: GLenum = 0x1405;
+    pub const STATIC_DRAW: GLenum = 0x88E4;
 
-pub const BACK: GLenum = 0x0405;
-pub const FRONT: GLenum = 0x0404;
-pub const FRONT_AND_BACK: GLenum = 0x0408;
-pub const TEXTURE0: GLenum = 0x84C0;
-pub const TEXTURE_3D: GLenum = 0x806F;
-pub const ACTIVE_UNIFORMS: GLenum = 0x8B86;
+    pub const ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: GLenum = 0x8A35;
+    pub const ACTIVE_UNIFORM_BLOCKS: GLenum = 0x8A36;
 
-pub const INT: GLenum = 0x1404;
-pub const FLOAT_VEC2: GLenum = 0x8B50;
-pub const FLOAT_VEC3: GLenum = 0x8B51;
-pub const FLOAT_VEC4: GLenum = 0x8B52;
-pub const FLOAT_MAT4: GLenum = 0x8B5C;
+    pub const UNIFORM_BLOCK_DATA_SIZE: GLenum = 0x8A40;
+    pub const ACTIVE_UNIFORMS: GLenum = 0x8B86;
+    pub const ACTIVE_UNIFORM_MAX_LENGTH: GLenum = 0x8B87;
 
-pub const ACTIVE_ATTRIBUTES: GLenum = 0x8B89;
-pub const ACTIVE_UNIFORM_BLOCKS: GLenum = 0x8A36;
+    pub const ACTIVE_ATTRIBUTES: GLenum = 0x8B89;
+    pub const ACTIVE_ATTRIBUTE_MAX_LENGTH: GLenum = 0x8B8A;
 
-pub const SAMPLER_2D: GLenum = 0x8B5E;
-pub const SAMPLER_3D: GLenum = 0x8B5F;
-pub const SAMPLER_CUBE: GLenum = 0x8B60;
+    pub const FLOAT: GLenum = 0x1406;
+    pub const FLOAT_VEC2: GLenum = 0x8B50;
+    pub const FLOAT_VEC3: GLenum = 0x8B51;
+    pub const FLOAT_VEC4: GLenum = 0x8B52;
+    pub const FLOAT_MAT4: GLenum = 0x8B5C;
+
+    pub const UNIFORM_BUFFER: GLenum = 0x8A11;
+
+    pub const TEXTURE_MIN_FILTER: GLenum = 0x2801;
+    pub const TEXTURE_MAG_FILTER: GLenum = 0x2800;
+    pub const TEXTURE_WRAP_S: GLenum = 0x2802;
+    pub const TEXTURE_WRAP_T: GLenum = 0x2803;
+
+    pub const TEXTURE0: GLenum = 0x84C0;
+    pub const TEXTURE_CUBE_MAP: GLenum = 0x8513;
+
+    pub const HALF_FLOAT: GLenum = 0x140B;
+    pub const UNSIGNED_SHORT: GLenum = 0x1403;
+    pub const UNSIGNED_BYTE: GLenum = 0x1401;
+
+    pub const DEPTH_COMPONENT16: GLenum = 0x81A5;
+    pub const DEPTH_COMPONENT24: GLenum = 0x81A6;
+    pub const DEPTH_COMPONENT32F: GLenum = 0x8CAC;
+
+    pub const NEAREST: GLenum = 0x2600;
+    pub const LINEAR: GLenum = 0x2601;
+    pub const NEAREST_MIPMAP_NEAREST: GLenum = 0x2700;
+    pub const LINEAR_MIPMAP_NEAREST: GLenum = 0x2701;
+    pub const NEAREST_MIPMAP_LINEAR: GLenum = 0x2702;
+    pub const LINEAR_MIPMAP_LINEAR: GLenum = 0x2703;
+
+    pub const CLAMP_TO_EDGE: GLenum = 0x812F;
+    pub const MIRRORED_REPEAT: GLenum = 0x8370;
+    pub const REPEAT: GLenum = 0x2901;
+
+    pub const DEPTH_COMPONENT: GLenum = 0x1902;
+    pub const RED: GLenum = 0x1903;
+    pub const RG: GLenum = 0x8227;
+    pub const RGB: GLenum = 0x1907;
+    pub const RGBA: GLenum = 0x1908;
+
+    pub const R8: GLenum = 0x8229;
+    pub const RG8: GLenum = 0x822B;
+    pub const RGB8: GLenum = 0x8051;
+    pub const RGBA8: GLenum = 0x8058;
+    pub const SRGB8_ALPHA8: GLenum = 0x8C43;
+
+    pub const RGBA16F: GLenum = 0x881A;
+    pub const RGBA32F: GLenum = 0x8814;
+
+    pub const SAMPLER_2D: GLenum = 0x8B5E;
+    pub const SAMPLER_3D: GLenum = 0x8B5F;
+    pub const SAMPLER_CUBE: GLenum = 0x8B60;
+    pub const INT: GLenum = 0x1404;
+}
 
 pub fn gl_uniform_type_to_uniform_type(gl_enum: GLenum, size_members: u8) -> UniformType {
     match gl_enum {

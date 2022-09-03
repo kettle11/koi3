@@ -75,13 +75,14 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
                 let bytes = b.as_u8_array();
                 prepare_cubemap(bytes, data.width, data.height, settings)
             }
+            #[allow(unreachable_patterns)]
             _ => todo!(),
         })
     }
 
     fn finalize_load(
         result: crate::CubeMapResult,
-        settings: CubeMapSettings,
+        _settings: CubeMapSettings,
         resources: &Resources,
     ) -> Option<CubeMap> {
         Some(finalize_cube_map(resources, result))
