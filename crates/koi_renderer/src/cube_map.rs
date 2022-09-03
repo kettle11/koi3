@@ -9,6 +9,14 @@ pub struct CubeMap {
     /// Used for efficient irradiance.
     pub spherical_harmonics: SphericalHarmonics<4>,
     pub brightest_direction: Vec3,
+    pub face_size: usize,
+}
+
+pub struct CubeMapResult {
+    data: [Vec<Vec4>; 6],
+    spherical_harmonics: SphericalHarmonics<4>,
+    brightest_direction: Vec3,
+    size: usize,
 }
 
 #[derive(Clone)]
@@ -40,20 +48,20 @@ impl AssetTrait for CubeMap {
 }
 
 pub fn initialize_cube_maps(resources: &mut Resources) {
-    async fn load(path: String, _settings: CubeMapSettings) -> Option<crate::TextureResult> {
+    async fn load(path: String, settings: CubeMapSettings) -> Option<crate::CubeMapResult> {
         let extension = std::path::Path::new(&path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
             .expect("Expected cube map file extension")
             .to_lowercase();
 
-        match &*extension {
+        let data = match &*extension {
             #[cfg(feature = "hdri")]
             "hdr" => {
                 let bytes = koi_fetch::fetch_bytes(&path)
                     .await
                     .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
-                Some(hdri_data_from_bytes(&bytes)?)
+                hdri_data_from_bytes(&bytes)?
             }
             _ => {
                 println!(
@@ -61,33 +69,32 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
                 );
                 return None;
             }
-        }
-    }
-
-    fn finalize_load(
-        source: crate::TextureResult,
-        settings: CubeMapSettings,
-        resources: &Resources,
-    ) -> Option<CubeMap> {
-        Some(match source.data {
-            crate::TextureData::Bytes(data) => prepare_cubemap(
-                resources,
-                data.as_u8_array(),
-                source.width,
-                source.height,
-                settings,
-            ),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+        };
+        Some(match data.data {
+            crate::TextureData::Bytes(b) => {
+                let bytes = b.as_u8_array();
+                prepare_cubemap(bytes, data.width, data.height, settings)
+            }
+            _ => todo!(),
         })
     }
 
-    let placeholder = prepare_cubemap(
+    fn finalize_load(
+        result: crate::CubeMapResult,
+        settings: CubeMapSettings,
+        resources: &Resources,
+    ) -> Option<CubeMap> {
+        Some(finalize_cube_map(resources, result))
+    }
+
+    let placeholder = finalize_cube_map(
         resources,
-        &[0; std::mem::size_of::<f32>() * 4],
-        1,
-        1,
-        CubeMapSettings::default(),
+        prepare_cubemap(
+            &[0; std::mem::size_of::<f32>() * 4],
+            1,
+            1,
+            CubeMapSettings::default(),
+        ),
     );
 
     let cube_maps =
@@ -96,12 +103,11 @@ pub fn initialize_cube_maps(resources: &mut Resources) {
 }
 
 pub fn prepare_cubemap(
-    resources: &Resources,
     equirectangular_texture: &[u8],
     equirectangular_width: u32,
     equirectangular_height: u32,
     settings: CubeMapSettings,
-) -> CubeMap {
+) -> CubeMapResult {
     klog::log!(
         "PREPARING CUBEMAP WITH DIMENSIONS: {:?}",
         (equirectangular_width, equirectangular_height)
@@ -109,12 +115,9 @@ pub fn prepare_cubemap(
     // TODO: Convert incoming data into correct color space.
     // TODO: Consider normalizing incoming data to get it in expected range.
 
-    let mut renderer = resources.get::<Renderer>();
-
     let face_size = 512
         .min(equirectangular_width as usize)
         .min(equirectangular_height as usize);
-    let graphics = &mut renderer.raw_graphics_context;
 
     assert_eq!(
         equirectangular_texture.len(),
@@ -159,6 +162,19 @@ pub fn prepare_cubemap(
         spherical_harmonics.scale(scale_factor);
     }
 
+    CubeMapResult {
+        data: output_faces0,
+        spherical_harmonics,
+        brightest_direction,
+        size: face_size,
+    }
+}
+
+fn finalize_cube_map(resources: &Resources, cube_map_result: CubeMapResult) -> CubeMap {
+    let mut renderer = resources.get::<Renderer>();
+    let graphics = &mut renderer.raw_graphics_context;
+
+    let output_faces0 = cube_map_result.data;
     let output_faces = [
         output_faces0[0].as_slice(),
         output_faces0[1].as_slice(),
@@ -178,20 +194,19 @@ pub fn prepare_cubemap(
         ..Default::default()
     };
 
-    let cube_map = graphics.new_cube_map_with_data::<kmath::Vec4>(
-        face_size as _,
-        face_size as _,
-        //Some(output_faces),
-        &output_faces,
-        settings,
-    );
     // TODO: Make this use f16 instead.
-    // graphics.update_cube_map::<kmath::Vec4>(&cube_map, &output_faces, settings);
 
     CubeMap {
-        texture: cube_map,
-        brightest_direction,
-        spherical_harmonics,
+        texture: graphics.new_cube_map_with_data::<kmath::Vec4>(
+            cube_map_result.size as _,
+            cube_map_result.size as _,
+            //Some(output_faces),
+            &output_faces,
+            settings,
+        ),
+        brightest_direction: cube_map_result.brightest_direction,
+        spherical_harmonics: cube_map_result.spherical_harmonics,
+        face_size: cube_map_result.size,
     }
 }
 
