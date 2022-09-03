@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 oddio = {git = "https://github.com/Ralith/oddio/"}
 kaudio = {path = "../../../koi2/crates/kaudio"}
+kmath = {path = "../../../koi2/crates/kmath"}
 
 koi_ecs = {path = "../koi_ecs"}
 koi_transform = {path = "../koi_transform"}
@@ -14,4 +15,5 @@ koi_assets = {path = "../koi_assets"}
 koi_resources = {path = "../koi_resources"}
 koi_fetch = {path = "../koi_fetch"}
 koi_events = {path = "../koi_events"}
+koi_time = {path = "../koi_time"}
 

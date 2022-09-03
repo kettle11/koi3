@@ -68,7 +68,7 @@ impl App {
     #[cfg(feature = "kapp")]
     fn run_inner(mut self) {
         // TODO: This should also run for headless builds.
-        ktasks::create_workers();
+        ktasks::create_workers_with_count(1);
 
         let (kapp_app, kapp_event_loop) = kapp::initialize();
 
@@ -145,6 +145,9 @@ impl App {
         koi_input::initialize_plugin(&mut self.resources);
         #[cfg(feature = "koi_camera_controls")]
         koi_camera_controls::initialize_plugin(&mut self.resources);
+
+        #[cfg(feature = "koi_audio")]
+        koi_audio::initialize_plugin(&mut self.resources);
 
         koi_transform::transform_plugin::initialize_plugin(&mut self.resources);
         self

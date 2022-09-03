@@ -1,6 +1,9 @@
 mod sound;
 pub use sound::*;
 
+mod audio_listener;
+pub use audio_listener::*;
+
 use crate::sound_assets::initialize_sound_assets;
 
 mod audio_source;
