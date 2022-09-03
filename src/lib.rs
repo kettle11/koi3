@@ -31,3 +31,6 @@ pub use koi_input::*;
 
 #[cfg(feature = "koi_random")]
 pub use koi_random::*;
+
+#[cfg(feature = "koi_audio")]
+pub use koi_audio::*;
