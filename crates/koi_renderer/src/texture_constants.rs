@@ -51,20 +51,20 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                     .await
                     .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
 
-                let imagine::ImageRGBA8 {
+                let imagine::image::Image::<imagine::pixel_formats::RGBA8888> {
                     width,
                     height,
                     mut pixels,
-                } = imagine::ImageRGBA8::try_from_png_bytes(&bytes).unwrap();
+                } = imagine::image::Image::try_from_png_bytes(&bytes).unwrap();
 
                 // TODO: Need to convert to appropriate color space here (if necessary)
 
                 // Premultiply texture
                 for v in pixels.iter_mut() {
-                    let a = v[3] as f32 / 255.0;
-                    v[0] = (v[0] as f32 * a) as u8;
-                    v[1] = (v[1] as f32 * a) as u8;
-                    v[2] = (v[2] as f32 * a) as u8;
+                    let a = v.a as f32 / 255.0;
+                    v.r = (v.r as f32 * a) as u8;
+                    v.g = (v.g as f32 * a) as u8;
+                    v.b = (v.b as f32 * a) as u8;
                 }
 
                 Some(TextureResult {
