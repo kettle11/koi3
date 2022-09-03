@@ -8,6 +8,7 @@ fn main() {
                 clear_color: Some(Color::ORANGE),
                 ..Default::default()
             },
+            AudioListener::new(),
         ));
 
         world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, Material::UNLIT));
