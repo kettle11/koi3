@@ -256,6 +256,7 @@ struct UniformBlockInfo {
     location: u32,
 }
 
+#[derive(Debug)]
 pub struct Uniform<U: UniformTypeTrait> {
     uniform_info: UniformInfo,
     phantom: std::marker::PhantomData<U>,
@@ -291,7 +292,7 @@ impl UniformTypeTrait for (f32, f32, f32, f32) {
 
 // TODO: More uniform types
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct UniformInfo {
     pub(crate) pipeline_index: u32,
     uniform_type: UniformType,

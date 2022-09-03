@@ -28,10 +28,11 @@ pub struct WebGLBackend {
     get_attribute_location: JSObject,
     get_uniform_block_name_and_size: JSObject,
     uniform_block_binding: JSObject,
+    use_program: JSObject,
 }
 
 impl WebGLBackend {
-    pub fn new(settings: GraphicsContextSettings) -> Self {
+    pub unsafe fn new(settings: GraphicsContextSettings) -> Self {
         let o = JSObjectFromString::new(include_str!("webgl_backend.js"));
         let setup = o.get_property("setup");
 
@@ -64,6 +65,7 @@ impl WebGLBackend {
             get_uniform_block_name_and_size: o.get_property("get_uniform_block_name_and_size"),
             uniform_block_binding: o.get_property("uniform_block_binding"),
             set_attribute_to_constant: o.get_property("set_attribute_to_constant"),
+            use_program: o.get_property("use_program"),
         }
     }
 
@@ -135,7 +137,7 @@ impl backend_trait::BackendTrait for WebGLBackend {
     unsafe fn execute_command_buffer(
         &mut self,
         command_buffer: &crate::CommandBuffer,
-        buffer_sizes: &Vec<u32>,
+        _buffer_sizes: &Vec<u32>,
         texture_sizes: &Vec<(u32, u32, u32)>,
     ) {
         // In the future this could be made more efficient by changing how Commandbuffer
@@ -228,9 +230,9 @@ impl backend_trait::BackendTrait for WebGLBackend {
 
                         match uniform_info.uniform_type {
                             UniformType::UInt(_) => todo!(),
-                            UniformType::Int(_) => self
+                            UniformType::Int(n) => self
                                 .set_uniform_int
-                                .call_raw(&[1, location, data_ptr, data_len]),
+                                .call_raw(&[1, location, n as u32, data_ptr, data_len]),
                             UniformType::Float(_) => self
                                 .set_uniform_float
                                 .call_raw(&[1, location, data_ptr, data_len]),
@@ -250,7 +252,7 @@ impl backend_trait::BackendTrait for WebGLBackend {
                             | UniformType::Sampler3d
                             | UniformType::SamplerCube => self
                                 .set_uniform_int
-                                .call_raw(&[1, location, data_ptr, data_len]),
+                                .call_raw(&[1, location, 1, data_ptr, data_len]),
                         };
                     }
                 }
@@ -453,6 +455,8 @@ impl backend_trait::BackendTrait for WebGLBackend {
             Some(name[2..name.find('_')?].parse().ok()?)
         }
 
+        self.use_program.call_1_arg(&program);
+
         let mut uniforms = std::collections::HashMap::new();
         {
             let uniform_count = self
@@ -477,6 +481,26 @@ impl backend_trait::BackendTrait for WebGLBackend {
                     .get_uniform_location
                     .call_2_arg(&program, &JSString::new(&uniform_name))
                 {
+                    match uniform_type {
+                        UniformType::Sampler2d
+                        | UniformType::Sampler3d
+                        | UniformType::SamplerCube => {
+                            // Bind the location once
+                            let id = get_id(&uniform_name).expect(&&uniform_name);
+
+                            let data = &[id];
+                            let data_ptr = data.as_ptr();
+                            self.set_uniform_int.call_raw(&[
+                                1,
+                                uniform_location.index(),
+                                1,
+                                data_ptr as u32,
+                                (data.len() * std::mem::size_of::<u32>()) as u32,
+                            ]);
+                        }
+                        _ => {}
+                    }
+
                     uniforms.insert(
                         uniform_name,
                         UniformInfo {

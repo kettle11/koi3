@@ -198,6 +198,9 @@ var webgl_object = {
         const data = new Float32Array(self.kwasm_memory.buffer, data_ptr, 4);
         gl.viewport(data[0], data[1], data[2], data[3]);
     },
+    use_program(program) {
+        gl.useProgram(program);
+    },
     set_pipeline(program_index, depth_func, culling, source_blend_factor, destination_blend_factor) {
         let program = self.kwasm_get_object(program_index);
 
@@ -222,14 +225,15 @@ var webgl_object = {
         let buffer = self.kwasm_get_object(buffer_index);
         gl.bindBufferBase(gl.UNIFORM_BUFFER, uniform_block_index, buffer);
     },
-    set_uniform_int(location_index, vec_dimensions, array_dimensions, data_ptr, data_length) {
+    set_uniform_int(vec_dimensions, location_index, array_dimensions, data_ptr, data_length) {
         let location = self.kwasm_get_object(location_index);
         const data = new Int32Array(self.kwasm_memory.buffer, data_ptr, data_length / 4);
         switch (vec_dimensions) {
             case 1:
                 if (array_dimensions == 1) {
-                    gl.uniform1i(location, data);
+                    gl.uniform1i(location, data[0]);
                 } else {
+                    console.log("DIMENSIONS: ", array_dimensions)
                     gl.uniform1iv(location, data);
                 }
                 break;
@@ -260,6 +264,9 @@ var webgl_object = {
                 gl.uniform3fv(location, data);
                 break;
             case 4:
+                if ((data_length / 4) > 4) {
+                    console.log("EXTRA DATA LENGTH: ", data);
+                }
                 gl.uniform4fv(location, data);
                 break;
             case 9:

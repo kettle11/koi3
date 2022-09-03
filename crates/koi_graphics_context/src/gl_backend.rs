@@ -69,10 +69,6 @@ pub const GL_TEXTURE_WRAP_T: GLenum = 0x2803;
 pub const GL_TEXTURE0: GLenum = 0x84C0;
 pub const GL_TEXTURE_CUBE_MAP: GLenum = 0x8513;
 
-pub const GL_SAMPLER_2D: GLenum = 0x8B5E;
-pub const GL_SAMPLER_3D: GLenum = 0x8B5F;
-pub const GL_SAMPLER_CUBE: GLenum = 0x8B60;
-
 pub(crate) type GLboolean = c_uchar;
 pub(crate) type GLint = c_int;
 pub(crate) type GLsizei = c_int;

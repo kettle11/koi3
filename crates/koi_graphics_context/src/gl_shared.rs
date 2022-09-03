@@ -69,6 +69,10 @@ pub const FLOAT_MAT4: GLenum = 0x8B5C;
 pub const ACTIVE_ATTRIBUTES: GLenum = 0x8B89;
 pub const ACTIVE_UNIFORM_BLOCKS: GLenum = 0x8A36;
 
+pub const SAMPLER_2D: GLenum = 0x8B5E;
+pub const SAMPLER_3D: GLenum = 0x8B5F;
+pub const SAMPLER_CUBE: GLenum = 0x8B60;
+
 pub fn gl_uniform_type_to_uniform_type(gl_enum: GLenum, size_members: u8) -> UniformType {
     match gl_enum {
         FLOAT => UniformType::Float(size_members),

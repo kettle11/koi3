@@ -102,6 +102,10 @@ pub fn prepare_cubemap(
     equirectangular_height: u32,
     settings: CubeMapSettings,
 ) -> CubeMap {
+    klog::log!(
+        "PREPARING CUBEMAP WITH DIMENSIONS: {:?}",
+        (equirectangular_width, equirectangular_height)
+    );
     // TODO: Convert incoming data into correct color space.
     // TODO: Consider normalizing incoming data to get it in expected range.
 
