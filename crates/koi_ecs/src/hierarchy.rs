@@ -40,6 +40,7 @@ pub trait HierachyExtension {
     fn unparent(&mut self, child: hecs::Entity) -> Result<(), hecs::NoSuchEntity>;
     fn despawn_hierarchy(&mut self, parent: hecs::Entity) -> Result<(), hecs::NoSuchEntity>;
     fn iterate_children(&self, parent: hecs::Entity) -> ChildIterator;
+    fn iterate_ancestors(&self, parent: hecs::Entity) -> AncestorIterator;
 }
 
 impl HierachyExtension for hecs::World {
@@ -143,6 +144,14 @@ impl HierachyExtension for hecs::World {
             start: next_child,
         }
     }
+
+    fn iterate_ancestors(&self, parent: hecs::Entity) -> AncestorIterator {
+        let next_ancestor = self.get::<&Child>(parent).map(|p| p.parent).ok();
+        AncestorIterator {
+            world: self,
+            next_ancestor,
+        }
+    }
 }
 
 pub struct ChildIterator<'a> {
@@ -162,6 +171,25 @@ impl<'a> Iterator for ChildIterator<'a> {
                 if self.next_child == self.start {
                     self.next_child = None;
                 }
+            }
+        }
+        result
+    }
+}
+
+pub struct AncestorIterator<'a> {
+    world: &'a hecs::World,
+    next_ancestor: Option<hecs::Entity>,
+}
+
+impl<'a> Iterator for AncestorIterator<'a> {
+    type Item = hecs::Entity;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.next_ancestor.take();
+        if let Some(result) = result {
+            if let Ok(child) = self.world.get::<&Child>(result) {
+                self.next_ancestor = Some(child.parent);
             }
         }
         result
