@@ -19,7 +19,7 @@ pub struct CubeMapResult {
     size: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CubeMapSettings {
     pub luminance_of_brightest_pixel: Option<f32>,
 }
@@ -30,17 +30,7 @@ pub mod luminance {
     pub const TYPICAL_SUNLIT_SCENE: f32 = 5_000.0;
     pub const CLOUD: f32 = 5_000.0;
     pub const CLEAR_SKY: f32 = 7_000.0;
-    pub const SUN_AT_NOON: f32 = 1000_000_000.0;
-}
-
-impl Default for CubeMapSettings {
-    fn default() -> Self {
-        Self {
-            /// Candelas per meter squared
-            /// ttps://en.wikipedia.org/wiki/Orders_of_magnitude_(luminance)
-            luminance_of_brightest_pixel: None,
-        }
-    }
+    pub const SUN_AT_NOON: f32 = 1_000_000_000.0;
 }
 
 impl AssetTrait for CubeMap {
@@ -292,7 +282,7 @@ pub fn equirectangular_to_cubemap_cpu(
         let yf = s.y.asin() * (2.0 * F_1_PI); // range [-1.0, 1.0]
         let xf = (xf + 1.0) * 0.5 * (width - 1.0); // range [0, width]
         let yf = (1.0 - yf) * 0.5 * (height - 1.0); // range [0, height]
-        return Vec2::new(xf, yf);
+        Vec2::new(xf, yf)
     }
 
     for (face_index, data_out) in data_out.iter_mut().enumerate() {

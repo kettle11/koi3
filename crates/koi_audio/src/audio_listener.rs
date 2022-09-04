@@ -6,6 +6,12 @@ pub struct AudioListener {
     pub(crate) previous_velocity: Option<kmath::Vec3>,
 }
 
+impl Default for AudioListener {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AudioListener {
     pub fn new() -> Self {
         Self {

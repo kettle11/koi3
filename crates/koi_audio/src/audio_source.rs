@@ -10,6 +10,12 @@ pub struct AudioSource {
     previous_velocity: Option<Vec3>,
 }
 
+impl Default for AudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AudioSource {
     pub fn new() -> Self {
         Self {

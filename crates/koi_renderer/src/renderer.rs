@@ -58,7 +58,7 @@ impl Renderer {
                 camera_transform: *camera_transform,
                 view_width,
                 view_height,
-                color_space: self.color_space.clone(),
+                color_space: self.color_space,
                 light_info: [LightInfo::default(); MAX_BOUND_LIGHTS],
                 lights_bound: 0,
                 exposure_scale_factor: 1.0 / camera.exposure.max_luminance_without_clipping(),
@@ -178,7 +178,7 @@ impl RenderPass {
         let mut render_pass = command_buffer.begin_render_pass(
             self.camera
                 .clear_color
-                .map(|v| v.to_rgb_color(self.color_space).into()),
+                .map(|v| v.to_rgb_color(self.color_space)),
         );
         render_pass.set_viewport(0.0, 0.0, self.view_width as f32, self.view_height as f32);
 
@@ -255,8 +255,7 @@ impl<'a> RenderPassExecutor<'a> {
                         &sp.p_base_color,
                         material
                             .base_color
-                            .to_rgb_color(self.this_render_pass.color_space)
-                            .into(),
+                            .to_rgb_color(self.this_render_pass.color_space),
                     );
 
                     self.render_pass.set_texture(
@@ -412,7 +411,7 @@ impl<'a> RenderPassExecutor<'a> {
                     light_count: self.this_render_pass.lights_bound as _,
                     spherical_harmonic_weights,
                     // TODO: Don't do a clone here
-                    lights: self.this_render_pass.light_info.clone(),
+                    lights: self.this_render_pass.light_info,
                 }],
                 BufferUsage::Data,
             );

@@ -29,6 +29,12 @@ impl<'a> EntityMigrator<'a> {
     }
 }
 
+impl Default for WorldCloner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WorldCloner {
     pub fn new() -> Self {
         Self {

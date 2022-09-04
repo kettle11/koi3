@@ -41,7 +41,7 @@ impl BumpAllocator {
                 self.data.push(0)
             }
 
-            BumpHandle { offset, size: size }
+            BumpHandle { offset, size }
         }
     }
 

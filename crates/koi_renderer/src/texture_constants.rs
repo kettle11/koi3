@@ -134,7 +134,7 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                 println!(
                     "Error loading image. Unsupported file extension: {extension} for path {path}"
                 );
-                return None;
+                None
             }
         }
     }

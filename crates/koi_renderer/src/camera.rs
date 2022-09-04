@@ -36,8 +36,7 @@ impl Exposure {
     /// Is used as a scale factor to scale the scene.
     pub fn max_luminance_without_clipping(&self) -> f32 {
         //  println!("EXPOSURE VALUE: {:?}", self.exposure.to_ev100());
-        let v = 2.0f32.powf(self.to_ev100()) * 1.2;
-        v
+        2.0f32.powf(self.to_ev100()) * 1.2
     }
 }
 

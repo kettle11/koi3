@@ -116,7 +116,7 @@ pub enum WrappingMode {
     MirrorRepeat,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PixelFormat {
     R8Unorm,
     RG8Unorm,

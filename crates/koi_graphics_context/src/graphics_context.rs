@@ -164,7 +164,7 @@ impl GraphicsContext {
         let data = unsafe { slice_to_bytes(data) };
         unsafe {
             self.backend.update_texture(
-                &texture.0.inner(),
+                texture.0.inner(),
                 0,
                 0,
                 0,
@@ -217,7 +217,7 @@ impl GraphicsContext {
         let data = unsafe { slice_to_bytes(data) };
         unsafe {
             self.backend.update_texture(
-                &texture.0.inner(),
+                texture.0.inner(),
                 x,
                 y,
                 z,
@@ -277,7 +277,7 @@ impl GraphicsContext {
 
         unsafe {
             self.backend
-                .update_cube_map(&cube_map.0.inner(), width, height, &data, settings)
+                .update_cube_map(cube_map.0.inner(), width, height, &data, settings)
         }
     }
 
@@ -306,7 +306,7 @@ impl GraphicsContext {
         let mut command_buffer = self
             .command_buffer_pool
             .pop()
-            .unwrap_or_else(|| CommandBuffer::new());
+            .unwrap_or_else(CommandBuffer::new);
         command_buffer.clear();
         command_buffer
     }

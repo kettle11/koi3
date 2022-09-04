@@ -79,7 +79,7 @@ pub struct CommandBuffer {
 }
 
 impl CommandBuffer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             bump_allocator: BumpAllocator::new(),
             pipelines: Vec::new(),

@@ -137,8 +137,8 @@ impl backend_trait::BackendTrait for WebGLBackend {
     unsafe fn execute_command_buffer(
         &mut self,
         command_buffer: &crate::CommandBuffer,
-        _buffer_sizes: &Vec<u32>,
-        texture_sizes: &Vec<(u32, u32, u32)>,
+        _buffer_sizes: &[u32],
+        texture_sizes: &[(u32, u32, u32)],
     ) {
         // In the future this could be made more efficient by changing how Commandbuffer
         // is represented so it can be sent directly to the JS side.

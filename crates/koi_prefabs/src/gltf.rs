@@ -128,7 +128,7 @@ pub(crate) fn finalize_gltf_load(
                             &gltf,
                             &data,
                             &path,
-                            &mut *textures,
+                            &mut textures,
                             &mut texture_load_states,
                             true,
                             t.index,
@@ -143,7 +143,7 @@ pub(crate) fn finalize_gltf_load(
                             &gltf,
                             &data,
                             &path,
-                            &mut *textures,
+                            &mut textures,
                             &mut texture_load_states,
                             false,
                             t.index,
@@ -156,7 +156,7 @@ pub(crate) fn finalize_gltf_load(
                     &gltf,
                     &data,
                     &path,
-                    &mut *textures,
+                    &mut textures,
                     &mut texture_load_states,
                     false,
                     t.index,
@@ -474,7 +474,7 @@ fn initialize_nodes(
         }
         entity_root
     } else {
-        gltf_world.spawn((transform.clone(),))
+        gltf_world.spawn((transform,))
     };
 
     /*
@@ -534,7 +534,7 @@ pub(super) async fn load_mesh_primitive_data(
                         positions = Some(get_buffer::<Vec3, _, _>(
                             gltf,
                             &data,
-                            &buffers,
+                            buffers,
                             *accessor_index,
                             |v| v,
                         )?);
@@ -545,7 +545,7 @@ pub(super) async fn load_mesh_primitive_data(
                                 get_buffer::<Vector<u8, 2>, _, _>(
                                     gltf,
                                     &data,
-                                    &buffers,
+                                    buffers,
                                     *accessor_index,
                                     |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
                                 )?
@@ -554,7 +554,7 @@ pub(super) async fn load_mesh_primitive_data(
                                 get_buffer::<Vector<u16, 2>, _, _>(
                                     gltf,
                                     &data,
-                                    &buffers,
+                                    buffers,
                                     *accessor_index,
                                     |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
                                 )?
@@ -562,7 +562,7 @@ pub(super) async fn load_mesh_primitive_data(
                             AccessorComponentType::Float => get_buffer::<Vec2, _, _>(
                                 gltf,
                                 &data,
-                                &buffers,
+                                buffers,
                                 *accessor_index,
                                 |v| v,
                             )?,
@@ -573,7 +573,7 @@ pub(super) async fn load_mesh_primitive_data(
                         normals = Some(get_buffer::<Vec3, _, _>(
                             gltf,
                             &data,
-                            &buffers,
+                            buffers,
                             *accessor_index,
                             |v| v,
                         ))?;
@@ -587,7 +587,7 @@ pub(super) async fn load_mesh_primitive_data(
                                     AccessorComponentType::Float => get_buffer::<Vec4, _, _>(
                                         gltf,
                                         &data,
-                                        &buffers,
+                                        buffers,
                                         *accessor_index,
                                         |v| v,
                                     )?,
@@ -595,7 +595,7 @@ pub(super) async fn load_mesh_primitive_data(
                                         get_buffer::<Vector<u8, 4>, _, _>(
                                             gltf,
                                             &data,
-                                            &buffers,
+                                            buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
                                         )?
@@ -604,7 +604,7 @@ pub(super) async fn load_mesh_primitive_data(
                                         get_buffer::<Vector<u16, 4>, _, _>(
                                             gltf,
                                             &data,
-                                            &buffers,
+                                            buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
                                         )?
@@ -617,7 +617,7 @@ pub(super) async fn load_mesh_primitive_data(
                                     AccessorComponentType::Float => get_buffer::<Vec3, _, _>(
                                         gltf,
                                         &data,
-                                        &buffers,
+                                        buffers,
                                         *accessor_index,
                                         |v| v,
                                     )?,
@@ -625,7 +625,7 @@ pub(super) async fn load_mesh_primitive_data(
                                         get_buffer::<Vector<u8, 3>, _, _>(
                                             gltf,
                                             &data,
-                                            &buffers,
+                                            buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u8::MAX as f32)),
                                         )?
@@ -634,7 +634,7 @@ pub(super) async fn load_mesh_primitive_data(
                                         get_buffer::<Vector<u16, 3>, _, _>(
                                             gltf,
                                             &data,
-                                            &buffers,
+                                            buffers,
                                             *accessor_index,
                                             |b| b.map(|v| *v as f32 / (u16::MAX as f32)),
                                         )?
@@ -655,7 +655,7 @@ pub(super) async fn load_mesh_primitive_data(
             }
 
             if let Some(indices) = primitive.indices {
-                let indices = get_indices(gltf, &data, &buffers, indices).await?;
+                let indices = get_indices(gltf, &data, buffers, indices).await?;
 
                 for index in indices.iter() {
                     for i in index {
@@ -666,9 +666,9 @@ pub(super) async fn load_mesh_primitive_data(
                 }
                 let mesh_data = koi_renderer::MeshData {
                     positions: positions.unwrap(),
-                    normals: normals.unwrap_or_else(Vec::new),
-                    texture_coordinates: texture_coordinates.unwrap_or_else(Vec::new),
-                    colors: colors.unwrap_or_else(Vec::new),
+                    normals: normals.unwrap_or_default(),
+                    texture_coordinates: texture_coordinates.unwrap_or_default(),
+                    colors: colors.unwrap_or_default(),
                     indices,
                 };
 
@@ -718,9 +718,9 @@ fn read_accessor_bytes<'a>(
     let buffer = gltf.buffers.get(buffer_view.buffer)?;
     Some((
         if buffer.uri.is_some() {
-            &buffers.get(buffer_view.buffer)?.as_ref()?.get(start..end)?
+            buffers.get(buffer_view.buffer)?.as_ref()?.get(start..end)?
         } else {
-            &data.as_ref().unwrap().get(start..end)?
+            data.as_ref().unwrap().get(start..end)?
         },
         accessor,
     ))

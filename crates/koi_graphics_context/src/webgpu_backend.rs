@@ -43,8 +43,8 @@ impl BackendTrait for WebGPUBackend {
     unsafe fn execute_command_buffer(
         &mut self,
         command_buffer: &crate::CommandBuffer,
-        buffer_sizes: &Vec<u32>,
-        texture_sizes: &Vec<(u32, u32, u32)>,
+        buffer_sizes: &[u32],
+        texture_sizes: &[(u32, u32, u32)],
     ) {
         self.execute_commands.call();
     }

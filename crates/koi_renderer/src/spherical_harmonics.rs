@@ -35,10 +35,10 @@ impl<const CHANNELS: usize> SphericalHarmonics<CHANNELS> {
         }
 
         let normalization_factor = (core::f32::consts::PI * 4.0) / solid_angle_total;
-        for i in 0..9 {
+        for coefficient in coefficients.iter_mut() {
             // The coefficients should be normalized to PI * 4.0
             // The sum of all the solid angles is PI * 4.0, so normalize by that here.
-            coefficients[i] *= normalization_factor;
+            *coefficient *= normalization_factor;
         }
 
         //println!("COEFFICIENTS: {:#?}", coefficients);
@@ -135,8 +135,8 @@ pub fn convolve_with_cos_irradiance<const CHANNELS: usize>(
     // *irradiance* for a given direction with the following simple transformation.
     const B: [f32; 3] = [
         core::f32::consts::PI,
-        2.094395, // (2*PI) / 3
-        0.785398, // PI / 4
+        2.094395,                     // (2*PI) / 3
+        core::f32::consts::FRAC_PI_4, // PI / 4
     ];
 
     [
@@ -180,8 +180,7 @@ fn solid_angle2(dim: f32, u: f32, v: f32) -> f32 {
     let y0 = t - i_dim;
     let x1 = s + i_dim;
     let y1 = t + i_dim;
-    let solid_angle =
-        sphere_quadrant_area(x0, y0) - sphere_quadrant_area(x0, y1) - sphere_quadrant_area(x1, y0)
-            + sphere_quadrant_area(x1, y1);
-    solid_angle
+
+    sphere_quadrant_area(x0, y0) - sphere_quadrant_area(x0, y1) - sphere_quadrant_area(x1, y0)
+        + sphere_quadrant_area(x1, y1)
 }

@@ -369,8 +369,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
     unsafe fn execute_command_buffer(
         &mut self,
         command_buffer: &crate::CommandBuffer,
-        buffer_sizes: &Vec<u32>,
-        texture_sizes: &Vec<(u32, u32, u32)>,
+        buffer_sizes: &[u32],
+        texture_sizes: &[(u32, u32, u32)],
     ) {
         self.gl_context.resize();
 
@@ -501,7 +501,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                             UNIFORM_BUFFER,
                             *uniform_block_index as _, // Index
                             buffer.handle.inner().index,
-                            0 as isize,
+                            0,
                             size_bytes as _,
                         );
                     }
@@ -602,12 +602,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                                 offset_bytes,
                             );
                         }
+                    } else if *instances > 1 {
+                        todo!()
                     } else {
-                        if *instances > 1 {
-                            todo!()
-                        } else {
-                            (self.draw_arrays)(TRIANGLES, 0, count_vertices);
-                        }
+                        (self.draw_arrays)(TRIANGLES, 0, count_vertices);
                     }
                 }
                 Command::BeginRenderPass { clear_color } => {
@@ -733,7 +731,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             let mut vertex_attributes = std::collections::HashMap::new();
 
             fn get_id(name: &str) -> Option<u32> {
-                Some(name[2..name.find('_')?].parse().ok()?)
+                name[2..name.find('_')?].parse().ok()
             }
 
             (self.use_program)(program);
@@ -836,9 +834,9 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 for i in 0..uniform_block_count {
                     let (name, size_bytes) =
                         get_uniform_block_name_and_size(self, program, i).unwrap();
-                    let binding_location = get_id(&name).ok_or_else(|| {
+                    let binding_location = get_id(&name).ok_or(
                      "Uniform blocks must be formatted with ub[binding_index]_name. EX: ub0_scene_info."
-                 })?;
+                    )?;
                     (self.uniform_block_binding)(program, i, binding_location);
                     uniform_blocks.push(UniformBlockInfo {
                         size_bytes,
@@ -1125,11 +1123,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             let mut texture_index = 0;
             (self.gen_textures)(1, &mut texture_index);
 
-            let cube_map = CubeMapInner {
+            CubeMapInner {
                 index: texture_index,
                 pixel_format,
-            };
-            cube_map
+            }
         }
     }
 

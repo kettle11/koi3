@@ -33,8 +33,7 @@ impl WorldClonableTrait for AnimationPlayer {
                     entity_mapping: p
                         .entity_mapping
                         .iter()
-                        .map(|e| e.map(|e| entity_migrator.migrate(e)))
-                        .flatten()
+                        .filter_map(|e| e.map(|e| entity_migrator.migrate(e)))
                         .collect(),
                     animation: p.animation.clone(),
                 })
@@ -57,14 +56,12 @@ impl AnimationPlayer {
             playing_animation.time %= animation.length;
 
             for animation_clip in animation.animation_clips.iter() {
-                if let Some(entity) = playing_animation
+                if let Some(Some(entity)) = playing_animation
                     .entity_mapping
                     .get(animation_clip.entity_mapping_index)
                 {
-                    if let Some(entity) = entity {
-                        if let Ok(entity) = world.entity(*entity) {
-                            animation_clip.animate_entity(&entity, playing_animation.time);
-                        }
+                    if let Ok(entity) = world.entity(*entity) {
+                        animation_clip.animate_entity(&entity, playing_animation.time);
                     }
                 }
             }

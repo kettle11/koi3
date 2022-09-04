@@ -126,7 +126,7 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     let mut cameras = Vec::new();
 
     for (t, c) in camera_query.iter() {
-        cameras.push((t.clone(), c.clone()));
+        cameras.push((t, c));
     }
 
     for (_, (camera_transform, camera)) in cameras {

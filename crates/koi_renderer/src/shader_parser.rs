@@ -86,7 +86,7 @@ impl<'a> ShaderParser<'a> {
                     let key = parser.read_word();
                     if !key.is_empty() {
                         if let Some(snippet) = snippets.get(key) {
-                            let snippet = Self::parse_snippet(&snippet, snippets);
+                            let snippet = Self::parse_snippet(snippet, snippets);
                             current_string += &snippet;
                         } else {
                             klog::log!(

@@ -85,7 +85,7 @@ impl<Asset: AssetTrait> AssetStoreInner<Asset> {
     // }
 
     pub fn get(&self, handle: &Handle<Asset>) -> &Asset {
-        &self.slot_map.get(&handle.slot_map_handle).unwrap()
+        self.slot_map.get(&handle.slot_map_handle).unwrap()
     }
 
     pub fn get_mut(&mut self, handle: &Handle<Asset>) -> &mut Asset {
@@ -257,7 +257,7 @@ impl<T> Handle<T> {
                 drop_handle: None,
                 phantom: std::marker::PhantomData,
             },
-            drop_handle: std::sync::Arc::downgrade(&self.drop_handle.as_ref().unwrap()),
+            drop_handle: std::sync::Arc::downgrade(self.drop_handle.as_ref().unwrap()),
         }
     }
 }
