@@ -10,7 +10,7 @@ webgpu = ["naga"]
 webgl = []
 
 [dependencies]
-half = {version = "2.1.0", no-default-features = true}
+half = {version = "2.1.0", default-features = false}
 
 kapp = {path = "../../../koi2/crates/kapp", default-features=false}
 kcolor = {path = "../../../koi2/crates/kcolor", default-features=false}
