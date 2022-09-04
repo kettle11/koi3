@@ -332,17 +332,25 @@ impl GraphicsContext {
         pixel_format: PixelFormat,
         texture_settings: TextureSettings,
     ) -> Texture {
-        unsafe {
-            Texture(
-                self.texture_assets
-                    .new_handle(self.backend.new_texture_from_js_object(
-                        width,
-                        height,
-                        js_object_data,
-                        pixel_format,
-                        texture_settings,
-                    )),
-            )
-        }
+        let handle = unsafe {
+            self.texture_assets
+                .new_handle(self.backend.new_texture_from_js_object(
+                    width,
+                    height,
+                    js_object_data,
+                    pixel_format,
+                    texture_settings,
+                ))
+        };
+
+        self.texture_size_pixels.resize(
+            self.texture_size_pixels
+                .len()
+                .max(handle.inner().index as usize + 1),
+            (0, 0, 0),
+        );
+        self.texture_size_pixels[handle.inner().index as usize] = (width, height, 1);
+
+        Texture(handle)
     }
 }

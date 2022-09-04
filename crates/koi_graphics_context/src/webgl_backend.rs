@@ -317,6 +317,29 @@ impl backend_trait::BackendTrait for WebGLBackend {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
+    unsafe fn new_texture_from_js_object(
+        &mut self,
+        width: u32,
+        height: u32,
+        js_object_data: &kwasm::JSObjectDynamic,
+        pixel_format: PixelFormat,
+        texture_settings: TextureSettings,
+    ) -> TextureInner {
+        let texture = self.new_texture(width, height, 1, pixel_format, texture_settings);
+        self.update_texture_internal(
+            &texture,
+            width,
+            height,
+            1,
+            js_object_data,
+            &[],
+            texture.pixel_format,
+            texture_settings,
+        );
+        texture
+    }
+
     unsafe fn new_texture(
         &mut self,
         _width: u32,

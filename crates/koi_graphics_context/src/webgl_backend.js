@@ -72,7 +72,7 @@ var webgl_object = {
     },
     update_texture(texture_index, target, image_target, inner_pixel_format, width, height, depth, pixel_format, type_, js_data_object, data_ptr, data_length, min, mag, wrapping_horizontal, wrapping_vertical) {
         let data = self.kwasm_get_object(js_data_object);
-        if (data_ptr !== 0) {
+        if (data_length !== 0) {
             if (type_ == gl.FLOAT) {
                 // If it's a floating point array
                 data = new Float32Array(self.kwasm_memory.buffer, data_ptr, data_length / 4);
@@ -148,7 +148,7 @@ var webgl_object = {
         gl.deleteTexture(texture);
     },
     delete_program(program) {
-        gl.deleteProgram(proram);
+        gl.deleteProgram(program);
     },
     get_uniform_name_and_type(program_index, uniform_index) {
         let program = self.kwasm_get_object(program_index);

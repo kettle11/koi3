@@ -71,7 +71,5 @@ pub trait BackendTrait {
         _js_object_data: &kwasm::JSObjectDynamic,
         _pixel_format: PixelFormat,
         _texture_settings: TextureSettings,
-    ) -> TextureInner {
-        todo!()
-    }
+    ) -> TextureInner;
 }
