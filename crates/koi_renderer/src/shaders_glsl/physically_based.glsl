@@ -178,9 +178,6 @@ void main()
     color_out.rgb += diffuse_color * read_spherical_harmonics(normalize(n));
     
     color_out.rgb = pow(color_out.rgb, vec3(1.0/2.2));
-    if (!base_color_texture_enabled) {
-        color_out.r = 1.0;
-    }
     
     // Clamp because Macs *will* display values outside gamut. 
     color_out = clamp(color_out, 0.0, 1.0);
