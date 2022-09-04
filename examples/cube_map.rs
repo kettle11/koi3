@@ -21,6 +21,7 @@ fn main() {
                     ..Default::default()
                 },
                 CameraControls::default(),
+                AudioListener::new(),
             ));
 
             /*
@@ -52,7 +53,9 @@ fn main() {
             ));
             */
 
-            world.spawn((Transform::new(), Mesh::SPHERE, Material::PHYSICALLY_BASED));
+            // world.spawn((Transform::new(), Mesh::SPHERE, Material::UNLIT));
+
+            world.spawn((Mesh::SPHERE, Material::PHYSICALLY_BASED, Transform::new()));
 
             let skybox_spherical_harmonics = resources
                 .get::<AssetStore<Shader>>()
@@ -71,6 +74,10 @@ fn main() {
                 cube_map: Some(cube_map.clone()),
                 ..Default::default()
             });
+
+            let light_probe = world.spawn((LightProbe {
+                source: cube_map.clone(),
+            },));
 
             // Create a material that uses the custom shader
             let skybox_spherical_harmonics =
@@ -91,6 +98,7 @@ fn main() {
 
             let spacing = 2.0;
 
+            /*
             for i in 0..rows {
                 for j in 0..columns {
                     world.spawn((
@@ -110,10 +118,24 @@ fn main() {
                     ));
                 }
             }
+            */
 
             let mut prefabs = resources.get::<AssetStore<Prefab>>();
             let prefab_handle = prefabs.load("assets/cat_statue/scene.gltf", ());
-            /*
+
+            let size = 3;
+            let spacing = 4.0;
+
+            for i in 0..size {
+                for j in 0..size {
+                    world.spawn((
+                        Transform::new()
+                            .with_position(Vec3::new(i as f32, 0.0, j as f32) * spacing),
+                        prefab_handle.clone(),
+                    ));
+                }
+            }
+
             struct Rotator;
 
             let mut parent_cube = world.spawn((
@@ -133,40 +155,24 @@ fn main() {
                 let _ = world.set_parent(parent_cube, child_cube);
                 parent_cube = child_cube;
             }
-            */
 
-            let mut cloned = false;
+            let sound = resources
+                .get::<AssetStore<Sound>>()
+                .load("assets/bell.wav", Default::default());
+            let mut audio_source = AudioSource::new();
+            let _ = world.insert_one(parent_cube, audio_source);
+            let audio_source_entity = parent_cube;
+
             move |event, world, resources| {
-                {
-                    if !cloned {
-                        let mut prefabs = resources.get::<AssetStore<Prefab>>();
-
-                        if prefabs.currently_loading() == 0 {
-                            let prefab = prefabs.get_mut(&prefab_handle);
-
-                            let size = 10;
-                            let spacing = 4.0;
-
-                            for i in 0..size {
-                                for j in 0..size {
-                                    let mut world_cloner = resources.get::<WorldCloner>();
-                                    prefab.spawn_with_transform(
-                                        world,
-                                        &mut world_cloner,
-                                        Transform::new().with_position(
-                                            Vec3::new(i as f32, 0.0, j as f32) * spacing,
-                                        ),
-                                    );
-                                }
-                            }
-
-                            //  world_cloner.clone_world(&mut prefab.0, world);
-                            cloned = true;
-                        }
-                    }
-                }
                 match event {
                     Event::FixedUpdate => {
+                        if resources.get_mut::<Input>().key_down(Key::Space) {
+                            world
+                                .get::<&mut AudioSource>(audio_source_entity)
+                                .unwrap()
+                                .play_sound(&sound);
+                        }
+
                         // When a key is pressed reload all shaders that were loaded from a path.
                         if resources.get::<Input>().key_down(Key::Space) {
                             resources.get::<AssetStore<Shader>>().reload();
@@ -180,14 +186,12 @@ fn main() {
                             }
                         }
 
-                        /*
                         for (_rotator, (_, transform)) in
                             world.query::<(&mut Rotator, &mut Transform)>().iter()
                         {
                             transform.rotation =
                                 Quat::from_angle_axis(0.05, Vec3::X) * transform.rotation
                         }
-                        */
                     }
                     _ => {}
                 }

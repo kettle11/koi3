@@ -216,6 +216,12 @@ impl<Asset: AssetTrait> AssetStore<Asset> {
     pub fn currently_loading(&self) -> usize {
         self.loader.currently_loading()
     }
+
+    pub fn is_placeholder(&mut self, handle: &Handle<Asset>) -> bool {
+        self.asset_store_inner
+            .slot_map
+            .handle_is_placeholder(&handle.slot_map_handle)
+    }
 }
 
 #[derive(Component)]

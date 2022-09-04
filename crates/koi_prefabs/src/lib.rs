@@ -14,6 +14,16 @@ impl Prefab {
         cloner: &mut koi_ecs::world_cloner::WorldCloner,
         parent_transform: koi_transform::Transform,
     ) {
+        let root_node = destination.spawn((parent_transform,));
+        self.spawn_with_parent(destination, cloner, root_node);
+    }
+
+    pub fn spawn_with_parent(
+        &mut self,
+        destination: &mut koi_ecs::World,
+        cloner: &mut koi_ecs::world_cloner::WorldCloner,
+        parent_entity: koi_ecs::Entity,
+    ) {
         // TODO: Avoid this allocation
         let mut top_level_entities = Vec::new();
         for (e, _) in self
@@ -24,13 +34,11 @@ impl Prefab {
             top_level_entities.push(e);
         }
 
-        let root_node = destination.spawn((parent_transform,));
-
         let migrator = cloner.clone_world(&mut self.0, destination);
 
         for e in top_level_entities {
             let e = migrator.migrate(e).unwrap();
-            destination.set_parent(root_node, e).unwrap();
+            destination.set_parent(parent_entity, e).unwrap();
         }
     }
 }
@@ -70,11 +78,34 @@ pub fn initialize_plugin(resources: &mut Resources) {
     );
     resources.add(worlds);
 
+    let mut worlds_to_add = Vec::new();
     resources
         .get_mut::<koi_events::EventHandlers>()
-        .add_universal_handler(|_event, _world, resources| {
+        .add_universal_handler(move |_event, world, resources| {
             let mut prefabs = resources.get::<koi_assets::AssetStore<Prefab>>();
             prefabs.finalize_asset_loads(resources);
+
+            // Delayed spawning of prefabs as they load.
+            {
+                for (entity, (_transform, prefab)) in world
+                    .query::<(&koi_transform::Transform, &koi_assets::Handle<Prefab>)>()
+                    .iter()
+                {
+                    if !prefabs.is_placeholder(prefab) {
+                        worlds_to_add.push(entity);
+                    }
+                }
+
+                let mut world_cloner = resources.get::<koi_ecs::WorldCloner>();
+
+                for entity in worlds_to_add.drain(..) {
+                    let handle = world
+                        .remove_one::<koi_assets::Handle<Prefab>>(entity)
+                        .unwrap();
+                    let prefab = prefabs.get_mut(&handle);
+                    prefab.spawn_with_parent(world, &mut world_cloner, entity);
+                }
+            }
         });
 }
 
