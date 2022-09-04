@@ -34,3 +34,9 @@ pub use koi_random::*;
 
 #[cfg(feature = "koi_audio")]
 pub use koi_audio::*;
+
+pub mod scripts {
+    pub use koi_camera_controls::*;
+}
+
+pub use koi_ecs;

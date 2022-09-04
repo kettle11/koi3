@@ -9,7 +9,7 @@ members = ["crates/*"]
 
 [features]
 default = ["core", "koi_camera_controls"]
-core = ["kapp", "koi_renderer", "koi_transform", "koi_audio", "koi_input", "koi_random"]
+core = ["kapp", "koi_renderer", "koi_transform", "koi_input", "koi_random", "koi_audio"]
 window = []
 
 [dependencies]
@@ -37,12 +37,12 @@ koi_random = {path = "crates/koi_random", optional = true}
 koi_camera_controls = {path = "crates/koi_camera_controls", optional = true}
 
 [profile.release]
-# Consider these options for a smaller binary size
-# strip = true
-# panic = "abort"
-# opt-level = "z"  # Optimize for size.
-# lto = true
-# codegen-units = 1
+ # Consider these options for a smaller binary size
+ # strip = true
+ # panic = "abort"
+ # opt-level = "z"  # Optimize for size.
+ # lto = true
+ # codegen-units = 1
 
 
 

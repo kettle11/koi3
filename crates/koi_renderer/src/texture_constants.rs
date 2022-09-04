@@ -36,14 +36,15 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
 
     async fn load(
         path: String,
-        settings: koi_graphics_context::TextureSettings,
+        #[allow(unused)] settings: koi_graphics_context::TextureSettings,
     ) -> Option<TextureResult> {
+        #[allow(unused)]
         let extension = std::path::Path::new(&path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
             .expect("Expected image file extension")
             .to_lowercase();
-
+        #[cfg(not(target_arch = "wasm32"))]
         match &*extension {
             #[cfg(feature = "png")]
             "png" => {
@@ -136,6 +137,24 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
                 );
                 None
             }
+        }
+
+        // Web uses the browser-native decoders as much faster path.
+        #[cfg(target_arch = "wasm32")]
+        {
+            let kwasm::libraries::ImageLoadResult {
+                image_js_object,
+                width,
+                height,
+            } = kwasm::libraries::load_image(&path)
+                .await
+                .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
+            Some(TextureResult {
+                data: TextureData::JSObject(image_js_object.to_dynamic()),
+                width,
+                height,
+                pixel_format: koi_graphics_context::PixelFormat::RGBA8Unorm,
+            })
         }
     }
 
