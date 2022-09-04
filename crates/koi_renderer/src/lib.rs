@@ -47,3 +47,6 @@ mod morphable_mesh;
 pub use morphable_mesh::*;
 
 // mod specular_precompute;
+
+mod light_probe;
+pub use light_probe::*;

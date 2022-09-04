@@ -48,6 +48,7 @@ impl Renderer {
             render_pass.lights_bound = 0;
             render_pass.exposure_scale_factor =
                 1.0 / camera.exposure.max_luminance_without_clipping();
+            render_pass.light_probe = None;
             render_pass
         } else {
             RenderPass {
@@ -61,6 +62,7 @@ impl Renderer {
                 light_info: [LightInfo::default(); MAX_BOUND_LIGHTS],
                 lights_bound: 0,
                 exposure_scale_factor: 1.0 / camera.exposure.max_luminance_without_clipping(),
+                light_probe: None,
             }
         }
     }
@@ -97,9 +99,14 @@ pub struct RenderPass {
     light_info: [LightInfo; MAX_BOUND_LIGHTS],
     lights_bound: usize,
     exposure_scale_factor: f32,
+    light_probe: Option<LightProbe>,
 }
 
 impl RenderPass {
+    pub fn set_light_probe(&mut self, light_probe: Option<&LightProbe>) {
+        self.light_probe = light_probe.cloned();
+    }
+
     pub fn add_directional_light(
         &mut self,
         transform: &Transform,
@@ -383,6 +390,16 @@ impl<'a> RenderPassExecutor<'a> {
     fn execute(&mut self) {
         // Bind global data.
         {
+            let spherical_harmonic_weights =
+                if let Some(light_probe) = &self.this_render_pass.light_probe {
+                    &self.cube_maps.get(&light_probe.source).spherical_harmonics
+                } else {
+                    &self.cube_maps.get(&Handle::PLACEHOLDER).spherical_harmonics
+                }
+                .convolve_with_cos_irradiance_and_premultiply_constants(
+                    self.this_render_pass.exposure_scale_factor,
+                );
+
             let data_buffer = self.graphics.new_buffer(
                 &[SceneInfoUniformBlock {
                     p_world_to_camera: self.world_to_camera,
@@ -393,13 +410,7 @@ impl<'a> RenderPassExecutor<'a> {
                     p_fog_end: 100.0,
                     p_exposure: self.this_render_pass.exposure_scale_factor,
                     light_count: self.this_render_pass.lights_bound as _,
-                    spherical_harmonic_weights: self
-                        .cube_maps
-                        .get(&Handle::from_index(1))
-                        .spherical_harmonics
-                        .convolve_with_cos_irradiance_and_premultiply_constants(
-                            self.this_render_pass.exposure_scale_factor,
-                        ),
+                    spherical_harmonic_weights,
                     // TODO: Don't do a clone here
                     lights: self.this_render_pass.light_info.clone(),
                 }],

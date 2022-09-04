@@ -114,6 +114,12 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
     //     .raw_graphics_context
     //     .resize(&*window, window_width, window_height);
 
+    let light_probe = world
+        .query::<&LightProbe>()
+        .iter()
+        .next()
+        .map(|v| v.1.clone());
+
     let mut camera_query = world.query::<(&GlobalTransform, &Camera)>();
 
     // TODO: Avoid this allocation
@@ -130,6 +136,8 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             window_width as f32,
             window_height as f32,
         );
+
+        render_pass.set_light_probe(light_probe.as_ref());
 
         let mut directional_lights =
             world.query::<koi_ecs::Without<(&DirectionalLight, &GlobalTransform), &Camera>>();
