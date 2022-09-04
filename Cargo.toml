@@ -11,6 +11,7 @@ members = ["crates/*"]
 default = ["core", "koi_camera_controls"]
 core = ["kapp", "koi_renderer", "koi_transform", "koi_input", "koi_random", "koi_audio"]
 window = []
+network_requests = ["koi_fetch/network_requests"]
 
 [dependencies]
 kapp_platform_common = {path = "../koi2/crates/kapp/kapp_platform_common"}
@@ -19,6 +20,7 @@ kmath = {path = "../koi2/crates/kmath"}
 ktasks = {path = "../koi2/crates/ktasks"}
 klog = {path = "../koi2/crates/klog"}
 
+koi_fetch = {path = "crates/koi_fetch"}
 koi_ecs = {path = "crates/koi_ecs"}
 koi_resources = {path = "crates/koi_resources"}
 koi_events = {path = "crates/koi_events"}

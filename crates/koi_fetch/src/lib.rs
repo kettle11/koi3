@@ -14,7 +14,7 @@ pub async fn fetch_bytes(path: &str) -> Result<Vec<u8>, ()> {
             .map_err(|_| ())?;
         bytes
     } else {
-        std::fs::read(path).map_err(|_| ())?;
+        std::fs::read(path).map_err(|_| ())?
     };
     #[cfg(not(feature = "network_requests"))]
     let contents = std::fs::read(path).map_err(|_| ())?;
