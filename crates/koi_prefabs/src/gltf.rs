@@ -195,7 +195,18 @@ pub(crate) fn finalize_gltf_load(
             };
 
             if unlit {
-                new_material.shader = koi_renderer::Shader::UNLIT;
+                let shader = match (transparent, material.double_sided) {
+                    (false, false) => koi_renderer::Shader::UNLIT,
+                    (false, true) => koi_renderer::Shader::UNLIT_DOUBLE_SIDED,
+                    _ => {
+                        klog::log!("KOI WARNING: Unimplemented material!");
+                        koi_renderer::Shader::UNLIT
+                    }
+                    // (true, false) => Shader::PHYSICALLY_BASED_TRANSPARENT,
+                    // (false, true) => Shader::PHYSICALLY_BASED_DOUBLE_SIDED,
+                    // (true, true) => Shader::PHYSICALLY_BASED_TRANSPARENT_DOUBLE_SIDED,
+                };
+                new_material.shader = shader;
             } else {
                 let shader = match (transparent, material.double_sided) {
                     (false, false) => koi_renderer::Shader::PHYSICALLY_BASED,

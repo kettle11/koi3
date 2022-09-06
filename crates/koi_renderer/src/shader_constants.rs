@@ -7,6 +7,7 @@ impl Shader {
     pub const PHYSICALLY_BASED: Handle<Self> = Handle::from_index(1);
     pub const SKYBOX: Handle<Self> = Handle::from_index(2);
     pub const PHYSICALLY_BASED_DOUBLE_SIDED: Handle<Self> = Handle::from_index(3);
+    pub const UNLIT_DOUBLE_SIDED: Handle<Self> = Handle::from_index(4);
     // pub const PHYSICALLY_BASED_WITH_MORPH: Handle<Self> = Handle::from_index(4);
 }
 
@@ -27,7 +28,7 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
         .new_shader(
             include_str!("shaders_glsl/unlit.glsl"),
             crate::ShaderSettings {
-                faces_to_render: koi_graphics_context::FacesToRender::FrontAndBack,
+                faces_to_render: koi_graphics_context::FacesToRender::Front,
                 blending: None,
                 ..Default::default()
             },
@@ -113,6 +114,17 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
 
     asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED_DOUBLE_SIDED);
 
+    let shader = renderer
+        .new_shader(
+            include_str!("shaders_glsl/unlit.glsl"),
+            crate::ShaderSettings {
+                faces_to_render: koi_graphics_context::FacesToRender::FrontAndBack,
+                blending: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    asset_store.add_and_leak(shader, &Shader::UNLIT_DOUBLE_SIDED);
     /*
     let shader = renderer
         .new_shader(

@@ -51,7 +51,7 @@ async fn load_world(path: String, _settings: ()) -> Option<PrefabLoadResult> {
     let extension = std::path::Path::new(&path)
         .extension()
         .and_then(std::ffi::OsStr::to_str)
-        .expect("Expected image file extension")
+        .expect("Expected file extension for prefab")
         .to_lowercase();
 
     match &*extension {
