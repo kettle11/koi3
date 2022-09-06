@@ -5,6 +5,7 @@ use kmath::*;
 use koi_animation::{PlayingAnimation, TypedAnimationClip};
 use koi_assets::*;
 use koi_ecs::*;
+use koi_renderer::new_texture_from_bytes;
 use koi_resources::*;
 use koi_transform::*;
 
@@ -27,20 +28,11 @@ struct TextureLoadState {
     srgb: Option<Handle<koi_renderer::Texture>>,
 }
 
-// Step 1: Fetch the glTF file off the main thread and ready its data.
-pub(crate) async fn load_gltf(path: String) -> Option<PrefabLoadResult> {
-    let bytes = koi_fetch::fetch_bytes(&path)
-        .await
-        .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
-
-    let s = std::str::from_utf8(&bytes).ok()?;
-    let gltf = <kgltf::GlTf as kgltf::FromJson>::from_json(s)?;
-
+async fn fetch_buffers(path: &str, gltf: &kgltf::GlTf) -> Vec<Option<Vec<u8>>> {
     let mut buffers = Vec::with_capacity(gltf.buffers.len());
     for buffer in &gltf.buffers {
         buffers.push(if let Some(uri) = &buffer.uri {
             let path = std::path::Path::new(&path).parent().unwrap().join(uri);
-            // klog::log!("FETCHING BUFFER!: {:?}", path);
             Some(
                 koi_fetch::fetch_bytes(path.to_str().unwrap())
                     .await
@@ -50,6 +42,42 @@ pub(crate) async fn load_gltf(path: String) -> Option<PrefabLoadResult> {
             None
         })
     }
+    buffers
+}
+
+pub(crate) async fn load_glb(path: String) -> Option<PrefabLoadResult> {
+    let bytes = koi_fetch::fetch_bytes(&path)
+        .await
+        .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
+
+    let glb = kgltf::GLB::from_bytes(&bytes).ok()?;
+
+    let buffers = fetch_buffers(&path, &glb.gltf).await;
+
+    println!("BINARY DATA: {:?}", glb.binary_data.is_some());
+    let mesh_primitive_data =
+        load_mesh_primitive_data(&glb.gltf, glb.binary_data.as_deref(), &buffers).await?;
+
+    Some(super::PrefabLoadResult::GlTf(GlTfLoadResult {
+        path,
+        gltf: glb.gltf,
+        // TODO: Can this copy be avoided?
+        data: glb.binary_data.map(|d| d.into_owned()),
+        mesh_primitive_data,
+        buffers,
+    }))
+}
+
+// Step 1: Fetch the glTF file off the main thread and ready its data.
+pub(crate) async fn load_gltf(path: String) -> Option<PrefabLoadResult> {
+    let bytes = koi_fetch::fetch_bytes(&path)
+        .await
+        .unwrap_or_else(|_| panic!("Failed to open file: {}", path));
+
+    let s = std::str::from_utf8(&bytes).ok()?;
+    let gltf = <kgltf::GlTf as kgltf::FromJson>::from_json(s)?;
+
+    let buffers = fetch_buffers(&path, &gltf).await;
 
     let mesh_primitive_data = load_mesh_primitive_data(&gltf, None, &buffers).await?;
 
@@ -128,6 +156,7 @@ pub(crate) fn finalize_gltf_load(
                             &gltf,
                             &data,
                             &path,
+                            graphics,
                             &mut textures,
                             &mut texture_load_states,
                             true,
@@ -143,6 +172,7 @@ pub(crate) fn finalize_gltf_load(
                             &gltf,
                             &data,
                             &path,
+                            graphics,
                             &mut textures,
                             &mut texture_load_states,
                             false,
@@ -156,6 +186,7 @@ pub(crate) fn finalize_gltf_load(
                     &gltf,
                     &data,
                     &path,
+                    graphics,
                     &mut textures,
                     &mut texture_load_states,
                     false,
@@ -392,6 +423,7 @@ fn get_texture(
     gltf: &kgltf::GlTf,
     data: &Option<&[u8]>,
     path: &str,
+    graphics: &mut koi_graphics_context::GraphicsContext,
     textures: &mut AssetStore<koi_renderer::Texture>,
     texture_load_states: &mut [TextureLoadState],
     srgb: bool,
@@ -420,25 +452,27 @@ fn get_texture(
     } else {
         let buffer_view = &gltf.buffer_views[image.buffer_view.unwrap()];
 
-        let _bytes = &data.unwrap()
+        let bytes = &data.unwrap()
             [buffer_view.byte_offset..buffer_view.byte_offset + buffer_view.byte_length];
-        let _extension = match image.mime_type.as_ref().unwrap() {
+        let extension = match image.mime_type.as_ref().unwrap() {
             kgltf::ImageMimeType::ImageJpeg => "jpeg",
             kgltf::ImageMimeType::ImagePng => "png",
         };
 
-        todo!()
-        /*
-        textures.load_with_data_and_options_and_extension(
-            // Todo: this is likely to be a large allocation. Perhaps an `Arc` should be used instead?
-            bytes.to_vec(),
-            extension.to_string(),
-            koi_renderer::kgraphics::TextureSettings {
-                srgb,
-                ..Default::default()
-            },
+        // TODO: This should be decoded off the main thread.
+
+        textures.add(
+            new_texture_from_bytes(
+                graphics,
+                extension,
+                bytes,
+                koi_graphics_context::TextureSettings {
+                    srgb,
+                    ..Default::default()
+                },
+            )
+            .unwrap(),
         )
-        */
     };
 
     if srgb {

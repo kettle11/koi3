@@ -14,6 +14,8 @@ koi_assets = {path = "../koi_assets"}
 koi_ecs = {path = "../koi_ecs"}
 koi_fetch = {path = "../koi_fetch"}
 koi_transform = {path = "../koi_transform"}
+koi_graphics_context = {path = "../koi_graphics_context"}
+
 
 kmath = {path = "../../../koi2/crates/kmath"}
 klog = {path = "../../../koi2/crates/klog"}

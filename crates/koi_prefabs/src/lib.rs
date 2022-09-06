@@ -57,6 +57,8 @@ async fn load_world(path: String, _settings: ()) -> Option<PrefabLoadResult> {
     match &*extension {
         #[cfg(feature = "gltf")]
         "gltf" => gltf::load_gltf(path).await,
+        #[cfg(feature = "gltf")]
+        "glb" => gltf::load_glb(path).await,
         _ => {
             println!(
                 "Error loading prefab. Unsupported file extension: {extension} for path {path}"
