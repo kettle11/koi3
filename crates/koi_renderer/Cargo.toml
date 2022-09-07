@@ -28,9 +28,11 @@ kapp = {path = "../../../koi2/crates/kapp", default-features=false}
 hdrldr = {version = "0.1.2", optional = true}
 bytemuck = {version = "1.7.3", features = ["extern_crate_alloc"], optional = true}
 
+# TODO: These are needed for now to decode GLBs.
+#[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+imagine = {git="https://github.com/Lokathor/imagine", optional = true, features = ["png", "miniz_oxide"]}
+jpeg-decoder = {version = "0.1.20", default-features = false, optional = true}
+
 [target.'cfg(target_arch="wasm32")'.dependencies]
 kwasm = {path = "../../../koi2/crates/kwasm"}
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-imagine = {git="https://github.com/Lokathor/imagine", optional = true, features = ["png", "miniz_oxide"]}
-jpeg-decoder = {version = "0.1.20", default-features = false, optional = true}
