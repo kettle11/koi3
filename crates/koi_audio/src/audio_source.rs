@@ -51,6 +51,12 @@ pub fn update_audio_sources(
         .iter()
         .next()
     {
+        let q: [f32; 4] = listener_transform.rotation.into();
+        let mut spatial_scene_control = audio_manager
+            .spatial_handle
+            .control::<oddio::SpatialScene, _>();
+        spatial_scene_control.set_listener_rotation(q.into());
+
         for (_, (transform, audio_source)) in world
             .query::<(&koi_transform::GlobalTransform, &mut AudioSource)>()
             .iter()
@@ -113,26 +119,40 @@ pub fn update_audio_sources(
                 sound.set_motion(relative_position, relative_velocity, discontinuity);
             }
 
+            // TODO: This approach to continuosly attempting to initialize placeholder sounds
+            // is not great.
+            // Sound effects / music should skip ahead based on how long it took to load them.
+
+            let mut sounds_to_retain = Vec::new();
             for (sound_handle, looped) in audio_source.to_play.drain(..) {
-                let sound = sounds.get(&sound_handle);
+                if !sounds.is_placeholder(&sound_handle) {
+                    let sound = sounds.get(&sound_handle);
 
-                let spatial_options = oddio::SpatialOptions {
-                    position: transform.position.as_array().into(),
-                    velocity: velocity_meters_per_second.as_array().into(),
-                    radius: 1.0,
-                };
+                    let spatial_options = oddio::SpatialOptions {
+                        position: transform.position.as_array().into(),
+                        velocity: velocity_meters_per_second.as_array().into(),
+                        radius: 1.0,
+                    };
 
-                let oddio_handle = if looped {
-                    let source = oddio::Cycle::new(sound.frames.clone());
-                    OddioHandle::SpatialLooped(spatial_scene_control.play(source, spatial_options))
+                    println!("PLAYING SOUND HERE");
+                    let oddio_handle = if looped {
+                        let source = oddio::Cycle::new(sound.frames.clone());
+                        OddioHandle::SpatialLooped(
+                            spatial_scene_control.play(source, spatial_options),
+                        )
+                    } else {
+                        OddioHandle::Spatial(spatial_scene_control.play(
+                            oddio::FramesSignal::new(sound.frames.clone(), 0.),
+                            spatial_options,
+                        ))
+                    };
+                    audio_source.playing.push(oddio_handle);
                 } else {
-                    OddioHandle::Spatial(spatial_scene_control.play(
-                        oddio::FramesSignal::new(sound.frames.clone(), 0.),
-                        spatial_options,
-                    ))
-                };
-                audio_source.playing.push(oddio_handle);
+                    sounds_to_retain.push((sound_handle, looped));
+                }
             }
+
+            audio_source.to_play.append(&mut sounds_to_retain);
         }
     }
 

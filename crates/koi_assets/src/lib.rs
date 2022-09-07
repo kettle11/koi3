@@ -181,13 +181,13 @@ impl<Asset: AssetTrait> AssetStore<Asset> {
     }
 
     pub fn load(&mut self, path: &str, settings: Asset::Settings) -> Handle<Asset> {
-        if let Some(weak_handle) = self
+        if let Some(handle) = self
             .asset_store_inner
             .path_to_slotmap
             .get(path)
             .and_then(|weak_handle| weak_handle.0.upgrade())
         {
-            weak_handle
+            handle
         } else {
             let slot_map_handle = self
                 .asset_store_inner
