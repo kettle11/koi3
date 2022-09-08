@@ -42,6 +42,8 @@ fn main() {
                 time: 0.0,
                 entity_mapping: vec![Some(e)],
                 animation,
+                looped: true,
+                end_time: 1.0,
             }],
             animations: Default::default(),
         },));

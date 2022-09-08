@@ -51,6 +51,7 @@ impl WorldClonableTrait for AnimationPlayer {
                         .collect(),
                     animation: p.animation.clone(),
                     looped: p.looped,
+                    end_time: p.end_time,
                 })
                 .collect(),
             animations,
@@ -59,19 +60,37 @@ impl WorldClonableTrait for AnimationPlayer {
 }
 
 impl AnimationPlayer {
-    pub fn play_animation(&mut self, name: &str, looped: bool) {
+    /// Used to set the time of or start a running animation.
+    pub fn start_or_update_animation(
+        &mut self,
+        name: &str,
+        looped: bool,
+        // A percent of the total animation time
+        start_time: Option<f32>,
+        // A percent of the total animaton time.
+        // This can be used to make an animation end early.
+        end_time: Option<f32>,
+    ) {
         if let Some((mapping, animation)) = self.animations.get(name) {
-            // Only play this animation if it's not already being played.
-            if !self
+            if let Some(p) = self
                 .playing_animations
-                .iter()
-                .any(|p| p.animation == *animation)
+                .iter_mut()
+                .find(|p| p.animation == *animation)
             {
+                if let Some(start_time) = start_time {
+                    p.time = start_time;
+                }
+                if let Some(end_time) = end_time {
+                    p.end_time = end_time;
+                }
+                p.looped = looped;
+            } else {
                 self.playing_animations.push(PlayingAnimation {
-                    time: 0.0,
+                    time: start_time.unwrap_or(0.0),
                     // TODO: Figure out how to remove this Vec clone
                     entity_mapping: mapping.clone(),
                     animation: animation.clone(),
+                    end_time: end_time.unwrap_or(1.0),
                     looped,
                 })
             }
@@ -93,12 +112,16 @@ impl AnimationPlayer {
 
             let animation = animations.get(&playing_animation.animation);
 
-            playing_animation.time += time_seconds;
-            let done = !playing_animation.looped && playing_animation.time > animation.length;
+            let mut current_time = playing_animation.time * animation.length;
+            let end_time = playing_animation.end_time * animation.length;
+
+            current_time += time_seconds;
+            let done = !playing_animation.looped && current_time >= end_time;
             if done {
-                playing_animation.time = animation.length;
+                current_time = end_time;
             }
-            playing_animation.time %= animation.length;
+            current_time %= end_time;
+            playing_animation.time = current_time / animation.length;
 
             for animation_clip in animation.animation_clips.iter() {
                 if let Some(Some(entity)) = playing_animation
@@ -120,6 +143,7 @@ impl AnimationPlayer {
 
 pub struct PlayingAnimation {
     pub time: f32,
+    pub end_time: f32,
     // pub weight: f32,
     /// Let the [Animation] know which [koi_ecs::Entity]s to animate.
     pub entity_mapping: Vec<Option<koi_ecs::Entity>>,
