@@ -42,10 +42,6 @@ pub fn update_audio_sources(
     let mut sounds = resources.get::<AssetStore<Sound>>();
     let time = resources.get::<koi_time::Time>();
 
-    let mut spatial_scene_control = audio_manager
-        .spatial_handle
-        .control::<oddio::SpatialScene, _>();
-
     if let Some((_, (listener_transform, listener))) = world
         .query::<(&koi_transform::GlobalTransform, &mut AudioListener)>()
         .iter()
@@ -129,8 +125,8 @@ pub fn update_audio_sources(
                     let sound = sounds.get(&sound_handle);
 
                     let spatial_options = oddio::SpatialOptions {
-                        position: transform.position.as_array().into(),
-                        velocity: velocity_meters_per_second.as_array().into(),
+                        position: relative_position.as_array().into(),
+                        velocity: relative_velocity.as_array().into(),
                         radius: 1.0,
                     };
 

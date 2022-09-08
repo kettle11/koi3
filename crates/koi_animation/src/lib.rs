@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use koi_ecs::WorldClonableTrait;
 
 pub trait InterpolateTrait {
@@ -20,10 +22,22 @@ pub mod animation_curves {
 
 pub struct AnimationPlayer {
     pub playing_animations: Vec<PlayingAnimation>,
+    /// The value is th
+    pub animations: HashMap<String, (Vec<Option<koi_ecs::Entity>>, koi_assets::Handle<Animation>)>,
 }
 
 impl WorldClonableTrait for AnimationPlayer {
     fn clone_with_context(&self, entity_migrator: &koi_ecs::EntityMigrator) -> Self {
+        let mut animations = HashMap::new();
+        animations.reserve(self.animations.len());
+        for (key, animation) in self.animations.iter() {
+            let mapping = animation
+                .0
+                .iter()
+                .filter_map(|e| e.map(|e| entity_migrator.migrate(e)))
+                .collect();
+            animations.insert(key.clone(), (mapping, animation.1.clone()));
+        }
         Self {
             playing_animations: self
                 .playing_animations
@@ -36,23 +50,54 @@ impl WorldClonableTrait for AnimationPlayer {
                         .filter_map(|e| e.map(|e| entity_migrator.migrate(e)))
                         .collect(),
                     animation: p.animation.clone(),
+                    looped: p.looped,
                 })
                 .collect(),
+            animations,
         }
     }
 }
 
 impl AnimationPlayer {
+    pub fn play_animation(&mut self, name: &str, looped: bool) {
+        if let Some((mapping, animation)) = self.animations.get(name) {
+            // Only play this animation if it's not already being played.
+            if !self
+                .playing_animations
+                .iter()
+                .any(|p| p.animation == *animation)
+            {
+                self.playing_animations.push(PlayingAnimation {
+                    time: 0.0,
+                    // TODO: Figure out how to remove this Vec clone
+                    entity_mapping: mapping.clone(),
+                    animation: animation.clone(),
+                    looped,
+                })
+            }
+        } else {
+            println!("WARNING: No such animation: {name}")
+        }
+    }
+
     pub fn advance_time(
         &mut self,
         world: &koi_ecs::World,
         animations: &koi_assets::AssetStore<Animation>,
         time_seconds: f32,
     ) {
-        for playing_animation in self.playing_animations.iter_mut() {
+        let mut i = self.playing_animations.len();
+        while i > 0 {
+            i -= 1;
+            let playing_animation = &mut self.playing_animations[i];
+
             let animation = animations.get(&playing_animation.animation);
 
             playing_animation.time += time_seconds;
+            let done = !playing_animation.looped && playing_animation.time > animation.length;
+            if done {
+                playing_animation.time = animation.length;
+            }
             playing_animation.time %= animation.length;
 
             for animation_clip in animation.animation_clips.iter() {
@@ -65,6 +110,10 @@ impl AnimationPlayer {
                     }
                 }
             }
+
+            if done {
+                self.playing_animations.swap_remove(i);
+            }
         }
     }
 }
@@ -75,6 +124,7 @@ pub struct PlayingAnimation {
     /// Let the [Animation] know which [koi_ecs::Entity]s to animate.
     pub entity_mapping: Vec<Option<koi_ecs::Entity>>,
     pub animation: koi_assets::Handle<Animation>,
+    pub looped: bool,
 }
 
 /// An [Animation] represents a group of properties on [koi_ecs::Entity]s that are all animated together.
@@ -172,6 +222,7 @@ impl<T> TypedAnimationClipTrait for TypedAnimationClip<T> {
             let v1 = &self.values[next_index];
             let amount = ((time - k0) / (k1 - k0)).clamp(0.0, 1.0);
             let amount = (animation_curve)(amount);
+
             (self.set_property)(entity, v0, v1, amount)
         } else {
             (self.set_property)(entity, v0, v0, 0.0)

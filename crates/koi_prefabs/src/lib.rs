@@ -28,7 +28,7 @@ impl Prefab {
         let mut top_level_entities = Vec::new();
         for (e, _) in self
             .0
-            .query::<koi_ecs::Without<&mut koi_transform::Transform, &koi_ecs::Child>>()
+            .query::<koi_ecs::Without<(), &koi_ecs::Child>>()
             .iter()
         {
             top_level_entities.push(e);

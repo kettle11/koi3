@@ -1,4 +1,4 @@
-//! This example demonstrates how to programatically 
+//! This example demonstrates how to programatically
 //! construct an animation. Normally this sort of animation is laoded from a
 //! 3D asset like a glTF.
 use koi3::*;
@@ -43,6 +43,7 @@ fn main() {
                 entity_mapping: vec![Some(e)],
                 animation,
             }],
+            animations: Default::default(),
         },));
 
         move |event, _world, _resources| match event {

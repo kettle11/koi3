@@ -2,7 +2,7 @@ use crate::{Prefab, PrefabLoadResult};
 
 use kgltf::*;
 use kmath::*;
-use koi_animation::{PlayingAnimation, TypedAnimationClip};
+use koi_animation::TypedAnimationClip;
 use koi_assets::*;
 use koi_ecs::*;
 use koi_renderer::new_texture_from_bytes;
@@ -283,14 +283,18 @@ pub(crate) fn finalize_gltf_load(
         )
     }
 
+    let mut model_animations = std::collections::HashMap::new();
+
+    let mut first_key = String::new();
+
     // Initialize animations.
-    for animation in gltf.animations.iter() {
+    for (index, gltf_animation) in gltf.animations.iter().enumerate() {
         let mut animation_clips = Vec::new();
         let mut associated_entities = Vec::new();
 
-        for channel in animation.channels.iter() {
+        for channel in gltf_animation.channels.iter() {
             if let Some(node) = channel.target.node {
-                let sampler = &animation.samplers[channel.sampler];
+                let sampler = &gltf_animation.samplers[channel.sampler];
 
                 let timestamp_accessor_index = sampler.input;
                 let value_accessor_index = sampler.output;
@@ -402,14 +406,27 @@ pub(crate) fn finalize_gltf_load(
         }
 
         let animation = koi_animation::Animation::new(animation_clips);
-
         let animation_handle = animations.add(animation);
+        let name = gltf_animation
+            .name
+            .clone()
+            .unwrap_or_else(|| index.to_string());
+        if first_key.is_empty() {
+            first_key = name.clone()
+        }
+        model_animations.insert(name, (associated_entities, animation_handle));
+    }
+
+    if !model_animations.is_empty() {
+        println!("ANIMATION NAME: {:?}", first_key);
+        // let (entity_mapping, animation_handle) = model_animations.get(&first_key).unwrap();
         let _ = new_world.spawn((koi_animation::AnimationPlayer {
-            playing_animations: vec![PlayingAnimation {
-                time: 0.0,
-                animation: animation_handle,
-                entity_mapping: associated_entities,
-            }],
+            playing_animations: Vec::new(), /*vec![PlayingAnimation {
+                                                time: 0.0,
+                                                animation: animation_handle.clone(),
+                                                entity_mapping: entity_mapping.clone(),
+                                            }],*/
+            animations: model_animations,
         },));
     }
 

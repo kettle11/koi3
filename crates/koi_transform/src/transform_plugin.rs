@@ -19,7 +19,7 @@ fn add_global_transform_recursive(
     let new_transform = crate::Transform::from_mat4(new_matrix);
     commands.insert_one(entity, crate::GlobalTransform(new_transform));
     for child in world.iterate_children(entity) {
-        add_global_transform_recursive(world, commands, new_matrix, child).unwrap();
+        add_global_transform_recursive(world, commands, new_matrix, child);
     }
 
     Some(())

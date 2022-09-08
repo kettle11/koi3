@@ -61,6 +61,44 @@ impl Camera {
         self.projection_mode
             .to_mat4((width * view_width) / (height * view_height))
     }
+
+    /// Pass in view coordinates with 0,0 in the upper left and view_width, view_height in the bottom right.
+    /// Creates a ray with its origin on the near clipping plane.
+    pub fn view_to_ray(
+        &self,
+        transform: &koi_transform::Transform,
+        x: f32,
+        y: f32,
+        view_width: f32,
+        view_height: f32,
+    ) -> kmath::Ray3 {
+        use kmath::Extend;
+        let normalized = kmath::Vec2::new(x / view_width, y / view_height);
+        
+        // Convert to OpenGL coordinate space which is -1,-1 is bottom left, 1,1 is upper right
+        let gl_space = (normalized * 2.0 + kmath::Vec2::new(-1.0, -1.0))
+            .mul_by_component(kmath::Vec2::new(1.0, -1.0));
+
+        let transform_matrix =
+            transform.local_to_world() * self.projection_matrix(view_width, view_height).inversed();
+
+        let gl_space_near = gl_space.extend(-1.0).extend(1.0);
+        let gl_space_far = gl_space.extend(2.0).extend(1.0);
+
+        let world_space_near = transform_matrix * gl_space_near;
+        let world_space_far = transform_matrix * gl_space_far;
+
+        let world_space_near = world_space_near.xyz() / world_space_near.w;
+        let world_space_far = world_space_far.xyz() / world_space_far.w;
+
+        let mut direction = -(world_space_far - world_space_near).normalized();
+
+        if let ProjectionMode::Orthographic { .. } = self.projection_mode {
+            direction *= -1.0
+        }
+
+        kmath::Ray3::new(world_space_near, direction)
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

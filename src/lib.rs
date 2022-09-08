@@ -23,6 +23,8 @@ pub use koi_assets::*;
 pub use koi_events::Event;
 pub use koi_prefabs::*;
 
+pub use kapp;
+
 #[cfg(feature = "koi_renderer")]
 pub use koi_renderer::*;
 

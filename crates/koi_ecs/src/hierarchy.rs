@@ -4,6 +4,11 @@ pub struct Child {
     next_sibling: hecs::Entity,
     previous_sibling: hecs::Entity,
 }
+impl Child {
+    pub fn parent(&self) -> hecs::Entity {
+        self.parent
+    }
+}
 
 impl crate::WorldClonableTrait for Child {
     fn clone_with_context(&self, entity_migrator: &crate::EntityMigrator) -> Self {
