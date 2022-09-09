@@ -129,7 +129,7 @@ impl AnimationPlayer {
                     .get(animation_clip.entity_mapping_index)
                 {
                     if let Ok(entity) = world.entity(*entity) {
-                        animation_clip.animate_entity(&entity, playing_animation.time);
+                        animation_clip.animate_entity(&entity, current_time);
                     }
                 }
             }
