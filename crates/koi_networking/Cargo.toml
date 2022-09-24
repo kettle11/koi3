@@ -1,0 +1,16 @@
+[package]
+name = "koi_networking"
+version = "0.1.0"
+edition = "2021"
+
+
+[features]
+default = ["room"]
+room = []
+udp = []
+
+[dependencies]
+webrtc-unreliable = {version = "0.5.3", optional = true}
+
+[target.'cfg(target_arch="wasm32")'.dependencies]
+kwasm = {path = "../workspace/koi2/crates/kwasm", optional = true}
