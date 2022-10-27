@@ -119,21 +119,24 @@ impl HierachyExtension for hecs::World {
     fn despawn_hierarchy(&mut self, parent: hecs::Entity) -> Result<(), hecs::NoSuchEntity> {
         // Update the parent
         self.unparent(parent)?;
-        self.despawn(parent)?;
 
         // Despawn all children and their siblings recursively.
         if let Ok(hierarchy_node) = self.get::<&mut Parent>(parent).map(|h| h.clone()) {
             if let Some(start_child) = hierarchy_node.arbitrary_child {
                 let mut current_child = start_child;
                 loop {
+                    let next_child = self.get::<&Child>(current_child).unwrap().next_sibling;
                     self.despawn_hierarchy(current_child)?;
-                    current_child = self.get::<&Child>(current_child).unwrap().next_sibling;
-                    if start_child == current_child {
+                    if start_child == next_child {
                         break;
                     }
+                    current_child = next_child;
                 }
             }
         }
+
+        self.despawn(parent)?;
+
         Ok(())
     }
 

@@ -16,5 +16,8 @@ out vec4 color_out;
 void main()
 {
   vec4 base_color = (f_vertex_color * p_base_color * texture(sp0_base_color_texture, f_texture_coordinates));
+  if (base_color.a == 0.0) {
+    discard;
+  }
   color_out = base_color;
 }

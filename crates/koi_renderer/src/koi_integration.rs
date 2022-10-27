@@ -137,6 +137,7 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             window_height as f32,
         );
 
+        klog::log!("HERE IN RENDERER");
         render_pass.set_light_probe(light_probe.as_ref());
 
         let mut directional_lights =

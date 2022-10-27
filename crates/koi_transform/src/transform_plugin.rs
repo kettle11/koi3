@@ -25,7 +25,7 @@ fn add_global_transform_recursive(
     Some(())
 }
 
-fn update_global_transforms(
+pub fn update_global_transforms(
     _event: &koi_events::Event,
     world: &mut koi_ecs::World,
     resources: &mut koi_resources::Resources,

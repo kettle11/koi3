@@ -13,6 +13,7 @@ impl Mesh {
     pub const CONE: Handle<Self> = Handle::from_index(7);
     pub const CUBE_MAP_CUBE: Handle<Self> = Handle::from_index(8);
     pub const CYLINDER: Handle<Self> = Handle::from_index(9);
+    pub const VERTICAL_CIRCLE: Handle<Self> = Handle::from_index(10);
 }
 
 impl AssetTrait for Mesh {
@@ -41,7 +42,7 @@ pub fn initialize_meshes(
     let mesh_data = ring(0.1, 1.0, 8, 20);
     meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::RING);
 
-    let mesh_data = triangle();
+    let mesh_data = circle(-Vec3::Z, 3, 0.5);
     meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::TRIANGLE);
 
     let mesh_data = cone(0.7, 1.0, 20);
@@ -52,6 +53,9 @@ pub fn initialize_meshes(
 
     let mesh_data = cylinder(Vec3::ZERO, -Vec3::Z, 10, 0.5);
     meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::CYLINDER);
+
+    let mesh_data = circle(-Vec3::Z, 30, 0.5);
+    meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::VERTICAL_CIRCLE);
     meshes
 }
 
@@ -395,9 +399,9 @@ pub fn cube_map_cube() -> MeshData {
 /// A triangle for debugging purposes
 pub fn triangle() -> MeshData {
     let positions = vec![
+        [-0.866, -0.5, 0.0].into(),
+        [0.866, -0.5, 0.0].into(),
         [0.0, 1.0, 0.0].into(),
-        [1.0, -1.0, 0.0].into(),
-        [-1.0, -1.0, 0.0].into(),
     ];
 
     let texture_coordinates = vec![[1.0, 1.0].into(), [0.5, 1.0].into(), [0.0, 0.0].into()];
@@ -686,6 +690,56 @@ pub fn cylinder(start: Vec3, end: Vec3, resolution: u32, radius: f32) -> MeshDat
 
         if i > 1 {
             indices.push([start, previous0, new_vertex]);
+        }
+        previous0 = new_vertex;
+    }
+
+    MeshData {
+        positions,
+        indices,
+        normals,
+        texture_coordinates: uvs,
+        ..Default::default()
+    }
+}
+
+/// A hollow cylinder.
+pub fn circle(dir: Vec3, resolution: u32, radius: f32) -> MeshData {
+    let mut positions = Vec::with_capacity(resolution as usize + 1);
+    let mut normals = Vec::with_capacity(positions.capacity());
+    let uvs = Vec::with_capacity(positions.capacity());
+
+    let mut indices: Vec<[u32; 3]> = Vec::with_capacity(resolution as usize * 3);
+
+    let center = Vec3::ZERO;
+    let other_dir = if dir.abs() != Vec3::X {
+        Vec3::X
+    } else {
+        Vec3::Z
+    };
+    let right = dir.cross(other_dir).normalized() * radius;
+    let forward = dir.cross(right).normalized() * radius;
+
+    let increment = core::f32::consts::PI * 2.0 / resolution as f32;
+
+    // Top
+    let start = positions.len() as u32;
+    let normal = dir;
+    let mut previous0 = 0;
+    let mut current_angle = 0.;
+
+    for i in 0..resolution {
+        current_angle += increment;
+
+        let new_vertex = positions.len() as u32;
+        let (sin, cos) = current_angle.sin_cos();
+        let offset = right * cos + forward * sin;
+
+        positions.push(center + offset);
+        normals.push(normal);
+
+        if i > 1 {
+            indices.push([new_vertex, previous0, start]);
         }
         previous0 = new_vertex;
     }

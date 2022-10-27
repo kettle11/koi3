@@ -3,6 +3,7 @@ use koi_graphics_context::BufferDataTrait;
 pub struct Shader {
     pub pipeline: koi_graphics_context::Pipeline,
     pub(crate) shader_render_properties: ShaderRenderProperties,
+    pub shader_settings: ShaderSettings,
 }
 
 pub const MAX_BOUND_LIGHTS: usize = 100;
@@ -172,6 +173,7 @@ impl crate::Renderer {
         Ok(Shader {
             pipeline,
             shader_render_properties,
+            shader_settings,
         })
     }
 }

@@ -1,5 +1,6 @@
 use crate::{Shader, ShaderSettings};
 use koi_assets::Handle;
+use koi_graphics_context::BlendFactor;
 use koi_resources::Resources;
 
 impl Shader {
@@ -8,6 +9,8 @@ impl Shader {
     pub const SKYBOX: Handle<Self> = Handle::from_index(2);
     pub const PHYSICALLY_BASED_DOUBLE_SIDED: Handle<Self> = Handle::from_index(3);
     pub const UNLIT_DOUBLE_SIDED: Handle<Self> = Handle::from_index(4);
+    pub const UNLIT_TRANSPARENT: Handle<Self> = Handle::from_index(5);
+
     // pub const PHYSICALLY_BASED_WITH_MORPH: Handle<Self> = Handle::from_index(4);
 }
 
@@ -139,6 +142,18 @@ pub fn initialize_shaders(renderer: &mut crate::Renderer, resources: &mut Resour
 
     asset_store.add_and_leak(shader, &Shader::PHYSICALLY_BASED_WITH_MORPH);
     */
+
+    let shader = renderer
+        .new_shader(
+            include_str!("shaders_glsl/unlit.glsl"),
+            crate::ShaderSettings {
+                faces_to_render: koi_graphics_context::FacesToRender::FrontAndBack,
+                blending: Some((BlendFactor::One, BlendFactor::OneMinusSourceAlpha)),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    asset_store.add_and_leak(shader, &Shader::UNLIT_TRANSPARENT);
 
     resources.add(asset_store);
 }

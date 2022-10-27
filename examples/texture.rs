@@ -27,7 +27,6 @@ fn main() {
         let new_material = resources.get::<AssetStore<Material>>().add(Material {
             shader: Shader::UNLIT,
             base_color_texture: Some(new_texture),
-            perceptual_roughness: 0.05,
             ..Default::default()
         });
 

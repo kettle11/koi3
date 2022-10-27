@@ -1,16 +1,26 @@
 use koi3::*;
+use koi_camera_controls::CameraControls;
 
 fn main() {
-    App::default().setup_and_run(|world, _resources| {
+    App::default().setup_and_run(|world, resources| {
         world.spawn((
             Transform::new().with_position(Vec3::Z * 2.0),
             Camera {
                 clear_color: Some(Color::ORANGE),
                 ..Default::default()
             },
+            CameraControls::new(),
         ));
 
-        world.spawn((Transform::new(), Mesh::VERTICAL_QUAD, Material::UNLIT));
+        // world.spawn((Mesh::SPHERE, Material::UNLIT, Transform::new()));
+
+        world.spawn((Transform::new(), Mesh::VERTICAL_CIRCLE, Material::UNLIT));
+
+        world.spawn((
+            Transform::new().with_position(Vec3::Y),
+            Mesh::VERTICAL_QUAD,
+            Material::UNLIT,
+        ));
 
         // This function will run for major events liked a FixedUpdate occuring
         // and for any input events from the application.

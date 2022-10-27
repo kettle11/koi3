@@ -435,8 +435,60 @@ impl<'a> RenderPassExecutor<'a> {
             &mut self.this_render_pass.meshes_to_draw,
         );
 
+        // TODO: This is a bad hack to sepearate out transparent things
+        let mut transparent = Vec::new();
+
         // Renders batches of meshes that share the same material.
         for (material_handle, mesh_handle, local_to_world_matrix) in meshes_to_draw.iter() {
+            if self
+                .shaders
+                .get(&self.materials.get(material_handle).shader)
+                .shader_settings
+                .blending
+                .is_some()
+            {
+                transparent.push((
+                    material_handle.clone(),
+                    mesh_handle.clone(),
+                    *local_to_world_matrix,
+                ));
+                continue;
+            }
+            let mut change_material = false;
+            let mut change_mesh = None;
+
+            if Some(material_handle) != current_material {
+                // Changing materials, draw the current mesh group.
+                self.render_group();
+                change_material = true;
+            }
+
+            if Some(mesh_handle) != current_mesh {
+                if let Some(gpu_mesh) = &self.meshes.get(mesh_handle).gpu_mesh {
+                    // Changing meshes, draw the current mesh group.
+                    self.render_group();
+                    change_mesh = Some(gpu_mesh);
+                }
+            }
+
+            if change_material {
+                let material = self.materials.get(material_handle);
+                let shader = self.shaders.get(&material.shader);
+                self.current_material_and_shader = Some((material, shader));
+                current_material = Some(material_handle);
+            }
+
+            if let Some(gpu_mesh) = change_mesh {
+                self.current_gpu_mesh = Some(gpu_mesh);
+                current_mesh = Some(mesh_handle);
+            }
+
+            self.this_render_pass
+                .local_to_world_matrices
+                .push(*local_to_world_matrix);
+        }
+
+        for (material_handle, mesh_handle, local_to_world_matrix) in transparent.iter() {
             let mut change_material = false;
             let mut change_mesh = None;
 

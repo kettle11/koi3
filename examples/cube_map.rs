@@ -55,7 +55,7 @@ fn main() {
 
             // world.spawn((Transform::new(), Mesh::SPHERE, Material::UNLIT));
 
-            world.spawn((Mesh::SPHERE, Material::PHYSICALLY_BASED, Transform::new()));
+            //  world.spawn((Mesh::SPHERE, Material::PHYSICALLY_BASED, Transform::new()));
 
             let skybox_spherical_harmonics = resources
                 .get::<AssetStore<Shader>>()
@@ -121,9 +121,9 @@ fn main() {
             */
 
             let mut prefabs = resources.get::<AssetStore<Prefab>>();
-            let prefab_handle = prefabs.load("assets/cat_statue/scene.gltf", ());
+            let prefab_handle = prefabs.load("assets/magical_gyroscope.glb", ());
 
-            let size = 3;
+            let size = 1;
             let spacing = 4.0;
 
             for i in 0..size {
@@ -138,6 +138,7 @@ fn main() {
 
             struct Rotator;
 
+            /*
             let mut parent_cube = world.spawn((
                 Rotator,
                 Mesh::CUBE,
@@ -155,22 +156,35 @@ fn main() {
                 let _ = world.set_parent(parent_cube, child_cube);
                 parent_cube = child_cube;
             }
+            */
 
             let sound = resources
                 .get::<AssetStore<Sound>>()
                 .load("assets/bell.wav", Default::default());
             let mut audio_source = AudioSource::new();
-            let _ = world.insert_one(parent_cube, audio_source);
-            let audio_source_entity = parent_cube;
+            //  let _ = world.insert_one(parent_cube, audio_source);
+            //  let audio_source_entity = parent_cube;
 
             move |event, world, resources| {
                 match event {
                     Event::FixedUpdate => {
                         if resources.get_mut::<Input>().key_down(Key::Space) {
+                            for (_, animation_player) in
+                                world.query::<&mut AnimationPlayer>().iter()
+                            {
+                                animation_player.start_or_update_animation(
+                                    "gyro_spin",
+                                    true,
+                                    None,
+                                    None,
+                                );
+                            }
+                            /*
                             world
                                 .get::<&mut AudioSource>(audio_source_entity)
                                 .unwrap()
                                 .play_sound(&sound);
+                                */
                         }
 
                         // When a key is pressed reload all shaders that were loaded from a path.

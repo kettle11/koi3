@@ -76,6 +76,7 @@ pub struct CommandBuffer {
     pipelines: Vec<Pipeline>,
     buffers: Vec<BufferUntyped>,
     textures: Vec<Texture>,
+    cube_maps: Vec<CubeMap>,
 }
 
 impl CommandBuffer {
@@ -86,6 +87,7 @@ impl CommandBuffer {
             commands: Vec::new(),
             buffers: Vec::new(),
             textures: Vec::new(),
+            cube_maps: Vec::new(),
         }
     }
 
@@ -105,6 +107,7 @@ impl CommandBuffer {
         self.pipelines.clear();
         self.buffers.clear();
         self.textures.clear();
+        self.cube_maps.clear();
     }
 }
 
@@ -151,6 +154,9 @@ impl<'a> RenderPass<'a> {
                 .map(|p| p.inner().program_index),
             "`vertex attribute` is from a pipeline that is not currently bound."
         );
+        if let Some(buffer) = buffer {
+            self.command_buffer.buffers.push(buffer.untyped());
+        }
         self.command_buffer.commands.push(Command::SetAttribute {
             attribute: vertex_attribute.untyped(),
             buffer: buffer.map(|b| b.untyped()),
@@ -198,6 +204,10 @@ impl<'a> RenderPass<'a> {
             assert_eq!(buffer.handle.inner().buffer_usage, BufferUsage::Data);
         }
 
+        if let Some(buffer) = buffer {
+            self.command_buffer.buffers.push(buffer.untyped());
+        }
+
         // TODO: Check the uniform block sizes when Draw is called
 
         self.command_buffer.commands.push(Command::SetUniformBlock {
@@ -217,6 +227,7 @@ impl<'a> RenderPass<'a> {
 
     pub fn set_cube_map(&mut self, texture_unit: u8, cube_map: &CubeMap) {
         assert!(texture_unit < 16);
+        self.command_buffer.cube_maps.push(cube_map.clone());
         self.command_buffer.commands.push(Command::SetCubeMap {
             texture_unit,
             cube_map_index: cube_map.0.inner().index,
