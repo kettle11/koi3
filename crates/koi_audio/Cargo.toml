@@ -5,7 +5,7 @@ edition = "2021"
 
  
 [dependencies]
-oddio = {git = "https://github.com/Ralith/oddio/"}
+oddio = "0.6.2"
 kaudio = {path = "../../../koi2/crates/kaudio"}
 kmath = {path = "../../../koi2/crates/kmath"}
 

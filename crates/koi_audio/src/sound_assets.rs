@@ -23,26 +23,7 @@ pub fn initialize_sound_assets(resources: &mut koi_resources::Resources) {
             .extension()
             .and_then(std::ffi::OsStr::to_str);
 
-        match extension {
-            Some("wav") => {
-                let mut sound = kaudio::load_wav_from_bytes(&bytes).unwrap();
-
-                // Apply scale
-                sound.data.iter_mut().for_each(|s| *s *= settings.scale);
-
-                if sound.channels > 1 {
-                    let channels = sound.channels as f32;
-                    // Reduce the sound to mono by taking the average of the channels.
-                    sound.data = sound
-                        .data
-                        .chunks(sound.channels as usize)
-                        .map(|d| d.iter().sum::<f32>() / channels)
-                        .collect();
-                }
-                Some(Sound::new_from_iter(sound.data.into_iter()))
-            }
-            _ => panic!("Unsupported audio format"),
-        }
+        Sound::from_file_bytes(&bytes, extension, settings.scale)
     }
     resources.add(koi_assets::AssetStore::new_with_load_functions(
         Sound::new_from_slice(&[0.0]),

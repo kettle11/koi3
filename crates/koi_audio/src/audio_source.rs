@@ -111,16 +111,19 @@ pub fn update_audio_sources(
             listener.previous_velocity = Some(listener_velocity_meters_per_second);
             listener.previous_position = Some(listener_transform.position);
 
-            for sound in audio_source.playing.iter_mut() {
+            audio_source.playing.retain_mut(|sound| {
                 sound.set_motion(relative_position, relative_velocity, discontinuity);
-            }
+                if sound.is_done() {
+                    sound.stop();
+                }
+                !sound.is_done()
+            });
 
             // TODO: This approach to continuosly attempting to initialize placeholder sounds
             // is not great.
             // Sound effects / music should skip ahead based on how long it took to load them.
 
-            let mut sounds_to_retain = Vec::new();
-            for (sound_handle, looped) in audio_source.to_play.drain(..) {
+            audio_source.to_play.retain_mut(|(sound_handle, looped)| {
                 if !sounds.is_placeholder(&sound_handle) {
                     let sound = sounds.get(&sound_handle);
 
@@ -130,25 +133,24 @@ pub fn update_audio_sources(
                         radius: 1.0,
                     };
 
-                    println!("PLAYING SOUND HERE");
-                    let oddio_handle = if looped {
+                    let oddio_handle = if *looped {
                         let source = oddio::Cycle::new(sound.frames.clone());
                         OddioHandle::SpatialLooped(
                             spatial_scene_control.play(source, spatial_options),
                         )
                     } else {
+                        println!("PLAYING AUDIO-----------");
                         OddioHandle::Spatial(spatial_scene_control.play(
                             oddio::FramesSignal::new(sound.frames.clone(), 0.),
                             spatial_options,
                         ))
                     };
                     audio_source.playing.push(oddio_handle);
+                    false
                 } else {
-                    sounds_to_retain.push((sound_handle, looped));
+                    true
                 }
-            }
-
-            audio_source.to_play.append(&mut sounds_to_retain);
+            });
         }
     }
 
@@ -181,9 +183,18 @@ impl OddioHandle {
     }
 
     fn stop(&mut self) {
-        match self {
+        let control = match self {
             OddioHandle::Spatial(s) => s.control::<oddio::Stop<_>, _>(),
             OddioHandle::SpatialLooped(s) => s.control::<oddio::Stop<_>, _>(),
         };
+        control.stop();
+    }
+
+    fn is_done(&mut self) -> bool {
+        let control = match self {
+            OddioHandle::Spatial(s) => s.control::<oddio::Stop<_>, _>(),
+            OddioHandle::SpatialLooped(s) => s.control::<oddio::Stop<_>, _>(),
+        };
+        control.is_stopped()
     }
 }
