@@ -32,6 +32,9 @@ async fn fetch_buffers(path: &str, gltf: &kgltf::GlTf) -> Vec<Option<Vec<u8>>> {
     let mut buffers = Vec::with_capacity(gltf.buffers.len());
     for buffer in &gltf.buffers {
         buffers.push(if let Some(uri) = &buffer.uri {
+            if uri.starts_with("data:") {
+                panic!("THIS IS AN UNSUPPORTED DATA URI");
+            }
             let path = std::path::Path::new(&path).parent().unwrap().join(uri);
             Some(
                 koi_fetch::fetch_bytes(path.to_str().unwrap())
