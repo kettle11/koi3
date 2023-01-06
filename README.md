@@ -1,3 +1,5 @@
+## This repository is an experimental rework of the koi engine.
+
 # koi
 
 `koi` is a game engine that's fun, quick to build, and easy to understand.
