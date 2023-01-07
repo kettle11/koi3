@@ -7,6 +7,29 @@ use koi_assets::*;
 use koi_resources::Resources;
 use koi_transform::GlobalTransform;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+/// Used to configure which layers [Entity]s will render on.
+pub struct RenderFlags(usize);
+
+impl RenderFlags {
+    pub const NONE: RenderFlags = RenderFlags(0);
+    pub const DEFAULT: RenderFlags = RenderFlags(1 << 0);
+    pub const DO_NOT_CAST_SHADOWS: RenderFlags = RenderFlags(1 << 1);
+    pub const IGNORE_CULLING: RenderFlags = RenderFlags(1 << 2);
+    pub const USER_INTERFACE: RenderFlags = RenderFlags(1 << 8);
+
+    pub const fn with_layer(mut self, layer: RenderFlags) -> Self {
+        self.0 |= layer.0;
+        self
+    }
+
+    /// This will return true if *any* of the other `RenderLayer`'s layers are
+    /// included in this layer.
+    pub const fn includes_layer(&self, layer: RenderFlags) -> bool {
+        self.0 & layer.0 != 0
+    }
+}
+
 pub struct InitialSettings {
     pub name: String,
     pub window_width: usize,
@@ -120,16 +143,18 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
         .next()
         .map(|v| v.1.clone());
 
-    let mut camera_query = world.query::<(&GlobalTransform, &Camera)>();
+    let mut camera_query = world.query::<(&GlobalTransform, &Camera, Option<&RenderFlags>)>();
 
     // TODO: Avoid this allocation
     let mut cameras = Vec::new();
 
     for (t, c) in camera_query.iter() {
-        cameras.push((t, c));
+        cameras.push((t, (c.0, c.1, c.2.cloned().unwrap_or(RenderFlags::DEFAULT))));
     }
 
-    for (_, (camera_transform, camera)) in cameras {
+    cameras.sort_by_key(|c| c.1 .2);
+
+    for (_, (camera_transform, camera, camera_render_flags)) in cameras {
         let mut render_pass = renderer.begin_render_pass(
             camera,
             camera_transform,
@@ -153,21 +178,32 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
             render_pass.add_point_light(light_transform, light)
         }
 
-        let mut renderables = world.query::<(&Handle<Mesh>, &Handle<Material>, &GlobalTransform)>();
+        let mut renderables = world.query::<(
+            &Handle<Mesh>,
+            &Handle<Material>,
+            &GlobalTransform,
+            Option<&RenderFlags>,
+        )>();
 
-        for (_, (gpu_mesh, material, transform)) in renderables.iter() {
-            render_pass.draw_mesh(gpu_mesh, material, transform);
+        for (_, (gpu_mesh, material, transform, render_flags)) in renderables.iter() {
+            let render_flags = render_flags.unwrap_or(&RenderFlags::DEFAULT);
+
+            if camera_render_flags.includes_layer(*render_flags) {
+                render_pass.draw_mesh(gpu_mesh, material, transform);
+            }
         }
-        renderer.submit_render_pass(
-            render_pass,
-            &meshes,
-            &materials,
-            &shaders,
-            &textures,
-            &cube_maps,
-            &morphable_mesh_data,
-        );
+
+        renderer.submit_render_pass(render_pass);
     }
+
+    renderer.present(
+        &meshes,
+        &materials,
+        &shaders,
+        &textures,
+        &cube_maps,
+        &morphable_mesh_data,
+    );
 
     if renderer.automatically_redraw {
         window.request_redraw();

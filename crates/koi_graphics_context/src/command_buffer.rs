@@ -109,6 +109,10 @@ impl CommandBuffer {
         self.textures.clear();
         self.cube_maps.clear();
     }
+
+    pub fn present(&mut self) {
+        self.commands.push(Command::Present);
+    }
 }
 
 pub struct RenderPass<'a> {
@@ -255,11 +259,5 @@ impl<'a> RenderPass<'a> {
             triangle_range,
             instances,
         })
-    }
-}
-
-impl<'a> Drop for RenderPass<'a> {
-    fn drop(&mut self) {
-        self.command_buffer.commands.push(Command::Present);
     }
 }

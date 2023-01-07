@@ -1,6 +1,8 @@
+use std::collections::VecDeque;
+
 use crate::*;
 use koi_assets::*;
-use koi_graphics_context::BufferUsage;
+use koi_graphics_context::{BufferUsage, CommandBuffer};
 use koi_transform::Transform;
 
 pub struct Renderer {
@@ -9,6 +11,7 @@ pub struct Renderer {
     pub automatically_redraw: bool,
     pub(crate) shader_snippets: std::collections::HashMap<&'static str, &'static str>,
     color_space: kcolor::ColorSpace,
+    render_passes: VecDeque<RenderPass>,
 }
 
 impl Renderer {
@@ -27,6 +30,7 @@ impl Renderer {
                     kcolor::color_spaces::ENCODED_DISPLAY_P3
                 }
             },
+            render_passes: VecDeque::new(),
         }
     }
     pub fn begin_render_pass(
@@ -66,9 +70,12 @@ impl Renderer {
             }
         }
     }
-    pub fn submit_render_pass(
+    pub fn submit_render_pass(&mut self, render_pass: RenderPass) {
+        self.render_passes.push_back(render_pass);
+    }
+
+    pub fn present(
         &mut self,
-        mut render_pass: RenderPass,
         meshes: &AssetStore<Mesh>,
         materials: &AssetStore<Material>,
         shaders: &AssetStore<Shader>,
@@ -76,16 +83,26 @@ impl Renderer {
         cube_maps: &AssetStore<CubeMap>,
         morphable_mesh_data: &AssetStore<MorphableMeshData>,
     ) {
-        render_pass.execute(
-            &mut self.raw_graphics_context,
-            meshes,
-            materials,
-            shaders,
-            textures,
-            cube_maps,
-            morphable_mesh_data,
-        );
-        self.render_pass_pool.push(render_pass);
+        let mut command_buffer = self.raw_graphics_context.new_command_buffer();
+
+        while let Some(mut render_pass) = self.render_passes.pop_front() {
+            render_pass.execute(
+                &mut command_buffer,
+                &mut self.raw_graphics_context,
+                meshes,
+                materials,
+                shaders,
+                textures,
+                cube_maps,
+                morphable_mesh_data,
+            );
+            self.render_pass_pool.push(render_pass);
+        }
+
+        command_buffer.present();
+
+        self.raw_graphics_context
+            .execute_command_buffer(command_buffer);
     }
 }
 pub struct RenderPass {
@@ -157,6 +174,7 @@ impl RenderPass {
 
     fn execute(
         &mut self,
+        command_buffer: &mut CommandBuffer,
         graphics: &mut koi_graphics_context::GraphicsContext,
         meshes: &AssetStore<Mesh>,
         materials: &AssetStore<Material>,
@@ -165,8 +183,6 @@ impl RenderPass {
         cube_maps: &AssetStore<CubeMap>,
         morphable_mesh_data: &AssetStore<MorphableMeshData>,
     ) {
-        let mut command_buffer = graphics.new_command_buffer();
-
         /*
         let mut render_pass = command_buffer.begin_render_pass_with_framebuffer(
             &koi_graphics_context::Framebuffer::default(),
@@ -204,7 +220,6 @@ impl RenderPass {
 
             render_pass_executor.execute();
         }
-        graphics.execute_command_buffer(command_buffer);
     }
 }
 
@@ -488,6 +503,7 @@ impl<'a> RenderPassExecutor<'a> {
                 .push(*local_to_world_matrix);
         }
 
+        // TODO: Sort transparent by depth
         for (material_handle, mesh_handle, local_to_world_matrix) in transparent.iter() {
             let mut change_material = false;
             let mut change_mesh = None;
