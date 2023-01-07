@@ -43,7 +43,10 @@ pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
 
     initialize_sound_assets(resources);
 
-    resources.add(AudioManager { spatial_handle });
+    resources.add(AudioManager {
+        spatial_handle,
+        non_spatial_handle: mixer_handle,
+    });
 
     resources
         .get_mut::<koi_events::EventHandlers>()
@@ -54,5 +57,29 @@ pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
 }
 
 pub struct AudioManager {
-    pub(crate) spatial_handle: oddio::Handle<oddio::SpatialScene>,
+    pub spatial_handle: oddio::Handle<oddio::SpatialScene>,
+    pub non_spatial_handle: oddio::Handle<oddio::Reinhard<oddio::Adapt<oddio::Mixer<[f32; 2]>>>>,
+}
+
+impl AudioManager {
+    pub fn play_one_shot(&mut self, sound: &Sound) {
+        self.non_spatial_handle
+            .control::<oddio::Mixer<_>, _>()
+            .play(oddio::MonoToStereo::new(oddio::FramesSignal::new(
+                sound.frames.clone(),
+                0.0,
+            )));
+    }
+
+    pub fn play_one_shot_with_speed(&mut self, sound: &Sound, speed: f32) {
+        use oddio::Filter;
+        let mut signal = oddio::Speed::new(oddio::MonoToStereo::new(oddio::FramesSignal::new(
+            sound.frames.clone(),
+            0.0,
+        )));
+        signal.control::<oddio::Speed<_>, _>().set_speed(speed);
+        self.non_spatial_handle
+            .control::<oddio::Mixer<_>, _>()
+            .play(signal);
+    }
 }
