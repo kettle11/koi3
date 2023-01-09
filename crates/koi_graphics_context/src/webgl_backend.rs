@@ -387,7 +387,7 @@ impl backend_trait::BackendTrait for WebGLBackend {
     }
 
     unsafe fn delete_texture(&mut self, texture_inner: TextureInner) {
-        (self.delete_buffer).call_1_arg(&JSObject::new_raw(texture_inner.index));
+        (self.delete_texture).call_1_arg(&JSObject::new_raw(texture_inner.index));
     }
 
     unsafe fn new_cube_map(
