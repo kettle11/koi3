@@ -45,11 +45,11 @@ pub(crate) fn texture_result_from_extension_and_bytes(
     match &*extension {
         #[cfg(feature = "png")]
         "png" => {
-            let imagine::image::Image::<imagine::pixel_formats::RGBA8888> {
+            let imagine::image::Bitmap::<imagine::pixel_formats::RGBA8888> {
                 width,
                 height,
                 mut pixels,
-            } = imagine::image::Image::try_from_png_bytes(&bytes).unwrap();
+            } = imagine::image::Bitmap::try_from_png_bytes(&bytes).unwrap();
 
             // TODO: Need to convert to appropriate color space here (if necessary)
 
