@@ -37,7 +37,13 @@ impl WebGLBackend {
         let setup = o.get_property("setup");
 
         let msaa_enabled = if settings.samples > 0 { 1 } else { 0 };
-        setup.call_raw(&[msaa_enabled]);
+        let display_p3 = if Some(ColorSpace::DisplayP3) == settings.color_space {
+            1
+        } else {
+            0
+        };
+
+        setup.call_raw(&[msaa_enabled, display_p3]);
 
         Self {
             new_pipeline: o.get_property("new_pipeline"),
