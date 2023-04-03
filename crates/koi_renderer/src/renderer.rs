@@ -210,6 +210,7 @@ impl RenderPass {
                 render_pass,
                 current_material_and_shader: None,
                 current_gpu_mesh: None,
+                camera_transform: self.camera_transform,
                 camera_position: self.camera_transform.position,
                 world_to_camera: self.camera_transform.local_to_world().inversed(),
                 camera_to_screen: self
@@ -234,6 +235,7 @@ struct RenderPassExecutor<'a> {
     render_pass: koi_graphics_context::RenderPass<'a>,
     current_material_and_shader: Option<(&'a Material, &'a Shader)>,
     current_gpu_mesh: Option<&'a GPUMesh>,
+    camera_transform: Transform,
     camera_position: kmath::Vec3,
     world_to_camera: kmath::Mat4,
     camera_to_screen: kmath::Mat4,
@@ -503,7 +505,18 @@ impl<'a> RenderPassExecutor<'a> {
                 .push(*local_to_world_matrix);
         }
 
-        // TODO: Sort transparent by depth
+        let camera_forward = self.camera_transform.forward();
+
+        // Render the furthest away transparent objects first, then the closer ones.
+        transparent.sort_by(|a, b| {
+            let p_a = a.2.extract_translation();
+            let p_b = b.2.extract_translation();
+
+            let v0 = (p_a - self.camera_position).dot(camera_forward);
+            let v1 = (p_b - self.camera_position).dot(camera_forward);
+            v1.partial_cmp(&v0).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
         for (material_handle, mesh_handle, local_to_world_matrix) in transparent.iter() {
             let mut change_material = false;
             let mut change_mesh = None;

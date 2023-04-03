@@ -45,21 +45,23 @@ pub(crate) fn texture_result_from_extension_and_bytes(
     match &*extension {
         #[cfg(feature = "png")]
         "png" => {
-            let imagine::image::Bitmap::<imagine::pixel_formats::RGBA8888> {
+            let imagine::Bitmap::<pixel_formats::r8g8b8a8_Srgb> {
                 width,
                 height,
-                mut pixels,
-            } = imagine::image::Bitmap::try_from_png_bytes(&bytes).unwrap();
+                pixels,
+            } = imagine::png::png_try_bitmap_rgba(&bytes, true).unwrap();
 
             // TODO: Need to convert to appropriate color space here (if necessary)
 
             // Premultiply texture
+            /*
             for v in pixels.iter_mut() {
                 let a = v.a as f32 / 255.0;
                 v.r = (v.r as f32 * a) as u8;
                 v.g = (v.g as f32 * a) as u8;
                 v.b = (v.b as f32 * a) as u8;
             }
+            */
 
             Some(TextureResult {
                 data: TextureData::Bytes(Box::new(pixels)),
@@ -159,6 +161,8 @@ pub fn initialize_textures(renderer: &mut crate::Renderer) -> koi_assets::AssetS
         }
 
         // Web uses the browser-native decoders as much faster path.
+        // Note: A flag is set in `webgl_backend.js` in `koi_graphics_context` that enables
+        // premultiplied textures.
         #[cfg(target_arch = "wasm32")]
         {
             let kwasm::libraries::ImageLoadResult {

@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = ["png", "jpeg", "hdri"]
-png = ["imagine", "bytemuck"]
+png = ["imagine", "bytemuck", "pixel_formats"]
 jpeg = ["jpeg-decoder"]
 hdri = ["hdrldr"]
 
@@ -30,9 +30,9 @@ bytemuck = {version = "1.7.3", features = ["extern_crate_alloc"], optional = tru
 
 # TODO: These are needed for now to decode GLBs.
 #[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-imagine = {version="0.4.0", optional = true, features = ["png", "miniz_oxide"]}
+imagine = {version="0.5.0", optional = true, features = ["png", "miniz_oxide"]}
 jpeg-decoder = {version = "0.1.20", default-features = false, optional = true}
+pixel_formats = {version = "0.1.5", optional = true}
 
 [target.'cfg(target_arch="wasm32")'.dependencies]
 kwasm = {path = "../../../koi2/crates/kwasm"}
-

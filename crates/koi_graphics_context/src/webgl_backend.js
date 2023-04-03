@@ -38,6 +38,10 @@ var webgl_object = {
     gl.enable(gl.DEPTH_TEST);
     let vertex_array_object = gl.createVertexArray();
     gl.bindVertexArray(vertex_array_object);
+
+    // NOTE: Enabling this flag is based on how koi's texture loading works.
+    // Premultiply all loaded textures.
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
   },
   new_pipeline(vertex_source_in, fragment_source_in) {
     let vertex_source = "#version 300 es\nprecision mediump float;\n" + vertex_source_in;
