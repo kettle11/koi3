@@ -21,11 +21,14 @@ pub use kapp_platform_common::{Cursor, Key, PointerButton, PointerSource};
 pub use koi_animation::*;
 pub use koi_assets::*;
 pub use koi_events::*;
+
+#[allow(ambiguous_glob_reexports)]
 pub use koi_prefabs::*;
 
 pub use kapp;
 
 #[cfg(feature = "koi_renderer")]
+#[allow(ambiguous_glob_reexports)]
 pub use koi_renderer::*;
 
 #[cfg(feature = "koi_input")]
@@ -35,6 +38,7 @@ pub use koi_input::*;
 pub use koi_random::*;
 
 #[cfg(feature = "koi_audio")]
+#[allow(ambiguous_glob_reexports)]
 pub use koi_audio::*;
 
 pub mod scripts {

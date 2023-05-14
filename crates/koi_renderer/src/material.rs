@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::*;
 
 // A useful chart for making materials:
@@ -20,6 +22,15 @@ pub struct Material {
     // TODO: This isn't the sort of thing that should be on a [Material], but for now it goes here.
     pub morph_weights: Vec<f32>,
     pub morphable_mesh_data: Option<koi_assets::Handle<MorphableMeshData>>,
+    pub other_properties: HashMap<String, PropertyValue>,
+}
+
+#[derive(Clone)]
+pub enum PropertyValue {
+    F32(f32),
+    Vec2(kmath::Vec2),
+    Vec3(kmath::Vec3),
+    Vec4(kmath::Vec4),
 }
 
 impl Default for Material {
@@ -40,6 +51,7 @@ impl Default for Material {
             //
             morph_weights: Vec::new(),
             morphable_mesh_data: None,
+            other_properties: HashMap::new(),
         }
     }
 }

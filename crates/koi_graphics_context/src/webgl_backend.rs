@@ -93,7 +93,10 @@ impl WebGLBackend {
             );
 
         let (target, texture) = match &texture.texture_type {
-            TextureType::Texture => (TEXTURE_2D, texture.index),
+            TextureType::Texture => (
+                if depth > 1 { TEXTURE_3D } else { TEXTURE_2D },
+                texture.index,
+            ),
             _ => todo!(),
         };
 

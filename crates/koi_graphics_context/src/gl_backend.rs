@@ -624,6 +624,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         fragment_source: &str,
         pipeline_settings: PipelineSettings,
     ) -> Result<PipelineInner, String> {
+        self.check_for_error();
+
         unsafe fn get_shader_info_log(gl: &GLBackend, shader: u32) -> String {
             let mut length = 0;
             (gl.get_shader_iv)(shader, INFO_LOG_LENGTH, &mut length);
@@ -932,7 +934,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         pixel_format_in: PixelFormat,
         settings: TextureSettings,
     ) -> TextureInner {
-        if settings.msaa_samples == 0 {
+        let result = if settings.msaa_samples == 0 {
             let mut texture_index = 0;
             (self.gen_textures)(1, &mut texture_index);
 
@@ -944,7 +946,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
             };
             {
                 let (target, texture_index) = match texture.texture_type {
-                    TextureType::Texture => (TEXTURE_2D, texture_index),
+                    TextureType::Texture => (
+                        if depth > 1 { TEXTURE_3D } else { TEXTURE_2D },
+                        texture_index,
+                    ),
                     TextureType::CubeMapFace { face } => {
                         (TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture_index)
                     }
@@ -1015,7 +1020,9 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 mip: 0,
                 pixel_format: pixel_format_in,
             }
-        }
+        };
+        self.check_for_error();
+        result
     }
 
     unsafe fn update_texture(
@@ -1031,7 +1038,10 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         settings: TextureSettings,
     ) {
         let (target, texture_index) = match texture.texture_type {
-            TextureType::Texture => (TEXTURE_2D, texture.index),
+            TextureType::Texture => (
+                if depth > 1 { TEXTURE_3D } else { TEXTURE_2D },
+                texture.index,
+            ),
             TextureType::CubeMapFace { face } => {
                 (TEXTURE_CUBE_MAP_POSITIVE_X + face as u32, texture.index)
             }
@@ -1097,6 +1107,7 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         if settings.generate_mipmaps {
             (self.generate_mipmap)(target);
         }
+        self.check_for_error();
     }
 
     unsafe fn delete_texture(&mut self, texture_inner: TextureInner) {

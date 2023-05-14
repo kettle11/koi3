@@ -49,7 +49,7 @@ async fn run_async(app: Application, events: Events) {
             out vec4 color_out;
 
             uniform vec4 p_custom_color;
-            
+
             void main()
             {
                 color_out = p_custom_color;

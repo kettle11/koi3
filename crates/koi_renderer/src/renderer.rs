@@ -315,6 +315,32 @@ impl<'a> RenderPassExecutor<'a> {
                         ),
                     );
 
+                    // TODO: This uniform lookup could be cached.
+                    for (name, property) in material.other_properties.iter() {
+                        match property {
+                            PropertyValue::F32(v) => {
+                                if let Ok(uniform) = shader.pipeline.get_uniform(name) {
+                                    self.render_pass.set_uniform(&uniform, *v);
+                                }
+                            }
+                            PropertyValue::Vec2(v) => {
+                                if let Ok(uniform) = shader.pipeline.get_uniform(name) {
+                                    self.render_pass.set_uniform(&uniform, *v);
+                                }
+                            }
+                            PropertyValue::Vec3(v) => {
+                                if let Ok(uniform) = shader.pipeline.get_uniform(name) {
+                                    self.render_pass.set_uniform(&uniform, *v);
+                                }
+                            }
+                            PropertyValue::Vec4(v) => {
+                                if let Ok(uniform) = shader.pipeline.get_uniform(name) {
+                                    self.render_pass.set_uniform(&uniform, *v);
+                                }
+                            }
+                        }
+                    }
+
                     /*
                     if let Some(morphable_mesh_data) = material.morphable_mesh_data.as_ref() {
                         let morphable_mesh_data = self.morphable_mesh_data.get(morphable_mesh_data);

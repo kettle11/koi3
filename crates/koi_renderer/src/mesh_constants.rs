@@ -4,7 +4,9 @@ use koi_assets::{AssetTrait, Handle};
 
 impl Mesh {
     pub const EMPTY: Handle<Self> = Handle::from_index(0);
+    /// Facing +Y and centered at 0,0,0
     pub const PLANE: Handle<Self> = Handle::from_index(1);
+    /// Facing +Z and centered at 0,0,0
     pub const VERTICAL_QUAD: Handle<Self> = Handle::from_index(2);
     pub const CUBE: Handle<Self> = Handle::from_index(3);
     pub const SPHERE: Handle<Self> = Handle::from_index(4);
