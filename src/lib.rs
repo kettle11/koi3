@@ -22,6 +22,9 @@ pub use koi_animation::*;
 pub use koi_assets::*;
 pub use koi_events::*;
 
+pub use koi_fetch::*;
+pub use ktasks::*;
+
 #[allow(ambiguous_glob_reexports)]
 pub use koi_prefabs::*;
 
@@ -46,3 +49,6 @@ pub mod scripts {
 }
 
 pub use koi_ecs;
+
+pub use kinstant;
+pub use klog;

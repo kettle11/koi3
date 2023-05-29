@@ -68,7 +68,7 @@ impl App {
     #[cfg(feature = "kapp")]
     fn run_inner(mut self) {
         // TODO: This should also run for headless builds.
-        ktasks::create_workers_with_count(1);
+        ktasks::create_workers();
 
         let (kapp_app, kapp_event_loop) = kapp::initialize();
 
@@ -111,7 +111,7 @@ impl App {
     }
 
     pub fn handle_event(&mut self, event: Event) {
-        ktasks::run_current_thread_tasks();
+        ktasks::run_only_local_tasks();
         ktasks::run_tasks_unless_there_are_workers();
 
         // This funky memory-swap approach allows `EventHandlers` to be part of `Resources`
