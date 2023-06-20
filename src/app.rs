@@ -149,6 +149,9 @@ impl App {
         #[cfg(feature = "koi_audio")]
         koi_audio::initialize_plugin(&mut self.resources);
 
+        #[cfg(feature = "koi_ui")]
+        koi_ui::initialize_plugin(&mut self.world);
+
         koi_transform::transform_plugin::initialize_plugin(&mut self.resources);
         self
     }

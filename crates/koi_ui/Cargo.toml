@@ -1,0 +1,19 @@
+[package]
+name = "koi_ui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+koi_ecs = {path = "../koi_ecs"}
+koi_transform = {path = "../koi_transform"}
+koi_assets = {path = "../koi_assets"}
+koi_events = {path = "../koi_events"}
+koi_resources = {path = "../koi_resources"}
+koi_graphics_context = {path = "../koi_graphics_context"}
+koi_renderer = {path = "../koi_renderer"}
+
+kmath = {path = "../../../koi2/crates/kmath"}
+kui = {path = "../../../koi2/crates/kui", default-features=false}
+kapp = {path = "../../../koi2/crates/kapp", default-features=false}

@@ -44,6 +44,9 @@ pub use koi_random::*;
 #[allow(ambiguous_glob_reexports)]
 pub use koi_audio::*;
 
+#[cfg(feature = "koi_ui")]
+pub use koi_ui::*;
+
 pub mod scripts {
     pub use koi_camera_controls::*;
 }

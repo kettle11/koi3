@@ -9,7 +9,7 @@ members = ["crates/*"]
 
 [features]
 default = ["core", "koi_camera_controls"]
-core = ["kapp", "koi_renderer", "koi_transform", "koi_input", "koi_random", "koi_audio"]
+core = ["kapp", "koi_renderer", "koi_transform", "koi_input", "koi_random", "koi_audio", "koi_ui"]
 window = []
 network_requests = ["koi_fetch/network_requests"]
 
@@ -35,6 +35,7 @@ koi_transform = {path = "crates/koi_transform", optional = true}
 koi_audio = {path = "crates/koi_audio", optional = true}
 koi_input = {path = "crates/koi_input", optional = true}
 koi_random = {path = "crates/koi_random", optional = true}
+koi_ui = {path = "crates/koi_ui", optional = true}
 
 koi_camera_controls = {path = "crates/koi_camera_controls", optional = true}
 
@@ -45,7 +46,3 @@ koi_camera_controls = {path = "crates/koi_camera_controls", optional = true}
  # opt-level = "z"  # Optimize for size.
  # lto = true
  # codegen-units = 1
-
-
-
-
