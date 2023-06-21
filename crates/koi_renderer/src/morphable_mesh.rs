@@ -68,8 +68,6 @@ impl MorphableMeshData {
             }
         }
 
-        println!("HERE HERE HERE");
-
         let morph_targets_texture = textures.add(Texture(graphics.new_texture_with_data(
             dimension_needed as u32,
             dimension_needed as u32,
@@ -82,7 +80,6 @@ impl MorphableMeshData {
                 ..Default::default()
             },
         )));
-        println!("HERE HERE HERE: {:?}", dimension_needed);
 
         let mesh = meshes.add(Mesh::new(graphics, mesh_data));
 
