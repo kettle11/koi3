@@ -26,6 +26,8 @@ pub struct ScreenSpaceUI<UIState> {
     root_widget: Box<dyn kui::Widget<UIState, StandardContext<UIState>>>,
     ui_material: Handle<Material>,
     ui_mesh: Handle<Mesh>,
+    ui_scale: f32,
+    last_cursor_position: Vec2,
 }
 
 // This is safe because
@@ -37,6 +39,7 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
         world: &mut World,
         resources: &Resources,
         style: StandardStyle,
+        fonts: Fonts,
         ui: impl Widget<UIState, StandardContext<UIState>> + 'static,
     ) -> Entity {
         let mut meshes = resources.get::<AssetStore<Mesh>>();
@@ -49,8 +52,6 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
             ..Default::default()
         });
 
-        let fonts = kui::Fonts::default();
-
         use kui::*;
 
         let screen_space_ui = Self {
@@ -59,6 +60,8 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
             root_widget: Box::new(ui),
             ui_material: ui_material.clone(),
             ui_mesh: ui_mesh.clone(),
+            ui_scale: 1.0,
+            last_cursor_position: Vec2::ZERO,
         };
 
         world.spawn((
@@ -69,9 +72,117 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
             RenderFlags::USER_INTERFACE,
         ))
     }
+
+    pub fn handle_event(&mut self, event: &kapp::Event, data: &mut UIState) -> bool {
+        match *event {
+            kapp::Event::PointerDown {
+                x,
+                y,
+                source,
+                button,
+                timestamp,
+                id,
+            } => {
+                let event = kapp::Event::PointerDown {
+                    x: x / self.ui_scale as f64,
+                    y: y / self.ui_scale as f64,
+                    source,
+                    button,
+                    timestamp,
+                    id,
+                };
+                self.context.event_handlers.handle_pointer_event(
+                    &event,
+                    data,
+                    Vec2::new(x as f32, y as f32) / self.ui_scale,
+                )
+            }
+            kapp::Event::PointerMoved {
+                x,
+                y,
+                source,
+                timestamp,
+                id,
+            } => {
+                let event = kapp::Event::PointerMoved {
+                    x: x / self.ui_scale as f64,
+                    y: y / self.ui_scale as f64,
+                    source,
+                    timestamp,
+                    id,
+                };
+                self.last_cursor_position =
+                    Vec2::new(x as f32 / self.ui_scale, y as f32 / self.ui_scale);
+
+                self.context.event_handlers.handle_pointer_event(
+                    &event,
+                    data,
+                    Vec2::new(x as f32, y as f32) / self.ui_scale,
+                )
+            }
+            kapp::Event::PointerUp {
+                x,
+                y,
+                source,
+                button,
+                timestamp,
+                id,
+            } => {
+                let event = kapp::Event::PointerUp {
+                    x: x / self.ui_scale as f64,
+                    y: y / self.ui_scale as f64,
+                    source,
+                    button,
+                    timestamp,
+                    id,
+                };
+                self.context.event_handlers.handle_pointer_event(
+                    &event,
+                    data,
+                    Vec2::new(x as f32, y as f32) / self.ui_scale,
+                )
+            }
+            kapp::Event::Scroll {
+                delta_x,
+                delta_y,
+                window_id,
+                timestamp,
+            } => {
+                let event = kapp::Event::Scroll {
+                    delta_x,
+                    delta_y,
+                    window_id,
+                    timestamp,
+                };
+                self.context.event_handlers.handle_pointer_event(
+                    &event,
+                    data,
+                    self.last_cursor_position,
+                )
+            }
+            _ => false,
+        }
+    }
 }
 
-pub fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Resources) {
+fn handle_ui_event<UIState: 'static>(
+    world: &mut World,
+    resources: &Resources,
+    event: &kapp::Event,
+) -> bool {
+    let mut ui_state = resources.get::<UIState>();
+
+    let mut handled = false;
+    for (_, (ui, transform)) in world
+        .query::<(&mut ScreenSpaceUI<UIState>, &GlobalTransform)>()
+        .iter()
+    {
+        handled |= ui.handle_event(event, &mut ui_state);
+    }
+    handled
+}
+
+fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Resources) {
     let mut meshes = resources.get::<AssetStore<Mesh>>();
     let mut textures = resources.get::<AssetStore<Texture>>();
     let mut materials = resources.get::<AssetStore<Material>>();
@@ -84,6 +195,7 @@ pub fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Re
     {
         let window = resources.get::<kapp::Window>();
         let (window_width, window_height) = window.size();
+        ui.ui_scale = window.scale() as f32;
         let ui_scale = window.scale();
 
         let width = window_width as f32 / ui_scale as f32;
@@ -141,5 +253,19 @@ pub fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Re
                 materials.get_mut(&ui.ui_material).base_color_texture = Some(new_texture_handle);
             }
         }
+    }
+}
+
+pub fn update_ui_with_event<UIState: 'static>(
+    world: &mut World,
+    resources: &mut Resources,
+    event: &koi_events::Event,
+) {
+    match event {
+        koi_events::Event::KappEvent(event) => {
+            handle_ui_event::<UIState>(world, resources, event);
+        }
+        koi_events::Event::Draw => draw_screen_space_uis::<UIState>(world, resources),
+        _ => {}
     }
 }
