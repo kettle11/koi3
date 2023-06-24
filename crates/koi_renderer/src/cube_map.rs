@@ -38,14 +38,15 @@ impl AssetTrait for CubeMap {
 }
 
 pub fn initialize_cube_maps(resources: &mut Resources) {
+    #[allow(unused)]
     async fn load(path: String, settings: CubeMapSettings) -> Option<crate::CubeMapResult> {
-        let extension = std::path::Path::new(&path)
+        let extension: String = std::path::Path::new(&path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
             .expect("Expected cube map file extension")
             .to_lowercase();
 
-        let data = match &*extension {
+        let data: crate::TextureResult = match &*extension {
             #[cfg(feature = "hdri")]
             "hdr" => {
                 let bytes = koi_fetch::fetch_bytes(&path)

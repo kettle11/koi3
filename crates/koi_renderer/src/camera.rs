@@ -74,7 +74,7 @@ impl Camera {
     ) -> kmath::Ray3 {
         use kmath::Extend;
         let normalized = kmath::Vec2::new(x / view_width, y / view_height);
-        
+
         // Convert to OpenGL coordinate space which is -1,-1 is bottom left, 1,1 is upper right
         let gl_space = (normalized * 2.0 + kmath::Vec2::new(-1.0, -1.0))
             .mul_by_component(kmath::Vec2::new(1.0, -1.0));

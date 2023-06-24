@@ -23,4 +23,3 @@ klog = {path = "../../../koi2/crates/klog"}
 koi_renderer = {path = "../koi_renderer", optional = true}
 kgltf = {path = "../../../koi2/crates/kgltf", optional = true}
 koi_animation = {path = "../koi_animation"}
-

@@ -173,7 +173,7 @@ fn handle_ui_event<UIState: 'static>(
     let mut ui_state = resources.get::<UIState>();
 
     let mut handled = false;
-    for (_, (ui, transform)) in world
+    for (_, (ui, _transform)) in world
         .query::<(&mut ScreenSpaceUI<UIState>, &GlobalTransform)>()
         .iter()
     {
@@ -189,7 +189,7 @@ fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Resour
     let mut graphics_context = &mut resources.get::<Renderer>().raw_graphics_context;
     let mut ui_state = resources.get::<UIState>();
 
-    for (_, (ui, transform)) in world
+    for (_, (ui, _transform)) in world
         .query::<(&mut ScreenSpaceUI<UIState>, &GlobalTransform)>()
         .iter()
     {
@@ -256,16 +256,18 @@ fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Resour
     }
 }
 
+/// Returns true if the event was handled by the UI.
 pub fn update_ui_with_event<UIState: 'static>(
     world: &mut World,
     resources: &mut Resources,
     event: &koi_events::Event,
-) {
+) -> bool {
     match event {
-        koi_events::Event::KappEvent(event) => {
-            handle_ui_event::<UIState>(world, resources, event);
+        koi_events::Event::KappEvent(event) => handle_ui_event::<UIState>(world, resources, event),
+        koi_events::Event::Draw => {
+            draw_screen_space_uis::<UIState>(world, resources);
+            false
         }
-        koi_events::Event::Draw => draw_screen_space_uis::<UIState>(world, resources),
-        _ => {}
+        _ => false,
     }
 }

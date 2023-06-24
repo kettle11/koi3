@@ -17,7 +17,7 @@ fn main() {
                     .looking_at(Vec3::ZERO, Vec3::Y),
                 Camera {
                     clear_color: Some(Color::BLACK),
-                    exposure: Exposure::EV100(20.0),
+                    exposure: Exposure::EV100(14.0),
                     ..Default::default()
                 },
                 CameraControls::default(),
@@ -62,7 +62,7 @@ fn main() {
                 .load("assets/skybox_sh.glsl", ShaderSettings::default());
 
             let cube_map = resources.get::<AssetStore<CubeMap>>().load(
-                "assets/venice_sunset_1k.hdr",
+                "assets/field_1k.hdr",
                 CubeMapSettings {
                     luminance_of_brightest_pixel: Some(luminance::SUN_AT_NOON),
                 },
@@ -121,7 +121,7 @@ fn main() {
             */
 
             let mut prefabs = resources.get::<AssetStore<Prefab>>();
-            let prefab_handle = prefabs.load("assets/magical_gyroscope.glb", ());
+            let prefab_handle = prefabs.load("assets/cat_statue/scene.gltf", ());
 
             let size = 1;
             let spacing = 4.0;

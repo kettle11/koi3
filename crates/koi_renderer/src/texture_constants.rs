@@ -37,6 +37,7 @@ pub fn new_texture_from_bytes(
     ))
 }
 
+#[allow(unused)]
 pub(crate) fn texture_result_from_extension_and_bytes(
     extension: &str,
     bytes: &[u8],
@@ -270,6 +271,7 @@ pub trait AsU8Array: 'static + Send + Sync {
     fn as_u8_array_mut(&mut self) -> &mut [u8];
 }
 
+#[cfg(feature = "bytemuck")]
 impl<T: bytemuck::Pod + Send + Sync + 'static> AsU8Array for Vec<T> {
     fn as_u8_array(&self) -> &[u8] {
         bytemuck::cast_slice(self)

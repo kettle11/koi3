@@ -9,8 +9,11 @@ members = ["crates/*"]
 
 [features]
 default = ["core", "koi_camera_controls"]
-core = ["kapp", "koi_renderer", "koi_transform", "koi_input", "koi_random", "koi_audio", "koi_ui"]
+core = ["kapp", "koi_transform", "koi_input", "koi_random", "koi_audio", "koi_ui", "koi_renderer/default", "koi_fetch", "koi_prefabs", "koi_animation"]
 window = []
+png = ["koi_renderer/png"]
+jpeg = ["koi_renderer/jpeg"]
+hdri = ["koi_renderer/hdri"]
 network_requests = ["koi_fetch/network_requests"]
 
 [dependencies]
@@ -20,17 +23,17 @@ kmath = {path = "../koi2/crates/kmath"}
 ktasks = {path = "../koi2/crates/ktasks"}
 klog = {path = "../koi2/crates/klog"}
 
-koi_fetch = {path = "crates/koi_fetch"}
+koi_fetch = {path = "crates/koi_fetch", optional = true}
 koi_ecs = {path = "crates/koi_ecs"}
 koi_resources = {path = "crates/koi_resources"}
 koi_events = {path = "crates/koi_events"}
 koi_time = {path = "crates/koi_time"}
 koi_assets = {path = "crates/koi_assets"}
-koi_prefabs = {path = "crates/koi_prefabs"}
-koi_animation = {path = "crates/koi_animation"}
+koi_prefabs = {path = "crates/koi_prefabs", optional = true}
+koi_animation = {path = "crates/koi_animation", optional = true}
 
 kapp = {path = "../koi2/crates/kapp", default-features=false, optional = true}
-koi_renderer =  {path = "crates/koi_renderer", optional = true}
+koi_renderer =  {path = "crates/koi_renderer", optional = true, default-features = false}
 koi_transform = {path = "crates/koi_transform", optional = true}
 koi_audio = {path = "crates/koi_audio", optional = true}
 koi_input = {path = "crates/koi_input", optional = true}

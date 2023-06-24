@@ -18,17 +18,22 @@ pub use koi_transform::*;
 
 pub use kapp_platform_common::Event as KappEvent;
 pub use kapp_platform_common::{Cursor, Key, PointerButton, PointerSource};
-pub use koi_animation::*;
 pub use koi_assets::*;
 pub use koi_events::*;
 
-pub use koi_fetch::*;
 pub use ktasks::*;
 
+#[cfg(feature = "koi_animation")]
+pub use koi_animation::*;
+
+#[cfg(feature = "koi_prefabs")]
 #[allow(ambiguous_glob_reexports)]
 pub use koi_prefabs::*;
 
 pub use kapp;
+
+#[cfg(feature = "koi_fetch")]
+pub use koi_fetch::*;
 
 #[cfg(feature = "koi_renderer")]
 #[allow(ambiguous_glob_reexports)]

@@ -52,11 +52,43 @@ pub use morphable_mesh::*;
 mod light_probe;
 pub use light_probe::*;
 
+pub struct RaycastSceneResult {
+    pub position: kmath::Vec3,
+    pub mesh_tri_index: usize,
+    pub entity: koi_ecs::Entity,
+}
+
+pub fn raycast_screen(
+    world: &koi_ecs::World,
+    resources: &koi_resources::Resources,
+    camera_entity: koi_ecs::Entity,
+    x: f32,
+    y: f32,
+) -> Option<RaycastSceneResult> {
+    use std::ops::Deref;
+
+    let window = resources.get::<kapp::Window>();
+    let (window_width, window_height) = window.size();
+
+    let entity_ref = world.entity(camera_entity).unwrap();
+    let camera = entity_ref.get::<&Camera>().unwrap();
+    let camera_transform = entity_ref.get::<&GlobalTransform>().unwrap();
+
+    let ray = camera.view_to_ray(
+        camera_transform.deref(),
+        x,
+        y,
+        window_width as f32,
+        window_height as f32,
+    );
+    raycast_scene(world, resources, ray)
+}
+
 pub fn raycast_scene(
     world: &koi_ecs::World,
     resources: &koi_resources::Resources,
     ray: kmath::Ray3,
-) -> Option<(kmath::Vec3, koi_ecs::Entity)> {
+) -> Option<RaycastSceneResult> {
     let meshes = resources.get::<koi_assets::AssetStore<Mesh>>();
     let mut entities = world.query::<(&GlobalTransform, &koi_assets::Handle<Mesh>)>();
     raycast_entities(ray, &*meshes, entities.iter())
@@ -71,9 +103,11 @@ pub fn raycast_entities<'a>(
             (&'a GlobalTransform, &'a koi_assets::Handle<Mesh>),
         ),
     >,
-) -> Option<(kmath::Vec3, koi_ecs::Entity)> {
+) -> Option<RaycastSceneResult> {
     let mut closest_value = f32::MAX;
     let mut intersected_entity = None;
+    let mut intersected_tri = 0;
+
     for (entity, (transform, mesh_handle)) in entities {
         let mesh = meshes.get(mesh_handle);
         if let Some(bounding_box) = mesh.bounding_box {
@@ -83,13 +117,17 @@ pub fn raycast_entities<'a>(
                 let ray = inverse_model.transform_ray(ray);
                 if let Some(v) = kmath::intersections::ray_with_bounding_box(ray, bounding_box) {
                     if v < closest_value {
-                        if let Some(v) = kmath::intersections::ray_with_mesh(
+                        if let Some(kmath::intersections::RayWithMeshResult {
+                            distance: v,
+                            tri_index,
+                        }) = kmath::intersections::ray_with_mesh(
                             ray,
                             &mesh_data.positions,
                             &mesh_data.indices,
                         ) {
                             if v < closest_value {
                                 closest_value = v;
+                                intersected_tri = tri_index;
                                 intersected_entity = Some(entity)
                             }
                         }
@@ -98,5 +136,9 @@ pub fn raycast_entities<'a>(
             }
         }
     }
-    intersected_entity.map(|i| (ray.get_point(closest_value), i))
+    intersected_entity.map(|entity| RaycastSceneResult {
+        position: ray.get_point(closest_value),
+        entity,
+        mesh_tri_index: intersected_tri,
+    })
 }

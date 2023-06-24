@@ -137,8 +137,8 @@ impl App {
     }
 
     async fn add_standard_plugins(mut self) -> Self {
+        #[cfg(feature = "koi_prefabs")]
         koi_prefabs::initialize_plugin(&mut self.resources);
-
         #[cfg(feature = "koi_renderer")]
         koi_renderer::initialize_plugin(&mut self.resources).await;
         #[cfg(feature = "koi_input")]
