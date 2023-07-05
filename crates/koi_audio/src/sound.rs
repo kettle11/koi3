@@ -1,6 +1,6 @@
 /// A sound source.
 pub struct Sound {
-    pub(crate) frames: std::sync::Arc<oddio::Frames<f32>>,
+    pub frames: std::sync::Arc<oddio::Frames<f32>>,
 }
 
 impl Sound {

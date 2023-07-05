@@ -9,7 +9,10 @@ use crate::sound_assets::initialize_sound_assets;
 mod audio_source;
 mod sound_assets;
 
+pub mod low_pass_filter;
+
 pub use audio_source::*;
+pub use oddio;
 
 pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
     const QUIET_AMPLITUDE: f32 = 0.001;
@@ -81,5 +84,14 @@ impl AudioManager {
         self.non_spatial_handle
             .control::<oddio::Mixer<_>, _>()
             .play(signal);
+    }
+
+    pub fn play_one_shot_oddio<S: oddio::Signal<Frame = [f32; 2]> + Send + 'static>(
+        &mut self,
+        signal: S,
+    ) -> oddio::Handle<oddio::Stop<S>> {
+        self.non_spatial_handle
+            .control::<oddio::Mixer<_>, _>()
+            .play(signal)
     }
 }

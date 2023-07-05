@@ -1,10 +1,20 @@
 use crate::{audio_listener::AudioListener, *};
 use kmath::*;
 use koi_assets::*;
+use oddio::Frames;
+
+struct ToPlayCustom {
+    sound_handle: Option<Handle<Sound>>,
+    produce_oddio_filter: Box<
+        dyn FnMut(Option<std::sync::Arc<Frames<f32>>>) -> Box<dyn oddio::Seek<Frame = f32> + Send>
+            + Send
+            + Sync,
+    >,
+}
 
 // TODO: Make this a component that can be cloned between worlds
 pub struct AudioSource {
-    to_play: Vec<(Handle<Sound>, bool)>,
+    to_play_spatial: Vec<ToPlayCustom>,
     playing: Vec<OddioHandle>,
     previous_position: Option<Vec3>,
     previous_velocity: Option<Vec3>,
@@ -19,17 +29,40 @@ impl Default for AudioSource {
 impl AudioSource {
     pub fn new() -> Self {
         Self {
-            to_play: Vec::new(),
+            to_play_spatial: Vec::new(),
             playing: Vec::new(),
             previous_position: None,
             previous_velocity: None,
         }
     }
     pub fn play_sound(&mut self, sound: &Handle<Sound>) {
-        self.to_play.push((sound.clone(), false));
+        self.to_play_spatial.push(ToPlayCustom {
+            sound_handle: Some(sound.clone()),
+            produce_oddio_filter: Box::new(move |frames: Option<std::sync::Arc<Frames<f32>>>| {
+                Box::new(oddio::FramesSignal::new(frames.unwrap(), 0.0))
+            }),
+        });
     }
     pub fn play_sound_looped(&mut self, sound: &Handle<Sound>) {
-        self.to_play.push((sound.clone(), true));
+        self.to_play_spatial.push(ToPlayCustom {
+            sound_handle: Some(sound.clone()),
+            produce_oddio_filter: Box::new(move |frames: Option<std::sync::Arc<Frames<f32>>>| {
+                Box::new(oddio::Cycle::new(frames.unwrap()))
+            }),
+        });
+    }
+
+    pub fn play_sound_custom<F: oddio::Seek<Frame = f32> + Send + 'static>(
+        &mut self,
+        sound: Option<&Handle<Sound>>,
+        mut produce_source: impl FnMut(Option<std::sync::Arc<Frames<f32>>>) -> F + Send + Sync + 'static,
+    ) {
+        self.to_play_spatial.push(ToPlayCustom {
+            sound_handle: sound.map(|s| s.clone()),
+            produce_oddio_filter: Box::new(move |frames: Option<std::sync::Arc<Frames<f32>>>| {
+                Box::new(produce_source(frames))
+            }),
+        });
     }
 }
 
@@ -123,34 +156,39 @@ pub fn update_audio_sources(
             // is not great.
             // Sound effects / music should skip ahead based on how long it took to load them.
 
-            audio_source.to_play.retain_mut(|(sound_handle, looped)| {
-                if !sounds.is_placeholder(&sound_handle) {
-                    let sound = sounds.get(&sound_handle);
+            let spatial_options = oddio::SpatialOptions {
+                position: relative_position.as_array().into(),
+                velocity: relative_velocity.as_array().into(),
+                radius: 1.0,
+            };
 
-                    let spatial_options = oddio::SpatialOptions {
-                        position: relative_position.as_array().into(),
-                        velocity: relative_velocity.as_array().into(),
-                        radius: 1.0,
-                    };
-
-                    let oddio_handle = if *looped {
-                        let source = oddio::Cycle::new(sound.frames.clone());
-                        OddioHandle::SpatialLooped(
-                            spatial_scene_control.play(source, spatial_options),
-                        )
+            audio_source.to_play_spatial.retain_mut(
+                |ToPlayCustom {
+                     sound_handle,
+                     produce_oddio_filter,
+                 }| {
+                    if let Some(sound_handle) = sound_handle {
+                        if !sounds.is_placeholder(&sound_handle) {
+                            let sound = sounds.get(&sound_handle);
+                            let source = produce_oddio_filter(Some(sound.frames.clone()));
+                            let oddio_handle = spatial_scene_control.play(source, spatial_options);
+                            audio_source
+                                .playing
+                                .push(OddioHandle::Spatial(oddio_handle));
+                            false
+                        } else {
+                            true
+                        }
                     } else {
-                        println!("PLAYING AUDIO-----------");
-                        OddioHandle::Spatial(spatial_scene_control.play(
-                            oddio::FramesSignal::new(sound.frames.clone(), 0.),
-                            spatial_options,
-                        ))
-                    };
-                    audio_source.playing.push(oddio_handle);
-                    false
-                } else {
-                    true
-                }
-            });
+                        let source = produce_oddio_filter(None);
+                        let oddio_handle = spatial_scene_control.play(source, spatial_options);
+                        audio_source
+                            .playing
+                            .push(OddioHandle::Spatial(oddio_handle));
+                        true
+                    }
+                },
+            );
         }
     }
 
@@ -165,15 +203,13 @@ impl Drop for OddioHandle {
 }
 
 enum OddioHandle {
-    Spatial(oddio::Handle<oddio::Spatial<oddio::Stop<oddio::FramesSignal<f32>>>>),
-    SpatialLooped(oddio::Handle<oddio::Spatial<oddio::Stop<oddio::Cycle<f32>>>>),
+    Spatial(oddio::Handle<oddio::Spatial<oddio::Stop<Box<dyn oddio::Seek<Frame = f32> + Send>>>>),
 }
 
 impl OddioHandle {
     fn set_motion(&mut self, position: Vec3, velocity: Vec3, discontinuity: bool) {
         let mut control = match self {
             OddioHandle::Spatial(s) => s.control::<oddio::Spatial<_>, _>(),
-            OddioHandle::SpatialLooped(s) => s.control::<oddio::Spatial<_>, _>(),
         };
         control.set_motion(
             position.as_array().into(),
@@ -185,7 +221,6 @@ impl OddioHandle {
     fn stop(&mut self) {
         let control = match self {
             OddioHandle::Spatial(s) => s.control::<oddio::Stop<_>, _>(),
-            OddioHandle::SpatialLooped(s) => s.control::<oddio::Stop<_>, _>(),
         };
         control.stop();
     }
@@ -193,7 +228,6 @@ impl OddioHandle {
     fn is_done(&mut self) -> bool {
         let control = match self {
             OddioHandle::Spatial(s) => s.control::<oddio::Stop<_>, _>(),
-            OddioHandle::SpatialLooped(s) => s.control::<oddio::Stop<_>, _>(),
         };
         control.is_stopped()
     }
