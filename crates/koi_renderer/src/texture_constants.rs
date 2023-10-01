@@ -23,17 +23,28 @@ pub(crate) struct TextureResult {
     pub data: TextureData,
 }
 
+#[derive(Clone, Copy)]
+pub struct TextureInfo {
+    pub width: u32,
+    pub height: u32,
+    pub pixel_format: koi_graphics_context::PixelFormat,
+}
+
 pub fn new_texture_from_bytes(
     graphics: &mut koi_graphics_context::GraphicsContext,
     extension: &str,
     bytes: &[u8],
     settings: TextureSettings,
-) -> Option<Texture> {
+) -> Option<(Texture, TextureInfo)> {
     let texture_result = texture_result_from_extension_and_bytes(extension, bytes, settings)?;
-    Some(new_texture_from_texture_load_data(
-        graphics,
-        texture_result,
-        settings,
+    let texture_info = TextureInfo {
+        width: texture_result.width,
+        height: texture_result.height,
+        pixel_format: texture_result.pixel_format,
+    };
+    Some((
+        new_texture_from_texture_load_data(graphics, texture_result, settings),
+        texture_info,
     ))
 }
 

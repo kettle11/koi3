@@ -28,6 +28,9 @@ pub struct ScreenSpaceUI<UIState> {
     ui_mesh: Handle<Mesh>,
     ui_scale: f32,
     last_cursor_position: Vec2,
+    /// Setting this makes this not a screen space UI.
+    /// TODO: This obviously doesn't align with the title
+    pub view_space_size: Option<Vec3>,
 }
 
 // This is safe because
@@ -40,6 +43,8 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
         resources: &Resources,
         style: StandardStyle,
         fonts: Fonts,
+        render_flags_override: Option<RenderFlags>,
+        view_space_size: Option<Vec3>,
         ui: impl Widget<UIState, StandardContext<UIState>> + 'static,
     ) -> Entity {
         let mut meshes = resources.get::<AssetStore<Mesh>>();
@@ -62,6 +67,7 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
             ui_mesh: ui_mesh.clone(),
             ui_scale: 1.0,
             last_cursor_position: Vec2::ZERO,
+            view_space_size,
         };
 
         world.spawn((
@@ -69,7 +75,7 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
             ui_mesh.clone(),
             ui_material.clone(),
             screen_space_ui,
-            RenderFlags::USER_INTERFACE,
+            render_flags_override.unwrap_or(RenderFlags::USER_INTERFACE),
         ))
     }
 
@@ -193,26 +199,39 @@ fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Resour
         .query::<(&mut ScreenSpaceUI<UIState>, &GlobalTransform)>()
         .iter()
     {
-        let window = resources.get::<kapp::Window>();
-        let (window_width, window_height) = window.size();
-        ui.ui_scale = window.scale() as f32;
-        let ui_scale = window.scale();
+        ui.drawer.reset();
 
-        let width = window_width as f32 / ui_scale as f32;
-        let height = window_height as f32 / ui_scale as f32;
+        let constraints = if let Some(view_space_size) = ui.view_space_size {
+            ui.ui_scale = 2.0;
 
-        ui.context.standard_style_mut().ui_scale = ui_scale as _;
-        ui.context.standard_input_mut().view_size = Vec2::new(width, height);
+            ui.context.standard_style_mut().ui_scale = ui.ui_scale as _;
+            ui.context.standard_input_mut().view_size = view_space_size.xy();
+            ui.drawer
+                .set_view_width_height(view_space_size.x, view_space_size.y);
+            kui::MinAndMaxSize {
+                min: Vec3::ZERO,
+                max: view_space_size,
+            }
+        } else {
+            let window = resources.get::<kapp::Window>();
+            let (window_width, window_height) = window.size();
+            let ui_scale = window.scale();
+            ui.ui_scale = ui_scale as _;
 
-        let constraints = kui::MinAndMaxSize {
-            min: Vec3::ZERO,
-            max: Vec3::new(width, height, 10_000.0),
+            let width = window_width as f32 / ui_scale as f32;
+            let height = window_height as f32 / ui_scale as f32;
+
+            ui.context.standard_style_mut().ui_scale = ui_scale as _;
+            ui.context.standard_input_mut().view_size = Vec2::new(width, height);
+            ui.drawer.set_view_width_height(width, height);
+            kui::MinAndMaxSize {
+                min: Vec3::ZERO,
+                max: Vec3::new(width, height, 10_000.0),
+            }
         };
 
         ui.root_widget
             .layout(&mut ui_state, &mut (), &mut ui.context, constraints);
-        ui.drawer.reset();
-        ui.drawer.set_view_width_height(width, height);
 
         ui.root_widget.draw(
             &mut ui_state,

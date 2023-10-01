@@ -478,7 +478,8 @@ fn get_texture(
                     ..Default::default()
                 },
             )
-            .unwrap(),
+            .unwrap()
+            .0,
         )
     };
 
