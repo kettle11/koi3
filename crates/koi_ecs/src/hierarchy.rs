@@ -54,6 +54,8 @@ impl HierachyExtension for hecs::World {
         parent: hecs::Entity,
         child: hecs::Entity,
     ) -> Result<(), hecs::NoSuchEntity> {
+        let _ = self.unparent(child);
+
         if parent == child {
             panic!("Can't parent to myself");
         }
@@ -108,7 +110,12 @@ impl HierachyExtension for hecs::World {
         if let Ok(child) = self.get::<&Child>(child_entity) {
             if let Ok(mut parent) = self.get::<&mut Parent>(child.parent) {
                 if parent.arbitrary_child == Some(child_entity) {
-                    parent.arbitrary_child = Some(child.next_sibling);
+                    // Hande the case where this is the only child.
+                    parent.arbitrary_child = if child.next_sibling == child_entity {
+                        None
+                    } else {
+                        Some(child.next_sibling)
+                    };
                 }
             }
             previous_and_next_sibling = Some((child.previous_sibling, child.next_sibling));

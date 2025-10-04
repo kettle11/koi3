@@ -153,6 +153,9 @@ impl backend_trait::BackendTrait for WebGLBackend {
         // is represented so it can be sent directly to the JS side.
         for command in command_buffer.commands.iter() {
             match command {
+                Command::SetScissorRect { .. } => {
+                    todo!()
+                }
                 Command::Present => {}
                 Command::BeginRenderPass { clear_color } => {
                     let data_slice = clear_color.as_slice();

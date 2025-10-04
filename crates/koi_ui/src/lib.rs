@@ -20,6 +20,63 @@ pub fn initialize_plugin(world: &mut World) {
     ));
 }
 
+pub struct WorldSpaceUI<UIState> {
+    // TODO: This should be shared amongst multiple WorldSpaceUI's instead.
+    drawer: kui::Drawer,
+    context: StandardContext<UIState>,
+    root_widget: Box<dyn kui::Widget<UIState, StandardContext<UIState>>>,
+    ui_material: Handle<Material>,
+    ui_mesh: Handle<Mesh>,
+    virtual_viewport_size: Vec3,
+}
+
+unsafe impl<UIState> Send for WorldSpaceUI<UIState> {}
+unsafe impl<UIState> Sync for WorldSpaceUI<UIState> {}
+
+impl<UIState: 'static> WorldSpaceUI<UIState> {
+    pub fn new(
+        world: &mut World,
+        resources: &Resources,
+        style: StandardStyle,
+        fonts: std::sync::Arc<Fonts>,
+        virtual_ui_size: Vec3,
+        ui: impl Widget<UIState, StandardContext<UIState>> + 'static,
+    ) -> Entity {
+        let mut meshes = resources.get::<AssetStore<Mesh>>();
+        let mut materials = resources.get::<AssetStore<Material>>();
+        let mut graphics_context = &mut resources.get::<Renderer>().raw_graphics_context;
+
+        let ui_mesh = meshes.add(Mesh::new(&mut graphics_context, MeshData::default()));
+        let ui_material = materials.add(Material {
+            shader: Shader::UNLIT_UI,
+            ..Default::default()
+        });
+
+        use kui::*;
+
+        let world_space_ui = Self {
+            drawer: kui::Drawer::new(),
+            context: StandardContext::new(style, Default::default(), fonts),
+            root_widget: Box::new(ui),
+            ui_material: ui_material.clone(),
+            ui_mesh: ui_mesh.clone(),
+            virtual_viewport_size: virtual_ui_size,
+        };
+
+        world.spawn((
+            Transform::new(),
+            ui_mesh.clone(),
+            ui_material.clone(),
+            world_space_ui,
+        ))
+    }
+
+    pub fn handle_event(&mut self, event: &kapp::Event, data: &mut UIState) -> bool {
+        // Events not implemented yet.
+        todo!()
+    }
+}
+
 pub struct ScreenSpaceUI<UIState> {
     drawer: kui::Drawer,
     context: StandardContext<UIState>,
@@ -42,7 +99,7 @@ impl<UIState: 'static> ScreenSpaceUI<UIState> {
         world: &mut World,
         resources: &Resources,
         style: StandardStyle,
-        fonts: Fonts,
+        fonts: std::sync::Arc<Fonts>,
         render_flags_override: Option<RenderFlags>,
         view_space_size: Option<Vec3>,
         ui: impl Widget<UIState, StandardContext<UIState>> + 'static,
@@ -185,6 +242,7 @@ fn handle_ui_event<UIState: 'static>(
     {
         handled |= ui.handle_event(event, &mut ui_state);
     }
+    // TODO: Handle world space UI's here.
     handled
 }
 
@@ -228,6 +286,69 @@ fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Resour
             kui::MinAndMaxSize {
                 min: Vec3::ZERO,
                 max: Vec3::new(width, height, 10_000.0),
+            }
+        };
+
+        ui.root_widget
+            .layout(&mut ui_state, &mut (), &mut ui.context, constraints);
+
+        ui.root_widget.draw(
+            &mut ui_state,
+            &mut (),
+            &mut ui.context,
+            &mut ui.drawer,
+            Box3::new_with_min_corner_and_size(constraints.min, constraints.max),
+        );
+
+        let first_mesh_data = &ui.drawer.first_mesh;
+        let mesh_data = MeshData {
+            positions: first_mesh_data.positions.clone(),
+            indices: first_mesh_data.indices.clone(),
+            colors: first_mesh_data.colors.clone(),
+            texture_coordinates: first_mesh_data.texture_coordinates.clone(),
+            ..Default::default()
+        };
+
+        *meshes.get_mut(&ui.ui_mesh) = Mesh::new(&mut graphics_context, mesh_data);
+
+        if ui.drawer.texture_atlas.changed {
+            ui.drawer.texture_atlas.changed = false;
+
+            unsafe {
+                let new_texture = graphics_context.new_texture_with_bytes(
+                    ui.drawer.texture_atlas.width as u32,
+                    ui.drawer.texture_atlas.height as u32,
+                    1,
+                    &ui.drawer.texture_atlas.data,
+                    koi_graphics_context::PixelFormat::R8Unorm,
+                    koi_graphics_context::TextureSettings {
+                        srgb: false,
+                        ..Default::default()
+                    },
+                );
+
+                let new_texture_handle = textures.add(Texture(new_texture));
+                materials.get_mut(&ui.ui_material).base_color_texture = Some(new_texture_handle);
+            }
+        }
+    }
+
+    for (_, (ui, _transform)) in world
+        .query::<(&mut WorldSpaceUI<UIState>, &GlobalTransform)>()
+        .iter()
+    {
+        ui.drawer.reset();
+        ui.context.event_handlers.clear();
+
+        let constraints = {
+            let view_space_size = ui.virtual_viewport_size;
+            ui.context.standard_style_mut().ui_scale = 2.0; // TODO: Make this configurable.
+            ui.context.standard_input_mut().view_size = view_space_size.xy();
+            ui.drawer
+                .set_view_width_height(view_space_size.x, view_space_size.y);
+            kui::MinAndMaxSize {
+                min: Vec3::ZERO,
+                max: view_space_size,
             }
         };
 
