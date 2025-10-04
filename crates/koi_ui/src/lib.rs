@@ -200,6 +200,7 @@ fn draw_screen_space_uis<UIState: 'static>(world: &mut World, resources: &Resour
         .iter()
     {
         ui.drawer.reset();
+        ui.context.event_handlers.clear();
 
         let constraints = if let Some(view_space_size) = ui.view_space_size {
             ui.ui_scale = 2.0;

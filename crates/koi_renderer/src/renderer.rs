@@ -1,9 +1,17 @@
 use std::collections::VecDeque;
 
 use crate::*;
+use kmath::{Box2, Mat4, Vec4};
 use koi_assets::*;
 use koi_graphics_context::{BufferUsage, CommandBuffer};
 use koi_transform::Transform;
+
+pub struct RendererBatchRenderGroup {
+    pub mesh: Handle<Mesh>,
+    pub material: Handle<Material>,
+    pub transforms: Vec<Mat4>,
+    pub colors: Vec<Vec4>,
+}
 
 pub struct Renderer {
     pub raw_graphics_context: koi_graphics_context::GraphicsContext,
@@ -39,12 +47,14 @@ impl Renderer {
         camera_transform: &Transform,
         view_width: f32,
         view_height: f32,
+        viewport: Box2,
     ) -> RenderPass {
         if let Some(mut render_pass) = self.render_pass_pool.pop() {
             render_pass.camera = camera.clone();
             render_pass.camera_transform = *camera_transform;
             render_pass.meshes_to_draw.clear();
             render_pass.local_to_world_matrices.clear();
+            render_pass.per_object_colors.clear();
             render_pass.view_width = view_width;
             render_pass.view_height = view_height;
             render_pass.camera = camera.clone();
@@ -53,11 +63,13 @@ impl Renderer {
             render_pass.exposure_scale_factor =
                 1.0 / camera.exposure.max_luminance_without_clipping();
             render_pass.light_probe = None;
+            render_pass.viewport = viewport;
             render_pass
         } else {
             RenderPass {
                 meshes_to_draw: Vec::new(),
                 local_to_world_matrices: Vec::new(),
+                per_object_colors: Vec::new(),
                 camera: camera.clone(),
                 camera_transform: *camera_transform,
                 view_width,
@@ -67,6 +79,7 @@ impl Renderer {
                 lights_bound: 0,
                 exposure_scale_factor: 1.0 / camera.exposure.max_luminance_without_clipping(),
                 light_probe: None,
+                viewport,
             }
         }
     }
@@ -82,6 +95,7 @@ impl Renderer {
         textures: &AssetStore<Texture>,
         cube_maps: &AssetStore<CubeMap>,
         morphable_mesh_data: &AssetStore<MorphableMeshData>,
+        batch_render_groups: &[&RendererBatchRenderGroup],
     ) {
         let mut command_buffer = self.raw_graphics_context.new_command_buffer();
 
@@ -95,6 +109,7 @@ impl Renderer {
                 textures,
                 cube_maps,
                 morphable_mesh_data,
+                batch_render_groups,
             );
             self.render_pass_pool.push(render_pass);
         }
@@ -108,8 +123,9 @@ impl Renderer {
 pub struct RenderPass {
     camera: Camera,
     camera_transform: Transform,
-    meshes_to_draw: Vec<(Handle<Material>, Handle<Mesh>, kmath::Mat4)>,
+    meshes_to_draw: Vec<(Handle<Material>, Handle<Mesh>, kmath::Mat4, kmath::Vec4)>,
     local_to_world_matrices: Vec<kmath::Mat4>,
+    per_object_colors: Vec<kmath::Vec4>,
     view_width: f32,
     view_height: f32,
     color_space: kcolor::ColorSpace,
@@ -117,6 +133,7 @@ pub struct RenderPass {
     lights_bound: usize,
     exposure_scale_factor: f32,
     light_probe: Option<LightProbe>,
+    viewport: Box2,
 }
 
 impl RenderPass {
@@ -166,10 +183,15 @@ impl RenderPass {
         mesh: &Handle<Mesh>,
         material: &Handle<Material>,
         transform: &Transform,
+        color: Option<Color>,
     ) {
         // Todo: Immediately cull mesh if outside frustum bounds.
-        self.meshes_to_draw
-            .push((material.clone(), mesh.clone(), transform.local_to_world()))
+        self.meshes_to_draw.push((
+            material.clone(),
+            mesh.clone(),
+            transform.local_to_world(),
+            color.map_or(kmath::Vec4::fill(1.0), |c| c.to_rgb_color(self.color_space)),
+        ))
     }
 
     fn execute(
@@ -182,6 +204,7 @@ impl RenderPass {
         textures: &AssetStore<Texture>,
         cube_maps: &AssetStore<CubeMap>,
         morphable_mesh_data: &AssetStore<MorphableMeshData>,
+        batch_render_groups: &[&RendererBatchRenderGroup],
     ) {
         /*
         let mut render_pass = command_buffer.begin_render_pass_with_framebuffer(
@@ -191,12 +214,18 @@ impl RenderPass {
                 .map(|v| v.to_rgb_color(self.color_space).into()),
         );
         */
-        let mut render_pass = command_buffer.begin_render_pass(
+
+        let viewport_size = self.viewport.size();
+
+        let render_pass = command_buffer.begin_render_pass(
             self.camera
                 .clear_color
                 .map(|v| v.to_rgb_color(self.color_space)),
+            self.view_width * self.viewport.min.x,
+            self.view_height * self.viewport.min.y,
+            self.view_width as f32 * viewport_size.x,
+            self.view_height as f32 * viewport_size.y,
         );
-        render_pass.set_viewport(0.0, 0.0, self.view_width as f32, self.view_height as f32);
 
         {
             let mut render_pass_executor = RenderPassExecutor {
@@ -217,6 +246,7 @@ impl RenderPass {
                     .camera
                     .projection_matrix(self.view_width, self.view_height),
                 this_render_pass: self,
+                batch_render_groups,
             };
 
             render_pass_executor.execute();
@@ -240,6 +270,7 @@ struct RenderPassExecutor<'a> {
     world_to_camera: kmath::Mat4,
     camera_to_screen: kmath::Mat4,
     this_render_pass: &'a mut RenderPass,
+    batch_render_groups: &'a [&'a RendererBatchRenderGroup],
 }
 
 impl<'a> RenderPassExecutor<'a> {
@@ -419,12 +450,25 @@ impl<'a> RenderPassExecutor<'a> {
                     true,
                 );
 
+                // Upload per-object color data
+                // TODO: This could be made optional using a default value instead.
+                let per_object_color_data = self
+                    .graphics
+                    .new_buffer(&self.this_render_pass.per_object_colors, BufferUsage::Data);
+
+                self.render_pass.set_attribute(
+                    &shader_properties.color_instance_attribute,
+                    Some(&per_object_color_data),
+                    true,
+                );
+
                 self.render_pass.draw(
                     Some(&gpu_mesh.index_buffer),
                     gpu_mesh.index_start..gpu_mesh.index_end,
                     self.this_render_pass.local_to_world_matrices.len() as u32,
                 );
                 self.this_render_pass.local_to_world_matrices.clear();
+                self.this_render_pass.per_object_colors.clear();
             }
         }
     }
@@ -478,11 +522,11 @@ impl<'a> RenderPassExecutor<'a> {
             &mut self.this_render_pass.meshes_to_draw,
         );
 
-        // TODO: This is a bad hack to sepearate out transparent things
+        // TODO: This is a bad hack to separate out transparent things
         let mut transparent = Vec::new();
 
         // Renders batches of meshes that share the same material.
-        for (material_handle, mesh_handle, local_to_world_matrix) in meshes_to_draw.iter() {
+        for (material_handle, mesh_handle, local_to_world_matrix, color) in meshes_to_draw.iter() {
             if self
                 .shaders
                 .get(&self.materials.get(material_handle).shader)
@@ -494,6 +538,7 @@ impl<'a> RenderPassExecutor<'a> {
                     material_handle.clone(),
                     mesh_handle.clone(),
                     *local_to_world_matrix,
+                    *color,
                 ));
                 continue;
             }
@@ -529,6 +574,7 @@ impl<'a> RenderPassExecutor<'a> {
             self.this_render_pass
                 .local_to_world_matrices
                 .push(*local_to_world_matrix);
+            self.this_render_pass.per_object_colors.push(*color);
         }
 
         let camera_forward = self.camera_transform.forward();
@@ -543,7 +589,7 @@ impl<'a> RenderPassExecutor<'a> {
             v1.partial_cmp(&v0).unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        for (material_handle, mesh_handle, local_to_world_matrix) in transparent.iter() {
+        for (material_handle, mesh_handle, local_to_world_matrix, color) in transparent.iter() {
             let mut change_material = false;
             let mut change_mesh = None;
 
@@ -576,9 +622,39 @@ impl<'a> RenderPassExecutor<'a> {
             self.this_render_pass
                 .local_to_world_matrices
                 .push(*local_to_world_matrix);
+            self.this_render_pass.per_object_colors.push(*color);
         }
 
         self.render_group();
+
+        for batch_render_group in self.batch_render_groups {
+            let material = self.materials.get(&batch_render_group.material);
+            let shader = self.shaders.get(&material.shader);
+
+            self.current_material_and_shader = Some((material, shader));
+            let gpu_mesh = self
+                .meshes
+                .get(&batch_render_group.mesh)
+                .gpu_mesh
+                .as_ref()
+                .unwrap();
+            self.current_gpu_mesh = Some(gpu_mesh);
+            current_mesh = Some(&batch_render_group.mesh);
+            current_material = Some(&batch_render_group.material);
+
+            // TODO: This copy shouldn't be needed.
+            self.this_render_pass.local_to_world_matrices.clear();
+            self.this_render_pass
+                .local_to_world_matrices
+                .extend_from_slice(&batch_render_group.transforms);
+            self.this_render_pass.per_object_colors.clear();
+            self.this_render_pass
+                .per_object_colors
+                .extend_from_slice(&batch_render_group.colors);
+
+            self.render_group();
+        }
+
         std::mem::swap(
             &mut meshes_to_draw,
             &mut self.this_render_pass.meshes_to_draw,

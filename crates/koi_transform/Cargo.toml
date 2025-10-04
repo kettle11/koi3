@@ -3,7 +3,7 @@ name = "koi_transform"
 version = "0.1.0"
 edition = "2021"
 
- 
+
 [dependencies]
 kmath = {path = "../../../koi2/crates/kmath"}
 koi_ecs = {path = "../koi_ecs"}

@@ -7,7 +7,6 @@ pub use koi_ecs_derive::*;
 pub use world_cloner::*;
 
 mod hierarchy;
-pub use hierarchy::*;
 
 pub struct World {
     hecs_world: hecs::World,

@@ -54,6 +54,10 @@ impl HierachyExtension for hecs::World {
         parent: hecs::Entity,
         child: hecs::Entity,
     ) -> Result<(), hecs::NoSuchEntity> {
+        if parent == child {
+            panic!("Can't parent to myself");
+        }
+
         if !self.contains(child) {
             return Err(hecs::NoSuchEntity);
         }
@@ -85,8 +89,14 @@ impl HierachyExtension for hecs::World {
             },
         );
 
+        // Update the next sibling to point to the newly inserted child.
         if let Ok(mut c) = self.get::<&mut Child>(next_sibling) {
-            c.previous_sibling = next_sibling;
+            c.previous_sibling = child;
+        }
+
+        // Update the previous sibling to point to the newly inserted child.
+        if let Ok(mut c) = self.get::<&mut Child>(previous_sibling) {
+            c.next_sibling = child;
         }
 
         Ok(())

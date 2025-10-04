@@ -25,6 +25,11 @@ impl Time {
         }
     }
 
+    pub fn reset_accumulator(&mut self) {
+        self.last_time_step = kinstant::Instant::now();
+        self.time_accumulator_seconds = 0.0;
+    }
+
     pub fn update(&mut self) {
         let now = kinstant::Instant::now();
         let elapsed = now - self.last_time_step;

@@ -4,6 +4,7 @@ use koi_resources::*;
 #[cfg(feature = "gltf")]
 mod gltf;
 
+#[derive(Clone)]
 pub struct Prefab(pub koi_ecs::World);
 
 impl Prefab {

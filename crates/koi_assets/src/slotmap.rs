@@ -108,6 +108,8 @@ impl<T> SlotMap<T> {
         assert!(self.handle_is_placeholder(handle));
         let new_index = self.items.len();
         self.items.push(item);
+        self.item_to_indirection_index
+            .push(handle.indirection_index);
         self.indirection_indices[handle.indirection_index].item_index = new_index;
     }
 
@@ -127,8 +129,10 @@ impl<T> SlotMap<T> {
         let item_entry = &mut self.indirection_indices[handle.indirection_index];
         let item_index = item_entry.item_index;
         let path = item_entry.path.take();
+
         self.indirection_indices[*self.item_to_indirection_index.last().unwrap()].item_index =
             item_index;
+
         let removed_item = self.items.swap_remove(item_index);
         self.item_to_indirection_index.swap_remove(item_index);
         self.free_indirection_indices.push(handle.indirection_index);

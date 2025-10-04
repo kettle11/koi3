@@ -116,6 +116,7 @@ pub struct GLBackend {
     ),
     pub delete_buffers: unsafe extern "system" fn(n: GLsizei, buffers: *const GLuint),
     pub viewport: unsafe extern "system" fn(x: GLint, y: GLint, width: GLsizei, height: GLsizei),
+    pub scissor: unsafe extern "system" fn(x: GLint, y: GLint, width: GLsizei, height: GLsizei),
     pub draw_arrays: unsafe extern "system" fn(mode: GLenum, first: GLint, count: GLsizei),
     pub get_active_uniform_block_name: unsafe extern "system" fn(
         program: GLuint,
@@ -297,6 +298,7 @@ impl GLBackend {
             buffer_data: std::mem::transmute(get_f(&gl_context, "glBufferData")),
             delete_buffers: std::mem::transmute(get_f(&gl_context, "glDeleteBuffers")),
             viewport: std::mem::transmute(get_f(&gl_context, "glViewport")),
+            scissor: std::mem::transmute(get_f(&gl_context, "glScissor")),
             draw_arrays: std::mem::transmute(get_f(&gl_context, "glDrawArrays")),
             get_active_uniform_block_name: std::mem::transmute(get_f(
                 &gl_context,
@@ -345,6 +347,7 @@ impl GLBackend {
         (s.gen_vertex_arrays)(1, &mut vertex_array);
         (s.bind_vertex_array)(vertex_array);
 
+        // Enable the scissor rect immediately.
         s
     }
 }
@@ -377,6 +380,8 @@ impl crate::backend_trait::BackendTrait for GLBackend {
         // These are constant across all pipelines.
         (self.enable)(DEPTH_TEST);
         (self.clear_depth)(1.0);
+
+        (self.enable)(SCISSOR_TEST);
 
         let mut current_program = None;
 
@@ -457,6 +462,15 @@ impl crate::backend_trait::BackendTrait for GLBackend {
                 } => {
                     // TODO: x, y, width, and height should be passed in from 0 to 1.0 instead.
                     (self.viewport)(x as i32, y as i32, width as i32, height as i32)
+                }
+                &Command::SetScissorRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => {
+                    // TODO: x, y, width, and height should be passed in from 0 to 1.0 instead.
+                    (self.scissor)(x as i32, y as i32, width as i32, height as i32)
                 }
                 Command::SetUniform {
                     uniform_info,

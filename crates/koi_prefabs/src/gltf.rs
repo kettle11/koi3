@@ -235,10 +235,9 @@ pub(crate) fn finalize_gltf_load(
                     _ => {
                         klog::log!("KOI WARNING: Unimplemented material!");
                         koi_renderer::Shader::UNLIT
-                    }
-                    // (true, false) => Shader::PHYSICALLY_BASED_TRANSPARENT,
-                    // (false, true) => Shader::PHYSICALLY_BASED_DOUBLE_SIDED,
-                    // (true, true) => Shader::PHYSICALLY_BASED_TRANSPARENT_DOUBLE_SIDED,
+                    } // (true, false) => Shader::PHYSICALLY_BASED_TRANSPARENT,
+                      // (false, true) => Shader::PHYSICALLY_BASED_DOUBLE_SIDED,
+                      // (true, true) => Shader::PHYSICALLY_BASED_TRANSPARENT_DOUBLE_SIDED,
                 };
                 new_material.shader = shader;
             } else {
@@ -248,10 +247,9 @@ pub(crate) fn finalize_gltf_load(
                     _ => {
                         klog::log!("KOI WARNING: Unimplemented material!");
                         koi_renderer::Shader::PHYSICALLY_BASED
-                    }
-                    // (true, false) => Shader::PHYSICALLY_BASED_TRANSPARENT,
-                    // (false, true) => Shader::PHYSICALLY_BASED_DOUBLE_SIDED,
-                    // (true, true) => Shader::PHYSICALLY_BASED_TRANSPARENT_DOUBLE_SIDED,
+                    } // (true, false) => Shader::PHYSICALLY_BASED_TRANSPARENT,
+                      // (false, true) => Shader::PHYSICALLY_BASED_DOUBLE_SIDED,
+                      // (true, true) => Shader::PHYSICALLY_BASED_TRANSPARENT_DOUBLE_SIDED,
                 };
                 new_material.shader = shader;
             };

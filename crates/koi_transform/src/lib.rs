@@ -14,6 +14,12 @@ impl core::ops::Deref for GlobalTransform {
     }
 }
 
+impl GlobalTransform {
+    pub fn inner(&self) -> Transform {
+        self.0.clone()
+    }
+}
+
 #[derive(Clone, Copy, Debug, Component)]
 pub struct Transform {
     /// Position relative to parent

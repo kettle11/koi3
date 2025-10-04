@@ -21,6 +21,8 @@ mod constants {
     pub const LINK_STATUS: GLenum = 0x8B82;
 
     pub const DEPTH_TEST: GLenum = 0x0B71;
+    pub const SCISSOR_TEST: GLenum = 0x0C11;
+
     pub const ALWAYS: GLenum = 0x0207;
 
     pub const LEQUAL: GLenum = 0x0203;
@@ -154,9 +156,8 @@ pub fn pixel_format_to_gl_format_and_inner_format_and_type(
         PixelFormat::RGB8Unorm => RGB8,
         PixelFormat::RGBA8Unorm => RGBA8,
         PixelFormat::RGBA16F => RGBA16F,
-        PixelFormat::RGBA32F => RGBA32F
-        // PixelFormat::RGB16F => RGB16F,
-        // PixelFormat::RGB32F => RGB32F,
+        PixelFormat::RGBA32F => RGBA32F, // PixelFormat::RGB16F => RGB16F,
+                                         // PixelFormat::RGB32F => RGB32F,
     };
 
     let type_ = match pixel_format {

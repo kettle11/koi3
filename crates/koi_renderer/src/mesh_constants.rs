@@ -38,7 +38,7 @@ pub fn initialize_meshes(
     let mesh_data = cube();
     meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::CUBE);
 
-    let mesh_data = uv_sphere(32, 32, Vec2::ONE);
+    let mesh_data: MeshData = uv_sphere(32, 32, Vec2::ONE);
     meshes.add_and_leak(Mesh::new(graphics, mesh_data), &Mesh::SPHERE);
 
     let mesh_data = ring(0.1, 1.0, 8, 20);
@@ -705,7 +705,7 @@ pub fn cylinder(start: Vec3, end: Vec3, resolution: u32, radius: f32) -> MeshDat
     }
 }
 
-/// A hollow cylinder.
+/// A circle.
 pub fn circle(dir: Vec3, resolution: u32, radius: f32) -> MeshData {
     let mut positions = Vec::with_capacity(resolution as usize + 1);
     let mut normals = Vec::with_capacity(positions.capacity());

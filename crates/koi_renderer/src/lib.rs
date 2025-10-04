@@ -1,4 +1,5 @@
 mod koi_integration;
+use kmath::Ray3;
 pub use koi_integration::*;
 
 mod camera;
@@ -52,8 +53,10 @@ pub use morphable_mesh::*;
 mod light_probe;
 pub use light_probe::*;
 
+#[derive(Debug, Clone)]
 pub struct RaycastSceneResult {
     pub position: kmath::Vec3,
+    pub normal: Option<kmath::Vec3>,
     pub mesh_tri_index: usize,
     pub entity: koi_ecs::Entity,
 }
@@ -94,6 +97,33 @@ pub fn raycast_scene(
     raycast_entities(ray, &*meshes, entities.iter())
 }
 
+/// Gets the world ray of the pointer given an x and y position in screen pixels
+/// and a camera. This assumes there is one window.
+pub fn get_pointer_world_ray(
+    world: &koi_ecs::World,
+    resources: &koi_resources::Resources,
+    camera_entity: koi_ecs::Entity,
+    x: f32,
+    y: f32,
+) -> Option<Ray3> {
+    use std::ops::Deref;
+
+    let window = resources.get::<kapp::Window>();
+    let (window_width, window_height) = window.size();
+
+    let entity_ref = world.entity(camera_entity).ok()?;
+    let camera = entity_ref.get::<&Camera>()?;
+    let camera_transform = entity_ref.get::<&GlobalTransform>()?;
+
+    Some(camera.view_to_ray(
+        camera_transform.deref(),
+        x,
+        y,
+        window_width as f32,
+        window_height as f32,
+    ))
+}
+
 pub fn raycast_entities<'a>(
     ray: kmath::Ray3,
     meshes: &koi_assets::AssetStore<Mesh>,
@@ -107,19 +137,23 @@ pub fn raycast_entities<'a>(
     let mut closest_value = f32::MAX;
     let mut intersected_entity = None;
     let mut intersected_tri = 0;
+    let mut normal = None;
 
     for (entity, (transform, mesh_handle)) in entities {
         let mesh = meshes.get(mesh_handle);
         if let Some(bounding_box) = mesh.bounding_box {
             if let Some(mesh_data) = mesh.mesh_data.as_ref() {
+                let transform = transform.local_to_world();
+
                 // This inverse will make this operation more slow
-                let inverse_model = transform.local_to_world().inversed();
+                let inverse_model = transform.inversed();
                 let ray = inverse_model.transform_ray(ray);
                 if let Some(v) = kmath::intersections::ray_with_bounding_box(ray, bounding_box) {
                     if v < closest_value {
                         if let Some(kmath::intersections::RayWithMeshResult {
                             distance: v,
                             tri_index,
+                            barycentric_coordinates,
                         }) = kmath::intersections::ray_with_mesh(
                             ray,
                             &mesh_data.positions,
@@ -128,7 +162,23 @@ pub fn raycast_entities<'a>(
                             if v < closest_value {
                                 closest_value = v;
                                 intersected_tri = tri_index;
-                                intersected_entity = Some(entity)
+                                intersected_entity = Some(entity);
+
+                                normal = None;
+
+                                let tri = mesh_data.indices[tri_index];
+                                if let Some(n0) = mesh_data.normals.get(tri[0] as usize) {
+                                    if let Some(n1) = mesh_data.normals.get(tri[1] as usize) {
+                                        if let Some(n2) = mesh_data.normals.get(tri[2] as usize) {
+                                            let (u, v, w) = barycentric_coordinates.into();
+                                            let local_space_normal = *n0 * u + *n1 * v + *n2 * w;
+                                            let world_space_normal =
+                                                transform.transform_vector(local_space_normal);
+
+                                            normal = Some(world_space_normal);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -140,5 +190,6 @@ pub fn raycast_entities<'a>(
         position: ray.get_point(closest_value),
         entity,
         mesh_tri_index: intersected_tri,
+        normal,
     })
 }

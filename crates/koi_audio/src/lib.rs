@@ -1,4 +1,5 @@
 mod sound;
+
 pub use sound::*;
 
 mod audio_listener;
@@ -8,11 +9,15 @@ use crate::sound_assets::initialize_sound_assets;
 
 mod audio_source;
 mod sound_assets;
+pub use sound_assets::SoundSettings;
 
 pub mod low_pass_filter;
 
 pub use audio_source::*;
 pub use oddio;
+
+/// A component which despawns an entity when it's no longer playing audio.
+pub struct OneShotAudio;
 
 pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
     const QUIET_AMPLITUDE: f32 = 0.001;
@@ -57,6 +62,30 @@ pub fn initialize_plugin(resources: &mut koi_resources::Resources) {
             koi_events::Event::PostFixedUpdate,
             audio_source::update_audio_sources,
         );
+
+    // Despawn all sources that have finished playing audio.
+    let mut to_despawn = Vec::new();
+    resources
+        .get_mut::<koi_events::EventHandlers>()
+        .add_handler(
+            koi_events::Event::PostFixedUpdate,
+            move |_event, world, _resources| {
+                to_despawn.clear();
+                for (entity, (_, source)) in world
+                    .query::<(&OneShotAudio, Option<&AudioSource>)>()
+                    .iter()
+                {
+                    if source.map_or(true, |s| {
+                        s.spatial_sounds_to_play() == 0 && s.sounds_playing_count() == 0
+                    }) {
+                        to_despawn.push(entity);
+                    }
+                }
+                for e in to_despawn.iter() {
+                    let _ = world.despawn(*e);
+                }
+            },
+        );
 }
 
 pub struct AudioManager {
@@ -87,6 +116,15 @@ impl AudioManager {
     }
 
     pub fn play_one_shot_oddio<S: oddio::Signal<Frame = [f32; 2]> + Send + 'static>(
+        &mut self,
+        signal: S,
+    ) -> oddio::Handle<oddio::Stop<S>> {
+        self.non_spatial_handle
+            .control::<oddio::Mixer<_>, _>()
+            .play(signal)
+    }
+
+    pub fn play_one_shot_spatialized_oddio<S: oddio::Signal<Frame = [f32; 2]> + Send + 'static>(
         &mut self,
         signal: S,
     ) -> oddio::Handle<oddio::Stop<S>> {

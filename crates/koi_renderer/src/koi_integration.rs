@@ -5,7 +5,7 @@ use crate::{
 
 use koi_assets::*;
 use koi_resources::Resources;
-use koi_transform::GlobalTransform;
+use koi_transform::{transform_plugin::update_global_transforms, GlobalTransform};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 /// Used to configure which layers [Entity]s will render on.
@@ -71,7 +71,7 @@ pub async fn initialize_plugin(resources: &mut Resources) {
     let mut graphics_context =
         koi_graphics_context::GraphicsContext::new(koi_graphics_context::GraphicsContextSettings {
             high_resolution_framebuffer: true,
-            /// How many MSAA samples the window framebuffer should have
+            // How many MSAA samples the window framebuffer should have
             samples: 4,
             color_space: Some(initial_settings.color_space),
         })
@@ -107,94 +107,145 @@ pub async fn initialize_plugin(resources: &mut Resources) {
         .add_handler(koi_events::Event::PostDraw, draw);
 }
 
-pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {
-    let mut cube_maps = resources.get::<AssetStore<CubeMap>>();
-    cube_maps.finalize_asset_loads(resources);
+/// A world to draw within a subviewport of the scene.
+pub struct WorldToDrawInViewport {
+    pub scene: koi_ecs::World,
+    /// A viewport from 0.0 to 1.0 as a percentage of the screen.
+    pub viewport: kmath::Box2,
+}
 
-    let window = resources.get::<kapp::Window>();
-    let mut meshes = resources.get::<AssetStore<Mesh>>();
-    let mut materials = resources.get::<AssetStore<Material>>();
-    let mut shaders = resources.get::<AssetStore<Shader>>();
-    let mut textures = resources.get::<AssetStore<Texture>>();
-    let morphable_mesh_data = resources.get::<AssetStore<MorphableMeshData>>();
+fn draw_inner(world: &mut koi_ecs::World, resources: &mut Resources, base_viewport: kmath::Box2) {
+    {
+        let mut cube_maps = resources.get::<AssetStore<CubeMap>>();
+        cube_maps.finalize_asset_loads(resources);
 
-    meshes.finalize_asset_loads(resources);
-    materials.finalize_asset_loads(resources);
-    shaders.finalize_asset_loads(resources);
-    textures.finalize_asset_loads(resources);
+        let window = resources.get::<kapp::Window>();
+        let mut meshes = resources.get::<AssetStore<Mesh>>();
+        let mut materials = resources.get::<AssetStore<Material>>();
+        let mut shaders = resources.get::<AssetStore<Shader>>();
+        let mut textures = resources.get::<AssetStore<Texture>>();
+        let morphable_mesh_data = resources.get::<AssetStore<MorphableMeshData>>();
 
-    let mut renderer = resources.get::<Renderer>();
+        meshes.finalize_asset_loads(resources);
+        materials.finalize_asset_loads(resources);
+        shaders.finalize_asset_loads(resources);
+        textures.finalize_asset_loads(resources);
 
-    meshes.cleanup_dropped_assets();
-    materials.cleanup_dropped_assets();
-    shaders.cleanup_dropped_assets();
-    textures.cleanup_dropped_assets();
-    cube_maps.cleanup_dropped_assets();
+        let mut renderer = resources.get::<Renderer>();
 
-    let (window_width, window_height) = window.size();
-    // TODO: Does this need to be resized?
-    // renderer
-    //     .raw_graphics_context
-    //     .resize(&*window, window_width, window_height);
+        meshes.cleanup_dropped_assets();
+        materials.cleanup_dropped_assets();
+        shaders.cleanup_dropped_assets();
+        textures.cleanup_dropped_assets();
+        cube_maps.cleanup_dropped_assets();
 
-    let light_probe = world
-        .query::<&LightProbe>()
-        .iter()
-        .next()
-        .map(|v| v.1.clone());
+        let (window_width, window_height) = window.size();
+        // TODO: Does this need to be resized?
+        // renderer
+        //     .raw_graphics_context
+        //     .resize(&*window, window_width, window_height);
 
-    let mut camera_query = world.query::<(&GlobalTransform, &Camera, Option<&RenderFlags>)>();
+        let light_probe = world
+            .query::<&LightProbe>()
+            .iter()
+            .next()
+            .map(|v| v.1.clone());
 
-    // TODO: Avoid this allocation
-    let mut cameras = Vec::new();
+        let mut camera_query = world.query::<(&GlobalTransform, &Camera, Option<&RenderFlags>)>();
 
-    for (t, c) in camera_query.iter() {
-        cameras.push((t, (c.0, c.1, c.2.cloned().unwrap_or(RenderFlags::DEFAULT))));
+        // TODO: Avoid this allocation
+        let mut cameras = Vec::new();
+
+        for (t, c) in camera_query.iter() {
+            cameras.push((t, (c.0, c.1, c.2.cloned().unwrap_or(RenderFlags::DEFAULT))));
+        }
+
+        cameras.sort_by_key(|c| c.1 .2);
+
+        for (_, (camera_transform, camera, camera_render_flags)) in cameras {
+            let mut render_pass = renderer.begin_render_pass(
+                camera,
+                camera_transform,
+                window_width as f32,
+                window_height as f32,
+                base_viewport,
+            );
+
+            render_pass.set_light_probe(light_probe.as_ref());
+
+            let mut directional_lights =
+                world.query::<koi_ecs::Without<(&DirectionalLight, &GlobalTransform), &Camera>>();
+
+            for (_, (light, light_transform)) in directional_lights.iter() {
+                render_pass.add_directional_light(light_transform, light)
+            }
+
+            let mut point_lights =
+                world.query::<koi_ecs::Without<(&PointLight, &GlobalTransform), &Camera>>();
+
+            for (_, (light, light_transform)) in point_lights.iter() {
+                render_pass.add_point_light(light_transform, light)
+            }
+
+            let mut renderables = world.query::<(
+                &Handle<Mesh>,
+                &Handle<Material>,
+                &GlobalTransform,
+                Option<&RenderFlags>,
+                Option<&Color>,
+            )>();
+
+            for (_, (gpu_mesh, material, transform, render_flags, color)) in renderables.iter() {
+                let render_flags = render_flags.unwrap_or(&RenderFlags::DEFAULT);
+
+                if camera_render_flags.includes_layer(*render_flags) {
+                    render_pass.draw_mesh(gpu_mesh, material, transform, color.cloned());
+                }
+            }
+
+            renderer.submit_render_pass(render_pass);
+        }
     }
 
-    cameras.sort_by_key(|c| c.1 .2);
+    for (_, other_scene_draw) in world.query::<&mut WorldToDrawInViewport>().iter() {
+        // The event isn't used.
+        // This makes sure everything has the global transforms
 
-    for (_, (camera_transform, camera, camera_render_flags)) in cameras {
-        let mut render_pass = renderer.begin_render_pass(
-            camera,
-            camera_transform,
-            window_width as f32,
-            window_height as f32,
+        update_global_transforms(
+            &koi_events::Event::Draw,
+            &mut other_scene_draw.scene,
+            resources,
         );
 
-        render_pass.set_light_probe(light_probe.as_ref());
-
-        let mut directional_lights =
-            world.query::<koi_ecs::Without<(&DirectionalLight, &GlobalTransform), &Camera>>();
-
-        for (_, (light, light_transform)) in directional_lights.iter() {
-            render_pass.add_directional_light(light_transform, light)
-        }
-
-        let mut point_lights =
-            world.query::<koi_ecs::Without<(&PointLight, &GlobalTransform), &Camera>>();
-
-        for (_, (light, light_transform)) in point_lights.iter() {
-            render_pass.add_point_light(light_transform, light)
-        }
-
-        let mut renderables = world.query::<(
-            &Handle<Mesh>,
-            &Handle<Material>,
-            &GlobalTransform,
-            Option<&RenderFlags>,
-        )>();
-
-        for (_, (gpu_mesh, material, transform, render_flags)) in renderables.iter() {
-            let render_flags = render_flags.unwrap_or(&RenderFlags::DEFAULT);
-
-            if camera_render_flags.includes_layer(*render_flags) {
-                render_pass.draw_mesh(gpu_mesh, material, transform);
-            }
-        }
-
-        renderer.submit_render_pass(render_pass);
+        println!("DRAW SUB VIEWPORT!");
+        draw_inner(
+            &mut other_scene_draw.scene,
+            resources,
+            // Should this combine with the base viewport?
+            other_scene_draw.viewport,
+        );
     }
+}
+pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut Resources) {
+    let now = std::time::Instant::now();
+    draw_inner(
+        world,
+        resources,
+        kmath::Box2::new_with_min_corner_and_size(kmath::Vec2::ZERO, kmath::Vec2::ONE),
+    );
+
+    let mut renderer = resources.get::<Renderer>();
+    let window = resources.get::<kapp::Window>();
+    let meshes = resources.get::<AssetStore<Mesh>>();
+    let materials = resources.get::<AssetStore<Material>>();
+    let shaders = resources.get::<AssetStore<Shader>>();
+    let textures = resources.get::<AssetStore<Texture>>();
+    let morphable_mesh_data = resources.get::<AssetStore<MorphableMeshData>>();
+    let cube_maps = resources.get::<AssetStore<CubeMap>>();
+
+    let mut batch_group = world.query::<&RendererBatchRenderGroup>();
+    let render_groups: Vec<&RendererBatchRenderGroup> =
+        batch_group.iter().map(|(_, b)| b).collect();
 
     renderer.present(
         &meshes,
@@ -203,6 +254,7 @@ pub fn draw(_: &koi_events::Event, world: &mut koi_ecs::World, resources: &mut R
         &textures,
         &cube_maps,
         &morphable_mesh_data,
+        render_groups.as_slice(),
     );
 
     if renderer.automatically_redraw {

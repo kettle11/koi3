@@ -49,7 +49,7 @@ impl Random {
     // But that would require some extra trait shenanigans or something like a custom
     // random implementation.
 
-    /// Generates a random f32
+    /// Generates a random f32 from 0.0 to 1.0
     pub fn f32(&mut self) -> f32 {
         self.random_number_generator.rand_float()
     }

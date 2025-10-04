@@ -3,7 +3,7 @@ name = "koi_graphics_context"
 version = "0.1.0"
 edition = "2021"
 
-[features] 
+[features]
 default = ["gl", "webgl"]
 gl = ["kapp/gl_context"]
 webgpu = ["naga"]

@@ -18,12 +18,14 @@ pub enum CameraControlsMode {
 
 #[derive(Clone)]
 pub struct CameraControls {
-    velocity: Vec3,
+    pub velocity: Vec3,
     pub max_speed: f32,
     pub rotation_sensitivity: f32,
     pub mode: CameraControlsMode,
     pub rotate_button: PointerButton,
     pub panning_mouse_button: Option<PointerButton>,
+    pub fly_controls_enabled: bool,
+    pub panning_enabled: bool,
     pub panning_scale: f32,
     pub touch_rotate_enabled: bool,
     pub enabled: bool,
@@ -45,6 +47,8 @@ impl CameraControls {
             mode: CameraControlsMode::Fly,
             rotate_button: PointerButton::Secondary,
             panning_mouse_button: Some(PointerButton::Auxillary),
+            fly_controls_enabled: true,
+            panning_enabled: true,
             panning_scale: 1.0,
             touch_rotate_enabled: true,
             enabled: true,
@@ -85,29 +89,31 @@ pub fn update_camera_controls(
 
         let mut direction = Vec3::ZERO;
 
-        if input.key(Key::W) {
-            direction += transform.forward();
-        }
+        if controls.fly_controls_enabled {
+            if input.key(Key::W) {
+                direction += transform.forward();
+            }
 
-        if input.key(Key::S) {
-            direction += transform.back();
-        }
+            if input.key(Key::S) {
+                direction += transform.back();
+            }
 
-        if input.key(Key::A) {
-            direction += transform.left();
-        }
+            if input.key(Key::A) {
+                direction += transform.left();
+            }
 
-        if input.key(Key::D) {
-            direction += transform.right();
-        }
+            if input.key(Key::D) {
+                direction += transform.right();
+            }
 
-        // Up and down controls
-        if input.key(Key::E) {
-            direction += transform.up();
-        }
+            // Up and down controls
+            if input.key(Key::E) {
+                direction += transform.up();
+            }
 
-        if input.key(Key::Q) {
-            direction += transform.down();
+            if input.key(Key::Q) {
+                direction += transform.down();
+            }
         }
 
         /*
@@ -168,7 +174,7 @@ pub fn update_camera_controls(
 
         // On Macs there are sometimes extra large-ish scroll events sent when ending a pan with a two finger click.
         // This would result in the camera jerking. This check avoids that.
-        if rotating {
+        if rotating || !controls.panning_enabled {
             pan = Vec2::ZERO;
         }
 

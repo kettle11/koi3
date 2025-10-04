@@ -60,7 +60,8 @@ pub(crate) struct ShaderRenderProperties {
     #[allow(unused)]
     pub(crate) local_to_world_instance_attribute:
         koi_graphics_context::VertexAttribute<kmath::Mat4>,
-    // Atributes
+    pub(crate) color_instance_attribute: koi_graphics_context::VertexAttribute<kmath::Vec4>,
+    // Attributes
     pub(crate) position_attribute: koi_graphics_context::VertexAttribute<kmath::Vec3>,
     pub(crate) normal_attribute: koi_graphics_context::VertexAttribute<kmath::Vec3>,
     pub(crate) texture_coordinate_attribute: koi_graphics_context::VertexAttribute<kmath::Vec2>,
@@ -143,6 +144,7 @@ impl crate::Renderer {
             local_to_world_instance_attribute: pipeline
                 .get_vertex_attribute("ia_local_to_world")
                 .unwrap(),
+            color_instance_attribute: pipeline.get_vertex_attribute("ia_color").unwrap(),
             // Per-vertex attributes
             position_attribute: pipeline.get_vertex_attribute("a_position").unwrap(),
             normal_attribute: pipeline.get_vertex_attribute("a_normal").unwrap(),

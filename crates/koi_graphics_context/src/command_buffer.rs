@@ -24,6 +24,12 @@ pub(crate) enum Command {
         width: f32,
         height: f32,
     },
+    SetScissorRect {
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    },
     SetUniform {
         uniform_info: UniformInfo,
         bump_handle: BumpHandle,
@@ -66,6 +72,7 @@ impl Command {
             Command::SetAttributeToConstant { .. } => "SetAttributeToConstant",
             Command::SetTexture { .. } => "SetTexture",
             Command::SetCubeMap { .. } => "SetCubeMap",
+            Command::SetScissorRect { .. } => "SetScissorRect",
         }
     }
 }
@@ -91,7 +98,34 @@ impl CommandBuffer {
         }
     }
 
-    pub fn begin_render_pass(&mut self, clear_color: Option<kmath::Vec4>) -> RenderPass {
+    /// x, y, width, height is the rectangle of the screen to render to.
+    pub fn begin_render_pass(
+        &mut self,
+        clear_color: Option<kmath::Vec4>,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    ) -> RenderPass {
+        // TODO: x, y, width, and height should be between 0.0 and 1.0
+        // assert!(x >= 0.0 && x <= 1.0);
+        // assert!(y >= 0.0 && y <= 1.0);
+        // assert!(width >= 0.0 && width <= 1.0);
+        // assert!(height >= 0.0 && height <= 1.0);
+        self.commands.push(Command::SetViewPort {
+            x,
+            y,
+            width,
+            height,
+        });
+
+        self.commands.push(Command::SetScissorRect {
+            x,
+            y,
+            width,
+            height,
+        });
+
         if let Some(clear_color) = clear_color {
             self.commands.push(Command::BeginRenderPass { clear_color })
         }
@@ -128,20 +162,6 @@ impl<'a> RenderPass<'a> {
             pipeline_index: pipeline.0.inner().program_index,
             pipeline_settings: pipeline.0.inner().pipeline_settings,
         });
-    }
-
-    pub fn set_viewport(&mut self, x: f32, y: f32, width: f32, height: f32) {
-        // TODO: x, y, width, and height should be between 0.0 and 1.0
-        // assert!(x >= 0.0 && x <= 1.0);
-        // assert!(y >= 0.0 && y <= 1.0);
-        // assert!(width >= 0.0 && width <= 1.0);
-        // assert!(height >= 0.0 && height <= 1.0);
-        self.command_buffer.commands.push(Command::SetViewPort {
-            x,
-            y,
-            width,
-            height,
-        })
     }
 
     #[inline]

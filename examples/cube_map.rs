@@ -1,4 +1,4 @@
-use koi3::{world_cloner::WorldCloner, *};
+use koi3::*;
 use koi_camera_controls::CameraControls;
 
 fn main() {

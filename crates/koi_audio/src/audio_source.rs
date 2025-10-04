@@ -35,6 +35,15 @@ impl AudioSource {
             previous_velocity: None,
         }
     }
+
+    pub fn spatial_sounds_to_play(&self) -> usize {
+        self.to_play_spatial.len()
+    }
+
+    pub fn sounds_playing_count(&self) -> usize {
+        self.playing.len()
+    }
+
     pub fn play_sound(&mut self, sound: &Handle<Sound>) {
         self.to_play_spatial.push(ToPlayCustom {
             sound_handle: Some(sound.clone()),
@@ -43,6 +52,7 @@ impl AudioSource {
             }),
         });
     }
+
     pub fn play_sound_looped(&mut self, sound: &Handle<Sound>) {
         self.to_play_spatial.push(ToPlayCustom {
             sound_handle: Some(sound.clone()),

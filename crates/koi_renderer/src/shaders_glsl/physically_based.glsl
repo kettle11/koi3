@@ -141,6 +141,7 @@ vec3 BRDF(vec3 v, vec3 n, vec3 base_color, float roughness, vec3 f0, const Light
     return color * NoL * light.color_and_intensity * attenuation;
 }
 
+
 void main()
 {
     // Only read from textures if they're set to enabled.
@@ -170,10 +171,10 @@ void main()
     color_out = vec4(0, 0, 0, 1);
 
     int count = int(light_count);
-   // for (int i = 0; i < 9; i++) {
-   //     if (i == count) break;
-   //     color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
-   // }
+    for (int i = 0; i < 9; i++) {
+        if (i == count) break;
+        color_out.rgb += BRDF(v, n, diffuse_color, roughness, f0, p_lights[i]);
+    }
 
     color_out.rgb += diffuse_color * read_spherical_harmonics(normalize(n));
     

@@ -49,6 +49,9 @@ impl App {
             if resources.try_get::<Box<Run>>().is_none() {
                 let f = Box::new(setup(world, resources));
                 resources.add(f);
+
+                // Reset accumulator after setup to make sure a ton of FixedUpdates aren't accrued.
+                resources.get_mut::<Time>().reset_accumulator();
             }
             let mut game_function = resources.remove::<Box<Run>>().unwrap();
             (game_function)(event, world, resources);
@@ -103,8 +106,12 @@ impl App {
             } else {
                 ktasks::run_current_thread_tasks();
                 app = plugin_setup_done.get_result();
-                if app.is_some() {
+
+                if let Some(app) = app.as_mut() {
                     klog::log!("Loading complete");
+
+                    // Reset accumulator after setup to make sure a ton of FixedUpdates aren't accrued.
+                    app.resources.get_mut::<Time>().reset_accumulator();
                 }
             }
         });

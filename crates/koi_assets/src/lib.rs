@@ -79,7 +79,18 @@ impl<Asset: AssetTrait> AssetStoreInner<Asset> {
     // }
 
     pub fn get(&self, handle: &Handle<Asset>) -> &Asset {
-        self.slot_map.get(&handle.slot_map_handle).unwrap()
+        let result = self.slot_map.get(&handle.slot_map_handle);
+        if result.is_none() {
+            println!("HANDLE0: {:?}", handle);
+
+            for p in self.path_to_slotmap.iter() {
+                println!(
+                    "PATH TO SLOTMAP: {:?}",
+                    (p.0, p.1 .0.upgrade().unwrap().slot_map_handle.index())
+                );
+            }
+        }
+        result.unwrap()
     }
 
     pub fn get_mut(&mut self, handle: &Handle<Asset>) -> &mut Asset {
@@ -192,6 +203,7 @@ impl<Asset: AssetTrait> AssetStore<Asset> {
                 .path_to_slotmap
                 .insert(path.into(), (handle.to_weak(), settings.clone()));
             self.loader.load(path.into(), settings, handle.clone());
+            println!("NEW HANDLE: {:?}", handle);
             handle
         }
     }
@@ -259,6 +271,11 @@ impl<T> Handle<T> {
             },
             drop_handle: std::sync::Arc::downgrade(self.drop_handle.as_ref().unwrap()),
         }
+    }
+
+    /// Leaks this asset ensuring it will never get cleaned up.
+    pub fn leak(self) {
+        std::mem::forget(self.drop_handle)
     }
 }
 
