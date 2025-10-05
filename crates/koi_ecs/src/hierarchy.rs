@@ -20,7 +20,7 @@ impl crate::WorldClonableTrait for Child {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Parent {
     arbitrary_child: Option<hecs::Entity>,
 }
@@ -138,17 +138,12 @@ impl HierachyExtension for hecs::World {
         self.unparent(parent)?;
 
         // Despawn all children and their siblings recursively.
-        if let Ok(hierarchy_node) = self.get::<&mut Parent>(parent).map(|h| h.clone()) {
-            if let Some(start_child) = hierarchy_node.arbitrary_child {
-                let mut current_child = start_child;
-                loop {
-                    let next_child = self.get::<&Child>(current_child).unwrap().next_sibling;
-                    self.despawn_hierarchy(current_child)?;
-                    if start_child == next_child {
-                        break;
-                    }
-                    current_child = next_child;
-                }
+        if self.get::<&mut Parent>(parent).is_ok() {
+            // This works because whenever a node is despawned its parent connects its siblings.
+            let mut arbitrary_child = self.get::<&mut Parent>(parent).unwrap().arbitrary_child;
+            while let Some(child) = arbitrary_child {
+                self.despawn_hierarchy(child)?;
+                arbitrary_child = self.get::<&mut Parent>(parent).unwrap().arbitrary_child;
             }
         }
 
